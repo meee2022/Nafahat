@@ -9,7 +9,7 @@ import { useLanguageStore, useT } from '@store/languageStore';
 import { useAuthStore } from '@store/authStore';
 import { LANGUAGES, LanguageCode } from '@/i18n/index';
 import { Text } from '@components/ui';
-import { APP_INFO } from '../src/config/appInfo';
+import { useAppInfo } from '@store/appConfigStore';
 
 interface Slide {
   icon: React.ReactNode;
@@ -22,6 +22,7 @@ export default function Onboarding() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
+  const APP_INFO = useAppInfo();
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
   const lang = useLanguageStore((s) => s.lang);
   const setLang = useLanguageStore((s) => s.setLang);

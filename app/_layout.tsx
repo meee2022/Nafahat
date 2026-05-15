@@ -19,11 +19,11 @@ import {
 } from '@expo-google-fonts/inter';
 import { ThemeProvider, useTheme } from '@theme/index';
 import { Text } from '@components/ui';
-import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore } from '@store/index';
+import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore } from '@store/index';
 import { useLanguageStore } from '@store/languageStore';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
-import { APP_INFO } from '../src/config/appInfo';
+import { useAppInfo } from '@store/appConfigStore';
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
 // عند الإقلاع نبدأ بـ RTL (لغة افتراضية عربية). languageStore يحدّث الاتجاه
@@ -95,6 +95,7 @@ function AppGate() {
   const hydrateTajweed = useTajweedStore((s) => s.hydrate);
   const hydrateWird = useWirdStore((s) => s.hydrate);
   const hydratePrefs = useUserPrefsStore((s) => s.hydrate);
+  const hydrateAppConfig = useAppConfigStore((s) => s.hydrate);
   const hasOnboarded = useUserStore((s) => s.hasOnboarded);
   const authStatus = useAuthStore((s) => s.status);
 
@@ -103,7 +104,7 @@ function AppGate() {
       await Promise.all([
         hydrateUser(), hydrateReading(), hydrateMemo(),
         hydrateStats(), hydrateTasbeeh(), hydrateLang(),
-        hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(),
+        hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(),
       ]);
       setTimeout(() => setHydrated(true), 900);
     })();
@@ -172,6 +173,7 @@ function AppGate() {
 
 function SplashView() {
   const t = useTheme();
+  const APP_INFO = useAppInfo();
   return (
     <LinearGradient colors={['#143229', '#0A1815', '#070F0D']} style={styles.splash}>
       <View style={styles.bgPattern} pointerEvents="none">

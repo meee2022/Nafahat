@@ -13,7 +13,7 @@ import { OrnamentalRule } from '@components/ornaments';
 import { useAuthStore } from '@store/authStore';
 import { useT } from '@store/languageStore';
 import { TranslationKey } from '@/i18n/index';
-import { APP_INFO } from '../src/config/appInfo';
+import { useAppInfo } from '@store/appConfigStore';
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
   'invalid-email':       'auth.error.invalidEmail',
@@ -28,6 +28,7 @@ export default function LoginScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
+  const APP_INFO = useAppInfo();
   const { signIn, signInAsGuest, loading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

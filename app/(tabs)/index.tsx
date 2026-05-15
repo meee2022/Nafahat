@@ -4,7 +4,7 @@
  */
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
@@ -18,41 +18,22 @@ import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@
 import { SectionHeading, DailyActionCard, computeDailyAction } from '@components/home';
 import { useWirdStore, useMemoStore } from '@store/index';
 import { getDueTasks } from '@services/memorization';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
   a.getDate() === b.getDate();
 
-export default function HomeScreen() {
-  const t = useTheme();
-  const tr = useT();
-  const { lang } = useLanguage();
-  const router = useRouter();
-  const location = useSettingsStore((s) => s.location);
-  const isPremium = useSettingsStore((s) => s.isPremium);
-
+const HeroCountdown = ({ nextP, todayPrayers, cityName }: { nextP: any, todayPrayers: any, cityName: string }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const router = useRouter();
+  const tr = useT();
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
-
-  const isToday = useMemo(() => isSameDay(selectedDate, currentTime), [selectedDate, currentTime]);
-
-  const todayPrayers = useMemo(() => {
-    return calculatePrayerTimes({
-      date: selectedDate,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      timezone: location.timezone,
-      method: 'Makkah'
-    });
-  }, [selectedDate, location]);
-
-  const nextP = useMemo(() => nextPrayer(todayPrayers, currentTime), [todayPrayers, currentTime]);
 
   const countdownText = useMemo(() => {
     const [h, m] = nextP.time.split(':').map(Number);
@@ -68,6 +49,48 @@ export default function HomeScreen() {
     const secs = diff % 60;
     return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   }, [nextP, currentTime]);
+
+  return (
+    <View style={styles.countdownContainer}>
+      <Text style={styles.nextPrayerText}>{PRAYER_NAMES_AR[nextP.name as PrayerName]} {tr('home.heroNextSuffix')}</Text>
+      <Text style={styles.countdownTime}>{countdownText}</Text>
+      <Pressable style={styles.locationBadge} onPress={() => router.push('/prayer-times')}>
+        <MapPin size={14} color="#FFF" />
+        <Text style={styles.locationText}>{cityName}</Text>
+      </Pressable>
+    </View>
+  );
+};
+
+export default function HomeScreen() {
+  const t = useTheme();
+  const tr = useT();
+  const { lang } = useLanguage();
+  const router = useRouter();
+  const location = useSettingsStore((s) => s.location);
+  const isPremium = useSettingsStore((s) => s.isPremium);
+  const insets = useSafeAreaInsets();
+
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  
+  // No more 1-second interval here!
+  // We use a fixed 'now' for the initial calculations for the current day.
+  // The ticking countdown is handled inside HeroCountdown.
+  const now = new Date();
+
+  const isToday = useMemo(() => isSameDay(selectedDate, now), [selectedDate, now]);
+
+  const todayPrayers = useMemo(() => {
+    return calculatePrayerTimes({
+      date: selectedDate,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      timezone: location.timezone,
+      method: 'Makkah'
+    });
+  }, [selectedDate, location]);
+
+  const nextP = useMemo(() => nextPrayer(todayPrayers, now), [todayPrayers, now]);
 
   const dateLocale = lang === 'ar' ? 'ar-EG' : `${lang}-u-ca-gregory`;
   const hijriLocale = lang === 'ar' ? 'ar-SA-u-ca-islamic' : `${lang}-u-ca-islamic`;
@@ -141,10 +164,10 @@ export default function HomeScreen() {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         
         {/* 1. Hero Section - مستوحى من المصلي */}
-        <View style={styles.hero}>
+        <View style={[styles.hero, { paddingTop: Math.max(insets.top, 20) }]}>
           {/* خلفية متدرّجة + نقش هندسي ذهبي */}
           <LinearGradient
-            colors={['#0A3D38', '#0F4A41', '#062825']}
+            colors={[t.colors.primary, '#0F4A41', '#062825']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
@@ -181,26 +204,24 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Countdown */}
-          <View style={styles.countdownContainer}>
-            <Text style={styles.nextPrayerText}>{PRAYER_NAMES_AR[nextP.name]} {tr('home.heroNextSuffix')}</Text>
-            <Text style={styles.countdownTime}>{countdownText}</Text>
-            <Pressable style={styles.locationBadge} onPress={() => router.push('/prayer-times')}>
-              <MapPin size={14} color="#FFF" />
-              <Text style={styles.locationText}>{cityName}</Text>
-            </Pressable>
-          </View>
+          {/* Countdown Component (Fast updates isolated here) */}
+          <HeroCountdown nextP={nextP} todayPrayers={todayPrayers} cityName={cityName} />
           
           {/* Mosque Illustration */}
           <View style={styles.mosqueIllustrationContainer}>
-            <IllMosques size={120} />
+            <IllMosques size={160} />
+            <LinearGradient
+              colors={['transparent', 'rgba(6, 40, 37, 0.9)']}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
           </View>
         </View>
 
         {/* 2. Prayer Times Strip */}
         <View style={[styles.prayerStrip, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
           <View style={styles.dateRow}>
-            <Pressable onPress={() => shiftDay(-1)} hitSlop={10} style={styles.dateNavBtn}>
+            <Pressable onPress={() => shiftDay(-1)} hitSlop={15} style={styles.dateNavBtn}>
               <ChevronRight size={20} color={t.colors.textSecondary} />
             </Pressable>
             <Pressable onPress={() => setSelectedDate(new Date())} style={{ flex: 1, alignItems: 'center' }}>
@@ -208,7 +229,7 @@ export default function HomeScreen() {
                 {dateString}
               </Text>
             </Pressable>
-            <Pressable onPress={() => shiftDay(1)} hitSlop={10} style={styles.dateNavBtn}>
+            <Pressable onPress={() => shiftDay(1)} hitSlop={15} style={styles.dateNavBtn}>
               <ChevronLeft size={20} color={t.colors.textSecondary} />
             </Pressable>
           </View>
@@ -217,7 +238,7 @@ export default function HomeScreen() {
             {(['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'] as PrayerName[]).map((pKey) => {
               const isActive = isToday && nextP.name === pKey;
               return (
-                <View key={pKey} style={[styles.timeItem, isActive && styles.activeTimeItem]}>
+                <View key={pKey} style={[styles.timeItem, isActive && { backgroundColor: t.colors.primary }]}>
                   <Text style={[styles.timeName, isActive && { color: '#FFF' }]}>{PRAYER_NAMES_AR[pKey]}</Text>
                   <Text style={[styles.timeValue, isActive && { color: '#FFF' }]}>
                     {todayPrayers[pKey]}
@@ -229,7 +250,7 @@ export default function HomeScreen() {
         </View>
 
         {/* بطاقة "مهمة اليوم" - ديناميكية حسب الوقت + حالة المستخدم */}
-        <View style={{ marginTop: 16 }}>
+        <View style={{ marginTop: 8 }}>
           <DailyAction />
         </View>
 
@@ -291,12 +312,11 @@ const DailyAction: React.FC = () => {
 
 const styles = StyleSheet.create({
   hero: {
-    paddingTop: 50,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     overflow: 'hidden',
     position: 'relative',
-    height: 320,
+    height: 340,
   },
   heroFrame: {
     position: 'absolute',
@@ -310,6 +330,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
+    marginTop: 10,
     zIndex: 10,
   },
   heroHeaderLeft: { flex: 1, alignItems: 'flex-start' },
@@ -340,16 +361,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     lineHeight: 22,
-    marginBottom: 10,
+    marginBottom: 6,
     textAlign: 'center',
   },
   countdownTime: {
-    color: '#FFF',
-    fontSize: 54,
-    lineHeight: 64,
+    color: '#F5C76A',
+    fontSize: 44,
+    lineHeight: 52,
     fontWeight: '800',
     letterSpacing: 2,
     textAlign: 'center',
+    fontVariant: ['tabular-nums'],
   },
   locationBadge: {
     flexDirection: 'row',
@@ -368,15 +390,15 @@ const styles = StyleSheet.create({
   },
   mosqueIllustrationContainer: {
     position: 'absolute',
-    bottom: -20,
+    bottom: 0,
     left: 0,
     right: 0,
     alignItems: 'center',
-    opacity: 0.9,
+    opacity: 0.7,
   },
   prayerStrip: {
-    margin: 16,
-    marginTop: -20,
+    marginHorizontal: 16,
+    marginTop: -30,
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
@@ -400,33 +422,32 @@ const styles = StyleSheet.create({
   timesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    paddingHorizontal: 2,
   },
   timeItem: {
     alignItems: 'center',
     paddingVertical: 8,
     paddingHorizontal: 6,
     borderRadius: 10,
-  },
-  activeTimeItem: {
-    backgroundColor: '#0A3D38',
+    flex: 1,
   },
   timeName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
     marginBottom: 4,
   },
   timeValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
   },
   gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 8,
-    gap: 0, // أزلنا المسافة الثابتة ليأخذ كل عنصر مساحته
+    gap: 0, 
   },
   featureCard: {
-    width: '33.33%', // 3 أعمدة بالضبط
+    width: '33.33%',
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingVertical: 12,

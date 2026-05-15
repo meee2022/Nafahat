@@ -80,18 +80,30 @@ export const ReciterAvatar: React.FC<Props> = ({
         <Circle cx="38" cy="38" r="14" fill="#fff" opacity={0.18} />
       </Svg>
 
-      {/* الحرف */}
-      <Text
+      {/* الحرف - container ثابت يحوي النص ويمنع القصّ */}
+      <View
         style={{
-          fontFamily: t.fontFamilies.arabicQuran,
-          fontSize: size * 0.42,
-          fontWeight: '700',
-          color: '#fff',
-          letterSpacing: -0.5,
+          width: size,
+          height: size,
+          position: 'absolute',
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
-        {letter}
-      </Text>
+        <Text
+          style={{
+            fontSize: size * 0.38,
+            lineHeight: size * 0.52,
+            fontWeight: '800',
+            color: '#fff',
+            textAlign: 'center',
+            includeFontPadding: false,
+            textAlignVertical: 'center',
+          }}
+        >
+          {letter}
+        </Text>
+      </View>
 
       {/* مؤشر "يُشغّل الآن" نابض */}
       {isPlaying ? (

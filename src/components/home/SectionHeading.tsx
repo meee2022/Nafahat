@@ -12,70 +12,46 @@ interface Props {
   onAction?: () => void;
 }
 
-/**
- * ترويسة قسم - "Manuscript Cartouche":
- * - إطار مزخرف يشبه الـ cartouche في المخطوطات الإسلامية
- * - حدود ذهبية مزدوجة (سميك ورفيع) على اليمين واليسار
- * - معيّنات ذهبية في الأركان
- * - شارة eyebrow صغيرة فوق العنوان
- * - زر action دائري على الجانب
- */
 export const SectionHeading: React.FC<Props> = ({ eyebrow, title, subtitle, actionLabel, onAction }) => {
   const t = useTheme();
-  const goldStrong = t.colors.accent;
-  const goldSoft = t.colors.accent + '30';
 
   return (
     <View style={styles.wrap}>
-      <View style={styles.row}>
-        {/* الإطار المزخرف */}
-        <View style={[styles.cartouche, { borderColor: goldSoft, backgroundColor: t.colors.accent + '08' }]}>
-          {/* خطوط ذهبية مزدوجة (يمين) */}
-          <View style={styles.borderRight}>
-            <View style={[styles.borderThick, { backgroundColor: goldStrong }]} />
-            <View style={[styles.borderThin, { backgroundColor: goldStrong }]} />
-          </View>
-          {/* خطوط ذهبية مزدوجة (يسار) */}
-          <View style={styles.borderLeft}>
-            <View style={[styles.borderThick, { backgroundColor: goldStrong }]} />
-            <View style={[styles.borderThin, { backgroundColor: goldStrong }]} />
-          </View>
-
-          {/* معيّنات الأركان */}
-          <View style={[styles.cornerDiamond, styles.cornerTR, { borderColor: goldStrong }]} />
-          <View style={[styles.cornerDiamond, styles.cornerTL, { borderColor: goldStrong }]} />
-          <View style={[styles.cornerDiamond, styles.cornerBR, { borderColor: goldStrong }]} />
-          <View style={[styles.cornerDiamond, styles.cornerBL, { borderColor: goldStrong }]} />
-
-          {/* المحتوى */}
-          <View style={styles.content}>
-            {eyebrow ? (
-              <View style={[styles.eyebrowBadge, { borderColor: goldStrong, backgroundColor: t.colors.background }]}>
-                <View style={[styles.eyebrowDot, { backgroundColor: goldStrong }]} />
-                <Text style={[styles.eyebrowText, { color: goldStrong }]}>{eyebrow}</Text>
-                <View style={[styles.eyebrowDot, { backgroundColor: goldStrong }]} />
-              </View>
-            ) : null}
-
-            <Text style={[styles.title, { color: t.colors.textPrimary }]}>{title}</Text>
-
-            {subtitle ? (
-              <Text style={[styles.subtitle, { color: t.colors.textTertiary }]}>{subtitle}</Text>
-            ) : null}
-          </View>
+      <View style={[styles.box, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
+        {/* شريط جانبي ذهبي */}
+        <View style={[styles.accentBar, { backgroundColor: t.colors.accent }]} />
+        
+        <View style={styles.textContainer}>
+          {eyebrow ? (
+            <Text variant="label" style={{ color: t.colors.accent, marginBottom: 2, fontSize: 13 }}>
+              {eyebrow}
+            </Text>
+          ) : null}
+          
+          <Text variant="h2" style={{ color: t.colors.textPrimary, fontSize: 22 }}>
+            {title}
+          </Text>
+          
+          {subtitle ? (
+            <Text variant="caption" style={{ color: t.colors.textTertiary, marginTop: 2 }}>
+              {subtitle}
+            </Text>
+          ) : null}
         </View>
 
-        {/* زر الإجراء */}
         {actionLabel && onAction ? (
           <Pressable
             onPress={onAction}
-            hitSlop={10}
-            style={[styles.action, { backgroundColor: t.colors.accent + '14', borderColor: t.colors.accent + '40' }]}
+            hitSlop={15}
+            style={({ pressed }) => [
+              styles.action,
+              pressed && { opacity: 0.6 }
+            ]}
           >
-            <Text style={{ fontSize: 12, fontWeight: '700', color: t.colors.accent, letterSpacing: 0.3 }}>
+            <Text variant="label" style={{ color: t.colors.primary, fontSize: 13 }}>
               {actionLabel}
             </Text>
-            <ChevronLeft size={13} color={t.colors.accent} strokeWidth={2.5} />
+            <ChevronLeft size={16} color={t.colors.primary} strokeWidth={2.5} />
           </Pressable>
         ) : null}
       </View>
@@ -85,108 +61,41 @@ export const SectionHeading: React.FC<Props> = ({ eyebrow, title, subtitle, acti
 
 const styles = StyleSheet.create({
   wrap: {
-    marginTop: 36,
-    marginBottom: 20,
     paddingHorizontal: 16,
+    marginTop: 24,
+    marginBottom: 16,
   },
-  row: {
+  box: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    justifyContent: 'space-between',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    elevation: 1,
+    overflow: 'hidden',
   },
-  cartouche: {
+  accentBar: {
+    position: 'absolute',
+    right: 0, 
+    top: 0,
+    bottom: 0,
+    width: 4,
+  },
+  textContainer: {
     flex: 1,
-    paddingVertical: 18,
-    paddingHorizontal: 28,
-    borderRadius: 4,
-    borderWidth: 1,
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'visible',
-  },
-  borderRight: {
-    position: 'absolute',
-    right: 6,
-    top: 8,
-    bottom: 8,
-    flexDirection: 'row',
-    gap: 2,
-  },
-  borderLeft: {
-    position: 'absolute',
-    left: 6,
-    top: 8,
-    bottom: 8,
-    flexDirection: 'row',
-    gap: 2,
-  },
-  borderThick: {
-    width: 2,
-    height: '100%',
-    borderRadius: 1,
-  },
-  borderThin: {
-    width: 0.7,
-    height: '100%',
-    opacity: 0.5,
-  },
-  cornerDiamond: {
-    position: 'absolute',
-    width: 7, height: 7,
-    borderWidth: 1,
-    transform: [{ rotate: '45deg' }],
-    backgroundColor: 'transparent',
-  },
-  cornerTR: { top: -4, right: 16 },
-  cornerTL: { top: -4, left: 16 },
-  cornerBR: { bottom: -4, right: 16 },
-  cornerBL: { bottom: -4, left: 16 },
-  content: {
-    alignItems: 'center',
-    gap: 8,
-  },
-  eyebrowBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 999,
-    borderWidth: 1,
-    marginTop: -2,
-  },
-  eyebrowDot: {
-    width: 3,
-    height: 3,
-    borderRadius: 1.5,
-    opacity: 0.8,
-  },
-  eyebrowText: {
-    fontSize: 9,
-    letterSpacing: 3,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
-  title: {
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'center',
-    marginTop: 2,
+    alignItems: 'flex-start',
+    paddingRight: 12,
   },
   action: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 999,
-    borderWidth: 1,
+    gap: 2,
+    paddingLeft: 8,
   },
 });

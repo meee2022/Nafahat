@@ -10,3 +10,4 @@ export { useKhatmaStore } from './khatmaStore';
 export { useTajweedStore } from './tajweedStore';
 export { useWirdStore } from './wirdStore';
 export { useUserPrefsStore } from './userPrefsStore';
+export { useAppConfigStore, useAppInfo, mergeAppInfo, getCopyrightYearFromInfo } from './appConfigStore';

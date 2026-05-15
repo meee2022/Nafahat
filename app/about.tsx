@@ -12,12 +12,14 @@ import {
 import { useTheme } from '@theme/index';
 import { Card } from '@components/ui';
 import { useT } from '@store/languageStore';
-import { APP_INFO, getCopyrightYear } from '../src/config/appInfo';
+import { useAppInfo, getCopyrightYearFromInfo } from '@store/appConfigStore';
 
 export default function AboutScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
+  const APP_INFO = useAppInfo();
+  const getCopyrightYear = () => getCopyrightYearFromInfo(APP_INFO);
 
   const handleShareApp = async () => {
     try {
@@ -123,29 +125,27 @@ export default function AboutScreen() {
           ) : null}
         </Card>
 
-        {/* قانوني */}
-        {APP_INFO.termsUrl || APP_INFO.privacyUrl ? (
-          <>
-            <Text style={[styles.sectionTitle, { color: t.colors.textPrimary }]}>الشروط والخصوصية</Text>
-            <Card padding={0} elevation="xs" bordered>
-              {APP_INFO.termsUrl ? (
-                <ActionRow
-                  icon={<FileText size={18} color={t.colors.textSecondary} />}
-                  label="شروط الاستخدام"
-                  onPress={() => openLink(APP_INFO.termsUrl)}
-                  divider={!!APP_INFO.privacyUrl}
-                />
-              ) : null}
-              {APP_INFO.privacyUrl ? (
-                <ActionRow
-                  icon={<Shield size={18} color={t.colors.textSecondary} />}
-                  label="سياسة الخصوصية"
-                  onPress={() => openLink(APP_INFO.privacyUrl)}
-                />
-              ) : null}
-            </Card>
-          </>
-        ) : null}
+        {/* قانوني - يستخدم الصفحات الداخلية لو الرابط فاضي، خارجي لو محدّد */}
+        <Text style={[styles.sectionTitle, { color: t.colors.textPrimary }]}>الشروط والخصوصية</Text>
+        <Card padding={0} elevation="xs" bordered>
+          <ActionRow
+            icon={<FileText size={18} color={t.colors.textSecondary} />}
+            label="شروط الاستخدام"
+            onPress={() => {
+              if (APP_INFO.termsUrl) openLink(APP_INFO.termsUrl);
+              else router.push('/terms');
+            }}
+            divider
+          />
+          <ActionRow
+            icon={<Shield size={18} color={t.colors.textSecondary} />}
+            label="سياسة الخصوصية"
+            onPress={() => {
+              if (APP_INFO.privacyUrl) openLink(APP_INFO.privacyUrl);
+              else router.push('/privacy');
+            }}
+          />
+        </Card>
 
         {/* بصمة */}
         <View style={styles.footer}>

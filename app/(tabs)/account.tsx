@@ -8,8 +8,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Award, BookOpen, Brain, Headphones, Heart, Flame, Calendar,
   Moon, Sun, Type, Bell, Globe, Download, Cloud, Info, ChevronLeft,
-  LogIn, FileText, Mic, Sparkles, Edit3,
+  LogIn, FileText, Mic, Sparkles, Edit3, Shield,
 } from 'lucide-react-native';
+import { useIsAdmin } from '@store/appConfigStore';
+import { computeUserLevel } from '@utils/userLevel';
 import { useTheme, useThemeMode } from '@theme/index';
 import { Screen, Text, Card, AppHeader, ProgressBar, Chip } from '@components/ui';
 import { StatCard } from '@components/common';
@@ -53,6 +55,11 @@ export default function AccountScreen() {
   const isAuthenticated = authStatus === 'authenticated';
   const displayName = isAuthenticated && authUser ? authUser.name : profile.name;
   const displayInitial = (isAuthenticated && authUser ? authUser.name : profile.name).charAt(0);
+  const isAdminEmail = useIsAdmin(authUser?.email);
+  const isAdmin = isAuthenticated && isAdminEmail;
+
+  // ⭐ حساب المستوى الفعلي من نشاط المستخدم
+  const userLevel = React.useMemo(() => computeUserLevel(stats), [stats]);
 
   return (
     <Screen>
@@ -81,15 +88,34 @@ export default function AccountScreen() {
           <Text variant="bodySm" color="rgba(255,255,255,0.8)" style={{ marginTop: 2 }}>
             {isAuthenticated ? tr('account.memberRole') : tr('account.guestRole')}
           </Text>
-          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+          <View style={{ flexDirection: 'row', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
             <View style={[styles.miniPill, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
               <Flame size={12} color="#fff" />
               <Text variant="caption" color="#fff">{arabicNumber(stats.streakDays)} {tr('account.streakSuffix')}</Text>
             </View>
             <View style={[styles.miniPill, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
               <Award size={12} color="#fff" />
-              <Text variant="caption" color="#fff">{tr('account.level')} 4</Text>
+              <Text variant="caption" color="#fff">
+                {userLevel.emoji} {userLevel.title} · {tr('account.level')} {arabicNumber(userLevel.level)}
+              </Text>
             </View>
+          </View>
+
+          {/* شريط تقدّم المستوى */}
+          <View style={{ marginTop: 10 }}>
+            <View style={styles.levelBarTrack}>
+              <View
+                style={[
+                  styles.levelBarFill,
+                  { width: `${Math.round(userLevel.progress * 100)}%` },
+                ]}
+              />
+            </View>
+            <Text variant="caption" color="rgba(255,255,255,0.75)" style={{ marginTop: 4, fontSize: 10 }}>
+              {userLevel.nextMin === -1
+                ? `وصلت لأعلى مستوى 🏆 (${arabicNumber(userLevel.points)} نقطة)`
+                : `${arabicNumber(userLevel.points)} / ${arabicNumber(userLevel.nextMin)} نقطة · باقي ${arabicNumber(userLevel.pointsToNext)} للمستوى التالي`}
+            </Text>
           </View>
         </View>
       </LinearGradient>
@@ -209,6 +235,34 @@ export default function AccountScreen() {
         />
       </View>
 
+      {/* لوحة تحكم الأدمن - تظهر فقط لإيميلات الأدمن المعرّفة في appInfo.ts */}
+      {isAdmin ? (
+        <View style={{ marginTop: t.spacing.lg }}>
+          <Pressable
+            onPress={() => router.push('/admin')}
+            style={({ pressed }) => [
+              styles.adminBtn,
+              {
+                backgroundColor: t.colors.accent + '14',
+                borderColor: t.colors.accent + '60',
+                opacity: pressed ? 0.9 : 1,
+              },
+            ]}
+          >
+            <View style={[styles.adminIcon, { backgroundColor: t.colors.accent }]}>
+              <Shield size={18} color={t.colors.onAccent} strokeWidth={2.4} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text variant="subtitle" color={t.colors.accent}>لوحة تحكم الأدمن</Text>
+              <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 2 }}>
+                إدارة بيانات التطبيق والإهداء والروابط
+              </Text>
+            </View>
+            <ChevronLeft size={18} color={t.colors.accent} />
+          </Pressable>
+        </View>
+      ) : null}
+
       {/* بطاقة المصادقة */}
       {isAuthenticated ? (
         <Card padding={t.spacing.lg} elevation="xs" style={{ marginTop: t.spacing.lg }}>
@@ -314,4 +368,31 @@ const styles = StyleSheet.create({
   rowIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   signIn: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 999 },
   signOutIcon: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  adminBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  adminIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  levelBarTrack: {
+    width: '100%',
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    overflow: 'hidden',
+  },
+  levelBarFill: {
+    height: '100%',
+    backgroundColor: '#D4B570',
+    borderRadius: 3,
+  },
 });

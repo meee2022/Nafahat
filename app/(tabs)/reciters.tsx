@@ -1,15 +1,18 @@
 /**
  * شاشة الاستماع - تصميم محدّث:
+ *  - "Now Playing" banner لو فيه قارئ شغّال
  *  - بحث pill بأيقونة ذهبية
- *  - carousel أفقي للقرّاء المميّزين بأفاتارات مزخرفة
+ *  - carousel أفقي بألوان مميّزة حسب نمط التلاوة
  *  - filter pills بأيقونات (الكل / مرتل / مجود / معلم)
  *  - قائمة قرّاء بـ ReciterAvatar + زر تشغيل عائم
  *  - مؤشر "يُشغّل الآن" أخضر نابض على القارئ الحالي
  */
 import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, TextInput, Platform } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Search, Play, Pause, Star, Globe, Headphones } from 'lucide-react-native';
+import { Search, Play, Pause, Star, Globe, Headphones, MapPin, SkipForward } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card, AppHeader } from '@components/ui';
 import { RECITERS } from '@data/reciters';
@@ -26,13 +29,22 @@ const STYLE_FILTERS: { id: StyleFilter; labelKey: string; emoji: string; color: 
   { id: 'معلم', labelKey: 'audio.styleMuallim',  emoji: '★', color: '#2F5A8C' },
 ];
 
+// لون مميّز لكل نمط تلاوة - يُستخدم في الـ avatars
+const STYLE_COLORS: Record<string, string> = {
+  'مرتل': '#0A3D38', // زمرد عميق
+  'مجود': '#A2384B', // قرمزي
+  'معلم': '#2F5A8C', // لازوردي
+};
+
 export default function RecitersScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
-  const { current, isPlaying } = useAudioStore();
+  const { current, isPlaying, toggle } = useAudioStore();
   const [query, setQuery] = useState('');
   const [styleFilter, setStyleFilter] = useState<StyleFilter>('all');
+
+  const currentReciter = current ? RECITERS.find((r) => r.id === current.reciter.id) : null;
 
   const list = useMemo(() => {
     return RECITERS.filter((r) => {
@@ -48,6 +60,70 @@ export default function RecitersScreen() {
   return (
     <Screen>
       <AppHeader title={tr('audio.title')} subtitle={tr('audio.subtitle')} />
+
+      {/* 🎧 Now Playing Banner - يظهر فقط لو فيه قارئ شغّال */}
+      {currentReciter ? (
+        <Pressable onPress={() => router.push('/player')}>
+          <LinearGradient
+            colors={[STYLE_COLORS[currentReciter.style] ?? '#0A3D38', '#062825']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={styles.nowPlayingBanner}
+          >
+            {/* نقش ذهبي خفيف */}
+            <Svg width="100%" height="100%" style={[StyleSheet.absoluteFill, { opacity: 0.18 }]} pointerEvents="none">
+              <Defs>
+                <Pattern id="np-bg" x="0" y="0" width="32" height="32" patternUnits="userSpaceOnUse">
+                  <Path
+                    d="M16,3 L19,13 L29,16 L19,19 L16,29 L13,19 L3,16 L13,13 Z"
+                    fill="none" stroke="#D4B570" strokeWidth={0.5}
+                  />
+                </Pattern>
+              </Defs>
+              <Rect width="100%" height="100%" fill="url(#np-bg)" />
+            </Svg>
+
+            <View style={styles.nowPlayingContent}>
+              {/* الأفاتار */}
+              <ReciterAvatar letter={currentReciter.nameAr.charAt(0)} size={56} isPlaying={isPlaying} />
+
+              {/* المعلومات */}
+              <View style={{ flex: 1, marginStart: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <View style={[styles.nowPlayingDot, { backgroundColor: isPlaying ? '#22C55E' : '#D4B570' }]} />
+                  <Text style={styles.nowPlayingLabel}>
+                    {isPlaying ? 'يُشغّل الآن' : 'متوقف مؤقتاً'}
+                  </Text>
+                </View>
+                <Text style={styles.nowPlayingName} numberOfLines={1}>
+                  {currentReciter.nameAr}
+                </Text>
+                <Text style={styles.nowPlayingMeta} numberOfLines={1}>
+                  {current?.surahName ?? ''} {current?.surahName && currentReciter.countryAr ? '·' : ''} {currentReciter.countryAr}
+                </Text>
+              </View>
+
+              {/* زر تشغيل/إيقاف */}
+              <Pressable
+                onPress={(e) => {
+                  e.stopPropagation();
+                  toggle();
+                }}
+                style={({ pressed }) => [
+                  styles.nowPlayingPlayBtn,
+                  { opacity: pressed ? 0.85 : 1 },
+                ]}
+                hitSlop={10}
+              >
+                {isPlaying ? (
+                  <Pause size={18} color="#0A3D38" fill="#0A3D38" />
+                ) : (
+                  <Play size={18} color="#0A3D38" fill="#0A3D38" style={{ marginStart: 2 }} />
+                )}
+              </Pressable>
+            </View>
+          </LinearGradient>
+        </Pressable>
+      ) : null}
 
       {/* بحث pill بأيقونة ذهبية مدوّرة */}
       <View style={[styles.search, { backgroundColor: t.colors.surface, borderColor: t.colors.border, ...t.shadows.xs, shadowColor: t.colors.shadowColor }]}>
@@ -81,6 +157,7 @@ export default function RecitersScreen() {
         {popular.map((r) => {
           const isCurrent = currentReciterId === r.id;
           const isReciterPlaying = isCurrent && isPlaying;
+          const styleColor = STYLE_COLORS[r.style] ?? t.colors.primary;
           return (
             <Pressable
               key={r.id}
@@ -95,6 +172,7 @@ export default function RecitersScreen() {
                 size={88}
                 isPlaying={isReciterPlaying}
                 isPopular
+                accentColor={styleColor}
               />
               <Text
                 style={{
@@ -109,8 +187,8 @@ export default function RecitersScreen() {
               >
                 {r.nameAr}
               </Text>
-              <View style={[styles.stylePill, { backgroundColor: t.colors.accent + '14' }]}>
-                <Text style={{ fontSize: 10, fontWeight: '700', color: t.colors.accentDeep, letterSpacing: 0.5 }}>
+              <View style={[styles.stylePill, { backgroundColor: styleColor + '15', borderColor: styleColor + '30' }]}>
+                <Text style={{ fontSize: 10, fontWeight: '800', color: styleColor, letterSpacing: 0.5 }}>
                   {r.style}
                 </Text>
               </View>
@@ -215,6 +293,7 @@ interface CardProps {
 const ReciterListCard: React.FC<CardProps> = ({ reciter, isPlaying, onPress }) => {
   const t = useTheme();
   const [hovered, setHovered] = React.useState(false);
+  const styleColor = STYLE_COLORS[reciter.style] ?? t.colors.primary;
 
   return (
     <Pressable
@@ -224,25 +303,29 @@ const ReciterListCard: React.FC<CardProps> = ({ reciter, isPlaying, onPress }) =
       style={({ pressed }) => [
         styles.listCard,
         {
-          backgroundColor: hovered ? t.colors.surface : t.colors.surface,
-          borderColor: isPlaying ? t.colors.success + '60' : (hovered ? t.colors.accent + '40' : t.colors.border),
+          backgroundColor: t.colors.surface,
+          borderColor: isPlaying ? t.colors.success + '60' : (hovered ? styleColor + '40' : t.colors.border),
           transform: [
             { scale: pressed ? 0.985 : 1 },
             { translateX: hovered && Platform.OS === 'web' ? -3 : 0 },
           ],
-          shadowColor: isPlaying ? t.colors.success : t.colors.shadowColor,
+          shadowColor: isPlaying ? t.colors.success : (hovered ? styleColor : t.colors.shadowColor),
           shadowOffset: { width: 0, height: hovered || isPlaying ? 6 : 1 },
-          shadowOpacity: isPlaying ? 0.18 : (hovered ? 0.10 : 0.04),
+          shadowOpacity: isPlaying ? 0.18 : (hovered ? 0.12 : 0.04),
           shadowRadius: isPlaying ? 14 : (hovered ? 12 : 4),
           elevation: hovered || isPlaying ? 4 : 1,
         },
       ]}
     >
+      {/* شريط جانبي مميز بلون النمط */}
+      <View style={[styles.styleSideBar, { backgroundColor: styleColor }]} />
+
       {/* أفاتار */}
       <ReciterAvatar
         letter={reciter.nameAr.charAt(0)}
         size={54}
         isPlaying={isPlaying}
+        accentColor={styleColor}
       />
 
       {/* النص */}
@@ -255,23 +338,24 @@ const ReciterListCard: React.FC<CardProps> = ({ reciter, isPlaying, onPress }) =
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-            <Globe size={10} color={t.colors.textTertiary} />
+            <MapPin size={10} color={t.colors.textTertiary} />
             <Text variant="caption" color={t.colors.textTertiary}>{reciter.countryAr}</Text>
           </View>
           <Text variant="caption" color={t.colors.textTertiary}>·</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-            <Headphones size={10} color={t.colors.textTertiary} />
-            <Text variant="caption" color={t.colors.textTertiary}>{reciter.style}</Text>
+          <View style={[styles.styleBadge, { backgroundColor: styleColor + '14', borderColor: styleColor + '30' }]}>
+            <Text style={{ fontSize: 10, fontWeight: '800', color: styleColor, letterSpacing: 0.3 }}>
+              {reciter.style}
+            </Text>
           </View>
         </View>
       </View>
 
-      {/* زر تشغيل */}
+      {/* زر تشغيل بلون النمط */}
       <View style={[
         styles.playBtn,
         {
-          backgroundColor: isPlaying ? t.colors.success : t.colors.primary,
-          shadowColor: isPlaying ? t.colors.success : t.colors.primary,
+          backgroundColor: isPlaying ? t.colors.success : styleColor,
+          shadowColor: isPlaying ? t.colors.success : styleColor,
         },
       ]}>
         {isPlaying ? (
@@ -285,6 +369,65 @@ const ReciterListCard: React.FC<CardProps> = ({ reciter, isPlaying, onPress }) =
 };
 
 const styles = StyleSheet.create({
+  // Now Playing Banner
+  nowPlayingBanner: {
+    marginBottom: 14,
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 181, 112, 0.35)',
+  },
+  nowPlayingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    gap: 4,
+  },
+  nowPlayingDot: {
+    width: 6, height: 6, borderRadius: 3,
+  },
+  nowPlayingLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#D4B570',
+    letterSpacing: 1.5,
+  },
+  nowPlayingName: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FBF7EA',
+    marginTop: 4,
+  },
+  nowPlayingMeta: {
+    fontSize: 11,
+    color: 'rgba(251, 247, 234, 0.7)',
+    marginTop: 2,
+  },
+  nowPlayingPlayBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#D4B570',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // شريط جانبي بلون النمط في كل قارئ
+  styleSideBar: {
+    position: 'absolute',
+    right: 0,
+    top: 12,
+    bottom: 12,
+    width: 3,
+    borderRadius: 2,
+  },
+  styleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 1,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+
   search: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 10, paddingVertical: 8,

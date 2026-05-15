@@ -1,11 +1,13 @@
 import React, { useEffect, useRef } from 'react';
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, View, Animated } from 'react-native';
-import { Home, BookOpen, Brain, Headphones, User } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { useT } from '@store/languageStore';
 import { TranslationKey } from '@/i18n/index';
+import {
+  TabHomeIcon, TabMushafIcon, TabMemoIcon, TabListenIcon, TabAccountIcon,
+} from '@components/tabs/TabIcons';
 
 /**
  * شريط التبويبات السفلي - يستخدم ألوان theme الحالية:
@@ -56,53 +58,74 @@ const TabItem: React.FC<{ icon: IconName; labelKey: TranslationKey; focused: boo
 }) => {
   const tr = useT();
   const t = useTheme();
-  const scale = useRef(new Animated.Value(focused ? 1.1 : 1)).current;
+  const scale = useRef(new Animated.Value(focused ? 1.08 : 1)).current;
+  const translateY = useRef(new Animated.Value(focused ? -2 : 0)).current;
 
   useEffect(() => {
-    Animated.spring(scale, {
-      toValue: focused ? 1.1 : 1,
-      damping: 14,
-      stiffness: 180,
-      mass: 0.7,
-      useNativeDriver: true,
-    }).start();
-  }, [focused, scale]);
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: focused ? 1.08 : 1,
+        damping: 14,
+        stiffness: 180,
+        mass: 0.7,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: focused ? -3 : 0,
+        damping: 16,
+        stiffness: 220,
+        mass: 0.6,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [focused, scale, translateY]);
 
-  const color = focused ? t.colors.primary : t.colors.textTertiary;
-  const strokeWidth = focused ? 2.2 : 1.6;
-  const size = 22;
+  // الـ active بيستخدم لون الـ accent الذهبي، الـ inactive رمادي
+  const iconColor = focused ? t.colors.accent : t.colors.textTertiary;
+  const textColor = focused ? t.colors.primary : t.colors.textTertiary;
+  const size = 26;
 
   const iconNode = (() => {
     switch (icon) {
-      case 'home':       return <Home       size={size} color={color} strokeWidth={strokeWidth} />;
-      case 'book':       return <BookOpen   size={size} color={color} strokeWidth={strokeWidth} />;
-      case 'brain':      return <Brain      size={size} color={color} strokeWidth={strokeWidth} />;
-      case 'headphones': return <Headphones size={size} color={color} strokeWidth={strokeWidth} />;
-      case 'user':       return <User       size={size} color={color} strokeWidth={strokeWidth} />;
+      case 'home':       return <TabHomeIcon    size={size} color={iconColor} focused={focused} />;
+      case 'book':       return <TabMushafIcon  size={size} color={iconColor} focused={focused} />;
+      case 'brain':      return <TabMemoIcon    size={size} color={iconColor} focused={focused} />;
+      case 'headphones': return <TabListenIcon  size={size} color={iconColor} focused={focused} />;
+      case 'user':       return <TabAccountIcon size={size} color={iconColor} focused={focused} />;
     }
   })();
 
   return (
     <View style={styles.itemWrap}>
-      {focused ? (
-        <View style={[styles.activeDot, { backgroundColor: t.colors.accent }]} />
-      ) : (
-        <View style={styles.dotPlaceholder} />
-      )}
-      <Animated.View style={{ transform: [{ scale }] }}>
+      <Animated.View
+        style={[
+          styles.iconBox,
+          {
+            transform: [{ scale }, { translateY }],
+            backgroundColor: focused ? t.colors.accent + '22' : 'transparent',
+            borderWidth: focused ? 1 : 0,
+            borderColor: focused ? t.colors.accent + '40' : 'transparent',
+          },
+        ]}
+      >
         {iconNode}
       </Animated.View>
       <Text
         style={{
-          marginTop: 4,
-          color,
-          fontWeight: focused ? '700' : '500',
+          marginTop: 3,
+          color: textColor,
+          fontWeight: focused ? '800' : '500',
           fontSize: 10,
           letterSpacing: 0.3,
         }}
       >
         {tr(labelKey)}
       </Text>
+      {focused ? (
+        <View style={[styles.activeBar, { backgroundColor: t.colors.accent }]} />
+      ) : (
+        <View style={styles.barPlaceholder} />
+      )}
     </View>
   );
 };
@@ -110,15 +133,26 @@ const TabItem: React.FC<{ icon: IconName; labelKey: TranslationKey; focused: boo
 const styles = StyleSheet.create({
   itemWrap: {
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     width: 64,
+    paddingTop: 2,
   },
-  activeDot: {
-    width: 4, height: 4, borderRadius: 2,
-    marginBottom: 4,
+  iconBox: {
+    width: 48,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  dotPlaceholder: {
-    width: 4, height: 4,
-    marginBottom: 4,
+  activeBar: {
+    width: 20,
+    height: 2.5,
+    borderRadius: 1.5,
+    marginTop: 3,
+  },
+  barPlaceholder: {
+    width: 20,
+    height: 2.5,
+    marginTop: 3,
   },
 });

@@ -10,6 +10,20 @@
  *    خليه empty string `''` وهيختفي تلقائياً من الشاشة.
  */
 
+/**
+ * 🛡️ قائمة الأدمن - الإيميلات اللي تقدر تدخل لوحة التحكم.
+ * أي حساب بإيميل في القائمة دي هيظهر له زر "لوحة التحكم" في شاشة "حسابي"
+ * وهيقدر يعدل كل البيانات (إيميل الدعم، الموقع، الإهداء، إلخ).
+ */
+export const ADMIN_EMAILS: readonly string[] = [
+  'eng.mohamed87@live.com',
+];
+
+export const isAdminEmail = (email?: string | null): boolean => {
+  if (!email) return false;
+  return ADMIN_EMAILS.includes(email.toLowerCase().trim());
+};
+
 export const APP_INFO = {
   // ───── الهوية ─────
   /** الاسم العربي للتطبيق. */
@@ -81,10 +95,17 @@ export const APP_INFO = {
   playStoreUrl: 'https://play.google.com/',
 
   // ───── روابط قانونية ─────
-  /** رابط شروط الاستخدام. */
-  termsUrl:     'https://nafahat.app/terms',
-  /** رابط سياسة الخصوصية. */
-  privacyUrl:   'https://nafahat.app/privacy',
+  /**
+   * رابط شروط الاستخدام.
+   * 💡 اتركه فاضي '' لاستخدام الشاشة الداخلية /terms تلقائياً.
+   * أو ضع رابطاً خارجياً (https://...) ليفتح في المتصفح.
+   */
+  termsUrl:     '',
+  /**
+   * رابط سياسة الخصوصية.
+   * 💡 اتركه فاضي '' لاستخدام الشاشة الداخلية /privacy تلقائياً.
+   */
+  privacyUrl:   '',
 
   // ───── رسالة المشاركة ─────
   /** النص اللي بيظهر لما المستخدم يشارك التطبيق مع صحابه. */

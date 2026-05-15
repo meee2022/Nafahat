@@ -151,24 +151,35 @@ export default function AboutScreen() {
         <View style={styles.footer}>
           {/* بطاقة إهداء الصدقة الجارية - مع الوالدين والدعاء العام */}
           {APP_INFO.charityDedication ? (
-            <View style={[styles.charityCard, { borderColor: t.colors.borderGold, backgroundColor: t.colors.accent + '0A' }]}>
-              {/* معيّن علوي */}
-              <View style={[styles.charityDiamond, { borderColor: t.colors.accent }]} />
+            <View style={[styles.charityCard, { borderColor: t.colors.accent + '55', backgroundColor: t.colors.accent + '0E' }]}>
+              {/* إطار داخلي مزدوج */}
+              <View pointerEvents="none" style={[styles.charityInnerFrame, { borderColor: t.colors.accent + '30' }]} />
+
+              {/* معيّن علوي مع خطوط جانبية */}
+              <View style={styles.crownRow}>
+                <View style={[styles.crownLine, { backgroundColor: t.colors.accent + '50' }]} />
+                <View style={[styles.charityDiamond, { borderColor: t.colors.accent, backgroundColor: t.colors.accent + '20' }]} />
+                <View style={[styles.crownLine, { backgroundColor: t.colors.accent + '50' }]} />
+              </View>
 
               {/* العنوان الرئيسي */}
               <Text style={[styles.charityTitle, { color: t.colors.accent }]}>
                 {APP_INFO.charityDedication.title}
               </Text>
 
-              {/* خط فاصل */}
-              <View style={[styles.charityDivider, { backgroundColor: t.colors.accent + '40' }]} />
+              {/* خط فاصل ذهبي بنقطة وسط */}
+              <View style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: t.colors.accent }]} />
+                <View style={[styles.dividerDot, { backgroundColor: t.colors.accent }]} />
+                <View style={[styles.dividerLine, { backgroundColor: t.colors.accent }]} />
+              </View>
 
               {/* قسم الوالدين */}
               <View style={styles.dedicSection}>
-                <View style={styles.dedicRow}>
-                  <Text style={[styles.dedicArrow, { color: t.colors.accent }]}>▸</Text>
+                <View style={styles.dedicHeader}>
                   <Text style={[styles.dedicLabel, { color: t.colors.textPrimary }]}>
-                    {APP_INFO.charityDedication.parents.label}: {APP_INFO.charityDedication.parents.names}
+                    <Text style={{ color: t.colors.accent, fontWeight: '900' }}>◂ </Text>
+                    {APP_INFO.charityDedication.parents.label}: <Text style={{ color: t.colors.accent }}>{APP_INFO.charityDedication.parents.names}</Text>
                   </Text>
                 </View>
                 <Text style={[styles.dedicPrayer, { color: t.colors.textSecondary }]}>
@@ -178,9 +189,9 @@ export default function AboutScreen() {
 
               {/* قسم العموم */}
               <View style={styles.dedicSection}>
-                <View style={styles.dedicRow}>
-                  <Text style={[styles.dedicArrow, { color: t.colors.accent }]}>▸</Text>
+                <View style={styles.dedicHeader}>
                   <Text style={[styles.dedicLabel, { color: t.colors.textPrimary }]}>
+                    <Text style={{ color: t.colors.accent, fontWeight: '900' }}>◂ </Text>
                     {APP_INFO.charityDedication.general.title}
                   </Text>
                 </View>
@@ -196,7 +207,11 @@ export default function AboutScreen() {
               </View>
 
               {/* خط فاصل */}
-              <View style={[styles.charityDivider, { backgroundColor: t.colors.accent + '40' }]} />
+              <View style={styles.dividerRow}>
+                <View style={[styles.dividerLine, { backgroundColor: t.colors.accent + '70' }]} />
+                <View style={[styles.dividerDot, { backgroundColor: t.colors.accent + '70' }]} />
+                <View style={[styles.dividerLine, { backgroundColor: t.colors.accent + '70' }]} />
+              </View>
 
               {/* الحديث الشريف */}
               <Text style={[styles.charityHadith, { color: t.colors.textSecondary }]}>
@@ -204,7 +219,11 @@ export default function AboutScreen() {
               </Text>
 
               {/* معيّن سفلي */}
-              <View style={[styles.charityDiamond, { borderColor: t.colors.accent }]} />
+              <View style={styles.crownRow}>
+                <View style={[styles.crownLine, { backgroundColor: t.colors.accent + '50' }]} />
+                <View style={[styles.charityDiamond, { borderColor: t.colors.accent, backgroundColor: t.colors.accent + '20' }]} />
+                <View style={[styles.crownLine, { backgroundColor: t.colors.accent + '50' }]} />
+              </View>
             </View>
           ) : null}
 
@@ -312,69 +331,96 @@ const styles = StyleSheet.create({
   },
   footerText: { fontSize: 11, fontWeight: '500' },
   charityCard: {
-    alignItems: 'center',
-    paddingHorizontal: 22,
-    paddingVertical: 22,
-    marginBottom: 18,
-    borderWidth: 1,
-    borderRadius: 6,
+    alignSelf: 'center',
     width: '100%',
-    gap: 14,
+    maxWidth: 560,
+    paddingHorizontal: 28,
+    paddingVertical: 30,
+    marginBottom: 22,
+    borderWidth: 1.5,
+    borderRadius: 8,
+    gap: 18,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  charityInnerFrame: {
+    position: 'absolute',
+    top: 8, bottom: 8, left: 8, right: 8,
+    borderWidth: 0.5,
+    borderRadius: 4,
+  },
+  crownRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    width: '70%',
+    justifyContent: 'center',
+  },
+  crownLine: {
+    flex: 1,
+    height: 1,
   },
   charityDiamond: {
-    width: 8,
-    height: 8,
-    borderWidth: 1,
+    width: 10,
+    height: 10,
+    borderWidth: 1.2,
     transform: [{ rotate: '45deg' }],
   },
   charityTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 2,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 4,
     textAlign: 'center',
+    marginVertical: 2,
   },
-  charityDivider: {
-    width: 60,
-    height: 1,
-    opacity: 0.7,
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    width: 100,
+    justifyContent: 'center',
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1.5,
+    borderRadius: 1,
+  },
+  dividerDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
   },
   dedicSection: {
     width: '100%',
-    alignItems: 'flex-end',
-    gap: 4,
-    paddingHorizontal: 4,
-  },
-  dedicRow: {
-    flexDirection: 'row-reverse',
-    alignItems: 'center',
     gap: 6,
-    flexWrap: 'wrap',
+    paddingHorizontal: 6,
   },
-  dedicArrow: {
-    fontSize: 14,
-    fontWeight: '900',
+  dedicHeader: {
+    width: '100%',
   },
   dedicLabel: {
-    fontSize: 13.5,
-    fontWeight: '700',
-    lineHeight: 22,
-    flexShrink: 1,
+    fontSize: 15,
+    fontWeight: '800',
+    lineHeight: 25,
     textAlign: 'right',
+    writingDirection: 'rtl',
   },
   dedicPrayer: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
-    lineHeight: 19,
+    lineHeight: 22,
     textAlign: 'right',
-    paddingRight: 22,
+    writingDirection: 'rtl',
+    paddingRight: 18,
     width: '100%',
   },
   charityHadith: {
-    fontSize: 11,
+    fontSize: 12.5,
     fontWeight: '500',
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 22,
     fontStyle: 'italic',
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
+    writingDirection: 'rtl',
   },
 });

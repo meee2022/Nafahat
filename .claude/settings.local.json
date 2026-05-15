@@ -24,7 +24,8 @@
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
       "Bash(git remote *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(git commit -m 'style: تحسين بطاقة الإهداء - RTL + maxWidth + تصميم أبرز *)"
     ]
   }
 }

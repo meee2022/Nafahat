@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo *)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(grep -nE \"[ا-ي]{2,}\" app/\\\\\\(tabs\\\\\\)/index.tsx)",
+      "Bash(grep -v \"//\")",
+      "Bash(grep -n \"m\\\\\\\\.desc\\\\|نطاق التسميع\\\\|من الآية\\\\|إلى الآية\" app/tasmee.tsx)",
+      "Bash(grep -n \"topTitle\\\\|eyebrow\\\\\\\\.\\\\\\\\.\\\\\\\\.[, ]\\\\\\\\|title=\\\\\"\" app/notes.tsx)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(tail -60 /c/Users/M/AppData/Local/Temp/claude/C--Users-M-Desktop-github-for-local-Quran/f2afd8fc-c0f8-41dc-b54a-f94af9a24175/tasks/beewy4tul.output 2>&1)",
+      "Bash(tasklist //FI \"IMAGENAME eq node.exe\")",
+      "Bash(powershell.exe -Command \"Get-Process node -ErrorAction SilentlyContinue | Select-Object Id, ProcessName, StartTime\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:8081 --max-time 5)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:19000 --max-time 5)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:19006 --max-time 5)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:8081 --max-time 3)",
+      "Bash(grep -qE \"Waiting on|Web is waiting|Logs for your project|exp\\\\\\\\+|http://localhost|Error|error\" \"C:/Users/M/AppData/Local/Temp/claude/C--Users-M-Desktop-github-for-local-Quran/f2afd8fc-c0f8-41dc-b54a-f94af9a24175/tasks/bfgza4g54.output\")",
+      "Bash(git init *)",
+      "Bash(git branch *)",
+      "Bash(git add *)"
+    ]
+  }
+}

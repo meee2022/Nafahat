@@ -1,0 +1,30 @@
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+android/
+ios/
+
+# Convex
+convex/_generated/
+
+# os
+.DS_Store
+Thumbs.db
+
+# env
+.env*
+!.env.example
+
+# build
+*.log
+*.pid
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# misc
+.cache/

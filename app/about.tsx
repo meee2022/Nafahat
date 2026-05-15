@@ -149,6 +149,20 @@ export default function AboutScreen() {
 
         {/* بصمة */}
         <View style={styles.footer}>
+          {/* بطاقة فاعل الخير - صدقة جارية */}
+          {APP_INFO.charityNotice ? (
+            <View style={[styles.charityCard, { borderColor: t.colors.borderGold, backgroundColor: t.colors.accent + '0A' }]}>
+              <View style={[styles.charityDiamond, { borderColor: t.colors.accent }]} />
+              <Text style={[styles.charityText, { color: t.colors.textPrimary }]}>
+                {APP_INFO.charityNotice}
+              </Text>
+              <Text style={[styles.charityHadith, { color: t.colors.textSecondary }]}>
+                «إذا مات الإنسان انقطع عمله إلا من ثلاث: صدقة جارية، أو علم يُنتفع به، أو ولد صالح يدعو له»
+              </Text>
+              <View style={[styles.charityDiamond, { borderColor: t.colors.accent }]} />
+            </View>
+          ) : null}
+
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text style={[styles.footerText, { color: t.colors.textTertiary }]}>صُنع بـ</Text>
             <Heart size={12} color="#E11D48" fill="#E11D48" />
@@ -252,4 +266,34 @@ const styles = StyleSheet.create({
     marginTop: 32,
   },
   footerText: { fontSize: 11, fontWeight: '500' },
+  charityCard: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderRadius: 6,
+    width: '100%',
+    gap: 10,
+  },
+  charityDiamond: {
+    width: 7,
+    height: 7,
+    borderWidth: 1,
+    transform: [{ rotate: '45deg' }],
+  },
+  charityText: {
+    fontSize: 13,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  charityHadith: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 18,
+    fontStyle: 'italic',
+    paddingHorizontal: 8,
+  },
 });

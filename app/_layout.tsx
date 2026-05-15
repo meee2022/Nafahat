@@ -23,6 +23,7 @@ import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehS
 import { useLanguageStore } from '@store/languageStore';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
+import { APP_INFO } from '../src/config/appInfo';
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
 // عند الإقلاع نبدأ بـ RTL (لغة افتراضية عربية). languageStore يحدّث الاتجاه
@@ -203,6 +204,15 @@ function SplashView() {
       <View style={{ marginTop: 48 }}>
         <ActivityIndicator color="#D4B570" />
       </View>
+
+      {/* شارة "صدقة جارية" في أسفل الـ Splash */}
+      {APP_INFO.charityNotice ? (
+        <View style={styles.charityWrap}>
+          <View style={styles.charityDot} />
+          <Text style={styles.charityText}>{APP_INFO.charityNotice}</Text>
+          <View style={styles.charityDot} />
+        </View>
+      ) : null}
     </LinearGradient>
   );
 }
@@ -227,4 +237,27 @@ const styles = StyleSheet.create({
   glyph: { fontSize: 38, color: '#D4B570', fontFamily: 'serif', fontWeight: '500' },
   brandName: { fontSize: 36, fontWeight: '700', color: '#F5EFE0', marginTop: 36, letterSpacing: 4 },
   brandTagline: { fontSize: 11, color: '#D4B570', marginTop: 10, letterSpacing: 4, fontWeight: '500' },
+
+  charityWrap: {
+    position: 'absolute',
+    bottom: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+  },
+  charityDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D4B570',
+    opacity: 0.7,
+  },
+  charityText: {
+    color: 'rgba(245, 239, 224, 0.75)',
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    textAlign: 'center',
+  },
 });

@@ -21,7 +21,10 @@
       "Bash(grep -qE \"Waiting on|Web is waiting|Logs for your project|exp\\\\\\\\+|http://localhost|Error|error\" \"C:/Users/M/AppData/Local/Temp/claude/C--Users-M-Desktop-github-for-local-Quran/f2afd8fc-c0f8-41dc-b54a-f94af9a24175/tasks/bfgza4g54.output\")",
       "Bash(git init *)",
       "Bash(git branch *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git remote *)",
+      "Bash(git push *)"
     ]
   }
 }

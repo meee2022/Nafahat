@@ -9,6 +9,7 @@ import { useLanguageStore, useT } from '@store/languageStore';
 import { useAuthStore } from '@store/authStore';
 import { LANGUAGES, LanguageCode } from '@/i18n/index';
 import { Text } from '@components/ui';
+import { APP_INFO } from '../src/config/appInfo';
 
 interface Slide {
   icon: React.ReactNode;
@@ -155,6 +156,15 @@ export default function Onboarding() {
       </View>
 
       <View style={styles.bottom}>
+        {/* شارة "صدقة جارية" - تظهر في آخر slide فقط */}
+        {isLast && APP_INFO.charityNotice ? (
+          <View style={styles.charityBadge}>
+            <View style={styles.charityDot} />
+            <Text style={styles.charityBadgeText}>{APP_INFO.charityNotice}</Text>
+            <View style={styles.charityDot} />
+          </View>
+        ) : null}
+
         <View style={styles.dots}>
           {slides.map((_, i) => (
             <View
@@ -208,5 +218,31 @@ const styles = StyleSheet.create({
   checkBox: {
     width: 22, height: 22, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
+  },
+
+  charityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(212, 181, 112, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 181, 112, 0.4)',
+    alignSelf: 'center',
+  },
+  charityDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D4B570',
+  },
+  charityBadgeText: {
+    color: '#FBF7EA',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });

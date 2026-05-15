@@ -13,6 +13,7 @@ import { OrnamentalRule } from '@components/ornaments';
 import { useAuthStore } from '@store/authStore';
 import { useT } from '@store/languageStore';
 import { TranslationKey } from '@/i18n/index';
+import { APP_INFO } from '../src/config/appInfo';
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
   'invalid-email':       'auth.error.invalidEmail',
@@ -72,6 +73,15 @@ export default function LoginScreen() {
           </View>
           <Text style={styles.brandName}>{tr('app.name')}</Text>
           <Text style={styles.brandTag}>◇  {tr('auth.welcome')}  ◇</Text>
+
+          {/* شارة "صدقة جارية" */}
+          {APP_INFO.charityNotice ? (
+            <View style={styles.charityBadge}>
+              <View style={styles.charityDot} />
+              <Text style={styles.charityBadgeText}>{APP_INFO.charityNotice}</Text>
+              <View style={styles.charityDot} />
+            </View>
+          ) : null}
         </View>
       </LinearGradient>
 
@@ -223,6 +233,35 @@ const styles = StyleSheet.create({
   glyph: { fontSize: 24, color: '#D4B570', fontFamily: 'serif' },
   brandName: { fontSize: 28, fontWeight: '700', color: '#F5EFE0', marginTop: 14, letterSpacing: 3 },
   brandTag: { fontSize: 11, color: '#D4B570', marginTop: 6, letterSpacing: 3, fontWeight: '700' },
+
+  charityBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(212, 181, 112, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 181, 112, 0.4)',
+    marginTop: 14,
+    maxWidth: 320,
+  },
+  charityDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D4B570',
+  },
+  charityBadgeText: {
+    color: '#F5EFE0',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textAlign: 'center',
+    flexShrink: 1,
+  },
 
   formScroll: {
     paddingHorizontal: 16,

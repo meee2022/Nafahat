@@ -14,6 +14,9 @@
 
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { convex, convexApi } from '@services/convex';
+
+const useCloudAuth = (): boolean => !!convex && !!convexApi?.users;
 
 export type AuthStatus = 'unknown' | 'guest' | 'authenticated';
 
@@ -110,11 +113,39 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
+    // 🌐 محاولة Convex أولاً (إذا متاحة)
+    if (useCloudAuth() && convex && convexApi) {
+      try {
+        const result = await convex.mutation(convexApi.users.signIn, { email, password });
+        if (!result.ok) {
+          set({ loading: false, error: result.error });
+          return false;
+        }
+        const u = result.user;
+        const user: AuthUser = {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          avatarSeed: u.avatarSeed,
+          joinedAt: u.joinedAt,
+          emailVerified: u.emailVerified,
+        };
+        await AsyncStorage.setItem(KEY_USER, JSON.stringify(user));
+        await AsyncStorage.setItem(KEY_TOKEN, result.token);
+        await AsyncStorage.setItem(KEY_STATUS, 'authenticated');
+        set({ status: 'authenticated', user, token: result.token, loading: false, error: null });
+        return true;
+      } catch (e) {
+        // fallback إلى local لو فشل الـ Convex
+        if (__DEV__) console.warn('[auth] Convex signIn failed, falling back to local', e);
+      }
+    }
+
+    // 📱 fallback: تسجيل دخول محلي (نفس الجهاز فقط)
     try {
       const db = await loadUsersDb();
       const stored = db[email.toLowerCase()];
 
-      // التمييز بين "حساب غير موجود" و "كلمة سر غلط"
       if (!stored) {
         set({ loading: false, error: 'account-not-found' });
         return false;
@@ -155,6 +186,34 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
+    // 🌐 محاولة Convex أولاً
+    if (useCloudAuth() && convex && convexApi) {
+      try {
+        const result = await convex.mutation(convexApi.users.signUp, { name, email, password });
+        if (!result.ok) {
+          set({ loading: false, error: result.error });
+          return false;
+        }
+        const u = result.user;
+        const user: AuthUser = {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          avatarSeed: u.avatarSeed,
+          joinedAt: u.joinedAt,
+          emailVerified: u.emailVerified,
+        };
+        await AsyncStorage.setItem(KEY_USER, JSON.stringify(user));
+        await AsyncStorage.setItem(KEY_TOKEN, result.token);
+        await AsyncStorage.setItem(KEY_STATUS, 'authenticated');
+        set({ status: 'authenticated', user, token: result.token, loading: false, error: null });
+        return true;
+      } catch (e) {
+        if (__DEV__) console.warn('[auth] Convex signUp failed, falling back to local', e);
+      }
+    }
+
+    // 📱 fallback: تسجيل محلي
     try {
       const db = await loadUsersDb();
       const lowerEmail = email.toLowerCase();

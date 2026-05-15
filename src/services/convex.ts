@@ -29,8 +29,23 @@ if (CONVEX_URL) {
   }
 }
 
-export const convex = _convex as null | { query: (name: string, args: unknown) => Promise<unknown> };
+interface ConvexClientShape {
+  query: (name: any, args: unknown) => Promise<any>;
+  mutation: (name: any, args: unknown) => Promise<any>;
+}
+
+export const convex = _convex as null | ConvexClientShape;
 export const ConvexProviderImpl = _ConvexProviderImpl;
+
+// ───── محاولة تحميل الـ generated API (يعمل بعد `npx convex dev`) ─────
+let _api: any = null;
+try {
+  const apiMod = require('../../convex/_generated/api');
+  _api = apiMod.api;
+} catch {
+  // _generated مش موجود لسه - الـ Convex auth مش متاح
+}
+export const convexApi = _api;
 
 const DEVICE_KEY = '@nafahat/device-id';
 let cachedDeviceId: string | null = null;

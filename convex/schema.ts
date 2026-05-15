@@ -10,6 +10,29 @@ import { defineSchema, defineTable } from 'convex/server';
 import { v } from 'convex/values';
 
 export default defineSchema({
+  // ----------------- الحسابات (Authentication) -----------------
+  users: defineTable({
+    email:        v.string(),                          // البريد - فريد (lowercase)
+    name:         v.string(),                          // الاسم المعروض
+    passwordHash: v.string(),                          // hash للباسورد
+    avatarSeed:   v.string(),                          // bdz seed لتوليد الأفاتار
+    joinedAt:     v.number(),                          // تاريخ التسجيل
+    role:         v.union(v.literal('user'), v.literal('admin')),
+    emailVerified: v.boolean(),                        // تأكيد الإيميل (مستقبلاً)
+    lastLoginAt:  v.optional(v.number()),
+  })
+    .index('by_email', ['email']),
+
+  // ----------------- جلسات تسجيل الدخول (tokens) -----------------
+  authSessions: defineTable({
+    userId:    v.id('users'),
+    token:     v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+  })
+    .index('by_token', ['token'])
+    .index('by_user', ['userId']),
+
   // ----------------- المستخدمون والملفات الشخصية -----------------
   profiles: defineTable({
     deviceId:   v.string(),                     // معرف الجهاز (UUID محلي)

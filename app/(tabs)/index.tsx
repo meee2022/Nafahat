@@ -17,8 +17,10 @@ import { useT, useLanguage } from '@store/languageStore';
 import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@services/prayerTimes';
 import { SectionHeading, DailyActionCard, computeDailyAction } from '@components/home';
 import { useWirdStore, useMemoStore } from '@store/index';
+import { useAuthStore } from '@store/authStore';
 import { getDueTasks } from '@services/memorization';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LogIn } from 'lucide-react-native';
 
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
@@ -69,6 +71,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const location = useSettingsStore((s) => s.location);
   const isPremium = useSettingsStore((s) => s.isPremium);
+  const authStatus = useAuthStore((s) => s.status);
+  const isGuest = authStatus === 'guest' || authStatus === 'unknown';
   const insets = useSafeAreaInsets();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -193,7 +197,18 @@ export default function HomeScreen() {
               </Pressable>
             </View>
             <View style={styles.heroHeaderCenter}>
-              {isPremium ? (
+              {isGuest ? (
+                <Pressable
+                  onPress={() => router.push('/login')}
+                  style={({ pressed }) => [
+                    styles.signInPill,
+                    { opacity: pressed ? 0.85 : 1 },
+                  ]}
+                >
+                  <LogIn size={13} color="#D4B570" strokeWidth={2.2} />
+                  <Text style={styles.signInPillText}>تسجيل دخول</Text>
+                </Pressable>
+              ) : isPremium ? (
                 <Text style={styles.premiumBadge}>{tr('home.premiumBadge')}</Text>
               ) : null}
             </View>
@@ -350,6 +365,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
+  },
+  signInPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    backgroundColor: 'rgba(212, 181, 112, 0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 181, 112, 0.5)',
+  },
+  signInPillText: {
+    color: '#D4B570',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   countdownContainer: {
     alignItems: 'center',

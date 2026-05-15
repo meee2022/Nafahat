@@ -110,6 +110,8 @@ function AppGate() {
     })();
   }, []);
 
+  const signInAsGuest = useAuthStore((s) => s.signInAsGuest);
+
   useEffect(() => {
     if (!hydrated) return;
     const inOnboarding = segments[0] === 'onboarding';
@@ -121,12 +123,14 @@ function AppGate() {
       return;
     }
 
-    // 2) بعد onboarding: إذا لم يختر المستخدم بعد (guest أو authenticated)، إلى login
-    //    "unknown" يعني لم يقرر بعد. الـ onboarding ينهي بإعداد guest أو login.
+    // 2) بعد onboarding: لو لسه unknown → ادخله كزائر تلقائياً للصفحة الرئيسية
+    //    التسجيل/الدخول بقى اختياري ومتاح من زر فوق
     if (hasOnboarded && authStatus === 'unknown' && !inAuth && !inOnboarding) {
-      router.replace('/login');
+      signInAsGuest().then(() => {
+        router.replace('/(tabs)');
+      });
     }
-  }, [hydrated, hasOnboarded, authStatus, segments]);
+  }, [hydrated, hasOnboarded, authStatus, segments, signInAsGuest]);
 
   if (!hydrated || !fontsLoaded) return <SplashView />;
 

@@ -24,6 +24,7 @@ export default function Onboarding() {
   const router = useRouter();
   const APP_INFO = useAppInfo();
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+  const signInAsGuest = useAuthStore((s) => s.signInAsGuest);
   const lang = useLanguageStore((s) => s.lang);
   const setLang = useLanguageStore((s) => s.setLang);
   const [index, setIndex] = useState(0);
@@ -60,19 +61,23 @@ export default function Onboarding() {
   const isLast = index === slides.length - 1;
   const slide = slides[index];
 
+  const enterAsGuest = async () => {
+    completeOnboarding();
+    await signInAsGuest();
+    router.replace('/(tabs)');
+  };
+
   const next = () => {
     if (isLast) {
-      completeOnboarding();
-      // التوجيه لصفحة الدخول/التسجيل (مع خيار "كزائر")
-      router.replace('/login');
+      // بعد آخر slide → دخول مباشر كزائر للصفحة الرئيسية
+      enterAsGuest();
     } else {
       setIndex((i) => i + 1);
     }
   };
 
   const handleSkip = () => {
-    completeOnboarding();
-    router.replace('/login');
+    enterAsGuest();
   };
 
   return (

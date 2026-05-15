@@ -94,6 +94,33 @@ export default function LoginScreen() {
           contentContainerStyle={styles.formScroll}
           showsVerticalScrollIndicator={false}
         >
+          {/* زر "استمر كزائر" بارز فوق - تشجيع المستخدمين بدون حسابات */}
+          <Pressable
+            onPress={handleGuest}
+            style={({ pressed }) => [
+              styles.guestTopBtn,
+              {
+                backgroundColor: t.colors.accent + '14',
+                borderColor: t.colors.accent + '50',
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <Text style={[styles.guestTopText, { color: t.colors.accent }]}>
+              ✦  استمر بدون تسجيل  ✦
+            </Text>
+            <Text style={[styles.guestTopSub, { color: t.colors.textSecondary }]}>
+              يمكنك استخدام التطبيق كاملاً كزائر - التسجيل اختياري
+            </Text>
+          </Pressable>
+
+          {/* فاصل */}
+          <View style={styles.dividerWrap}>
+            <View style={[styles.dividerLine, { backgroundColor: t.colors.border }]} />
+            <Text style={[styles.dividerText, { color: t.colors.textTertiary }]}>أو</Text>
+            <View style={[styles.dividerLine, { backgroundColor: t.colors.border }]} />
+          </View>
+
           <View style={[styles.formCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold }]}>
             <View style={{ alignItems: 'center', marginBottom: 16 }}>
               <Text style={[styles.eyebrow, { color: t.colors.accent }]}>◇  {tr('auth.signInTitle')}  ◇</Text>
@@ -186,12 +213,6 @@ export default function LoginScreen() {
               <Text variant="button" color={t.colors.textPrimary}>{tr('auth.signInWithApple')}</Text>
             </Pressable>
 
-            {/* استمر كزائر */}
-            <Pressable onPress={handleGuest} style={{ marginTop: 20, alignItems: 'center', paddingVertical: 10 }}>
-              <Text variant="bodySm" color={t.colors.textSecondary}>
-                {tr('auth.continueAsGuest')}
-              </Text>
-            </Pressable>
           </View>
 
           {/* رابط للتسجيل */}
@@ -267,6 +288,43 @@ const styles = StyleSheet.create({
   formScroll: {
     paddingHorizontal: 16,
     paddingTop: 20, paddingBottom: 30,
+  },
+  // زر "استمر كزائر" البارز فوق
+  guestTopBtn: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    marginBottom: 14,
+  },
+  guestTopText: {
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 1,
+  },
+  guestTopSub: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 4,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  // الفاصل "أو"
+  dividerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 14,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   formCard: {
     padding: 22,

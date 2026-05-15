@@ -29,6 +29,13 @@ export const fontFamilies = {
 
 type TextVariant = Pick<TextStyle, 'fontFamily' | 'fontSize' | 'lineHeight' | 'letterSpacing' | 'fontWeight'>;
 
+/**
+ * ⚠️ ملاحظة مهمة عن العربي:
+ * letterSpacing على النصوص العربية بيكسر الحروف المتصلة والتشكيل.
+ * الـ headings (hero, display, h1-h3) عندها letterSpacing سالب صغير
+ *   وده ميضرّش العربي. لكن letterSpacing موجب كبير (3+) يكسر الكلمات.
+ * فالـ eyebrow بقى بدون letterSpacing لأنه أصلاً نص قصير.
+ */
 export const typography: Record<string, TextVariant> = {
   hero:     { fontFamily: fontFamilies.sansBold,     fontSize: 42, lineHeight: 50, fontWeight: '800', letterSpacing: -1.2 },
   display:  { fontFamily: fontFamilies.sansBold,     fontSize: 34, lineHeight: 42, fontWeight: '800', letterSpacing: -0.8 },
@@ -40,8 +47,8 @@ export const typography: Record<string, TextVariant> = {
   bodySm:   { fontFamily: fontFamilies.sansRegular,  fontSize: 13, lineHeight: 20, fontWeight: '400' },
   caption:  { fontFamily: fontFamilies.sansMedium,   fontSize: 12, lineHeight: 18, fontWeight: '500' },
   label:    { fontFamily: fontFamilies.sansSemiBold, fontSize: 13, lineHeight: 18, fontWeight: '600' },
-  button:   { fontFamily: fontFamilies.sansBold,     fontSize: 15, lineHeight: 20, fontWeight: '700', letterSpacing: 0.2 },
-  eyebrow:  { fontFamily: fontFamilies.sansBold,     fontSize: 10, lineHeight: 14, fontWeight: '700', letterSpacing: 3 },
+  button:   { fontFamily: fontFamilies.sansBold,     fontSize: 15, lineHeight: 20, fontWeight: '700' },
+  eyebrow:  { fontFamily: fontFamilies.sansBold,     fontSize: 11, lineHeight: 16, fontWeight: '700' },
   chip:     { fontFamily: fontFamilies.sansBold,     fontSize: 12, lineHeight: 16, fontWeight: '700' },
 
   // نص قرآني - مقاييس مُريحة للقراءة الطويلة

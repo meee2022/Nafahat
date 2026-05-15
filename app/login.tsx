@@ -72,7 +72,7 @@ export default function LoginScreen() {
               <Text style={styles.glyph}>﷽</Text>
             </View>
           </View>
-          <Text style={styles.brandName}>{tr('app.name')}</Text>
+          <Text style={[styles.brandName, { fontFamily: t.fontFamilies.arabicQuran }]}>{tr('app.name')}</Text>
           <Text style={styles.brandTag}>◇  {tr('auth.welcome')}  ◇</Text>
 
           {/* شارة "صدقة جارية" */}
@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-45deg' }],
   },
   glyph: { fontSize: 24, color: '#D4B570', fontFamily: 'serif' },
-  brandName: { fontSize: 28, fontWeight: '700', color: '#F5EFE0', marginTop: 14, letterSpacing: 0, fontFamily: 'IBMPlexSansArabic_700Bold' },
+  brandName: { fontSize: 38, fontWeight: '500', color: '#F5EFE0', marginTop: 14 },
   brandTag: { fontSize: 12, color: '#D4B570', marginTop: 6, letterSpacing: 1, fontWeight: '700', fontFamily: 'IBMPlexSansArabic_500Medium' },
 
   charityBadge: {

@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, backgroundColor: 'rgba(255,255,255,0.05)',
   },
   heroContent: { alignItems: 'center', marginTop: 16 },
-  brandName: { fontSize: 32, fontWeight: '800', color: '#F5EFE0', marginTop: 8, letterSpacing: -0.5 },
+  brandName: { fontSize: 28, fontWeight: '800', color: '#F5EFE0', marginTop: 8 },
   brandTag: { fontSize: 12, color: '#D4B570', letterSpacing: 1, fontWeight: '700', fontFamily: 'IBMPlexSansArabic_500Medium' },
   brandSub: { fontSize: 13, color: 'rgba(245, 239, 224, 0.75)', marginTop: 8, textAlign: 'center', maxWidth: 280 },
 

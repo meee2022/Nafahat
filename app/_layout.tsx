@@ -178,6 +178,7 @@ function AppGate() {
 function SplashView() {
   const t = useTheme();
   const APP_INFO = useAppInfo();
+  const quranFont = t.fontFamilies.arabicQuran;
   return (
     <LinearGradient colors={['#143229', '#0A1815', '#070F0D']} style={styles.splash}>
       <View style={styles.bgPattern} pointerEvents="none">
@@ -204,7 +205,7 @@ function SplashView() {
         </View>
       </View>
 
-      <Text style={styles.brandName}>نَفَحَات</Text>
+      <Text style={[styles.brandName, { fontFamily: quranFont }]}>{APP_INFO.name}</Text>
       <Text style={styles.brandTagline}>◇  صُحبة مع القرآن  ◇</Text>
 
       <View style={{ marginTop: 48 }}>
@@ -241,7 +242,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-45deg' }],
   },
   glyph: { fontSize: 38, color: '#D4B570', fontFamily: 'serif', fontWeight: '500' },
-  brandName: { fontSize: 40, fontWeight: '700', color: '#F5EFE0', marginTop: 36, fontFamily: 'IBMPlexSansArabic_700Bold' },
+  brandName: { fontSize: 46, fontWeight: '500', color: '#F5EFE0', marginTop: 30 },
   brandTagline: { fontSize: 12, color: '#D4B570', marginTop: 10, letterSpacing: 1, fontWeight: '600', fontFamily: 'IBMPlexSansArabic_500Medium' },
 
   charityWrap: {

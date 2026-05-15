@@ -149,16 +149,61 @@ export default function AboutScreen() {
 
         {/* بصمة */}
         <View style={styles.footer}>
-          {/* بطاقة فاعل الخير - صدقة جارية */}
-          {APP_INFO.charityNotice ? (
+          {/* بطاقة إهداء الصدقة الجارية - مع الوالدين والدعاء العام */}
+          {APP_INFO.charityDedication ? (
             <View style={[styles.charityCard, { borderColor: t.colors.borderGold, backgroundColor: t.colors.accent + '0A' }]}>
+              {/* معيّن علوي */}
               <View style={[styles.charityDiamond, { borderColor: t.colors.accent }]} />
-              <Text style={[styles.charityText, { color: t.colors.textPrimary }]}>
-                {APP_INFO.charityNotice}
+
+              {/* العنوان الرئيسي */}
+              <Text style={[styles.charityTitle, { color: t.colors.accent }]}>
+                {APP_INFO.charityDedication.title}
               </Text>
+
+              {/* خط فاصل */}
+              <View style={[styles.charityDivider, { backgroundColor: t.colors.accent + '40' }]} />
+
+              {/* قسم الوالدين */}
+              <View style={styles.dedicSection}>
+                <View style={styles.dedicRow}>
+                  <Text style={[styles.dedicArrow, { color: t.colors.accent }]}>▸</Text>
+                  <Text style={[styles.dedicLabel, { color: t.colors.textPrimary }]}>
+                    {APP_INFO.charityDedication.parents.label}: {APP_INFO.charityDedication.parents.names}
+                  </Text>
+                </View>
+                <Text style={[styles.dedicPrayer, { color: t.colors.textSecondary }]}>
+                  {APP_INFO.charityDedication.parents.prayer}
+                </Text>
+              </View>
+
+              {/* قسم العموم */}
+              <View style={styles.dedicSection}>
+                <View style={styles.dedicRow}>
+                  <Text style={[styles.dedicArrow, { color: t.colors.accent }]}>▸</Text>
+                  <Text style={[styles.dedicLabel, { color: t.colors.textPrimary }]}>
+                    {APP_INFO.charityDedication.general.title}
+                  </Text>
+                </View>
+                <Text style={[styles.dedicPrayer, { color: t.colors.textSecondary }]}>
+                  {APP_INFO.charityDedication.general.scope}
+                </Text>
+                <Text style={[styles.dedicPrayer, { color: t.colors.textSecondary }]}>
+                  {APP_INFO.charityDedication.general.deceasedPrayer}
+                </Text>
+                <Text style={[styles.dedicPrayer, { color: t.colors.textSecondary }]}>
+                  {APP_INFO.charityDedication.general.livingPrayer}
+                </Text>
+              </View>
+
+              {/* خط فاصل */}
+              <View style={[styles.charityDivider, { backgroundColor: t.colors.accent + '40' }]} />
+
+              {/* الحديث الشريف */}
               <Text style={[styles.charityHadith, { color: t.colors.textSecondary }]}>
                 «إذا مات الإنسان انقطع عمله إلا من ثلاث: صدقة جارية، أو علم يُنتفع به، أو ولد صالح يدعو له»
               </Text>
+
+              {/* معيّن سفلي */}
               <View style={[styles.charityDiamond, { borderColor: t.colors.accent }]} />
             </View>
           ) : null}
@@ -268,25 +313,61 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 11, fontWeight: '500' },
   charityCard: {
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    paddingHorizontal: 22,
+    paddingVertical: 22,
     marginBottom: 18,
     borderWidth: 1,
     borderRadius: 6,
     width: '100%',
-    gap: 10,
+    gap: 14,
   },
   charityDiamond: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderWidth: 1,
     transform: [{ rotate: '45deg' }],
   },
-  charityText: {
-    fontSize: 13,
+  charityTitle: {
+    fontSize: 18,
     fontWeight: '800',
+    letterSpacing: 2,
     textAlign: 'center',
-    letterSpacing: 0.2,
+  },
+  charityDivider: {
+    width: 60,
+    height: 1,
+    opacity: 0.7,
+  },
+  dedicSection: {
+    width: '100%',
+    alignItems: 'flex-end',
+    gap: 4,
+    paddingHorizontal: 4,
+  },
+  dedicRow: {
+    flexDirection: 'row-reverse',
+    alignItems: 'center',
+    gap: 6,
+    flexWrap: 'wrap',
+  },
+  dedicArrow: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  dedicLabel: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    lineHeight: 22,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+  dedicPrayer: {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 19,
+    textAlign: 'right',
+    paddingRight: 22,
+    width: '100%',
   },
   charityHadith: {
     fontSize: 11,

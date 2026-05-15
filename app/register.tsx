@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   heroContent: { alignItems: 'center', marginTop: 16 },
   brandName: { fontSize: 32, fontWeight: '800', color: '#F5EFE0', marginTop: 8, letterSpacing: -0.5 },
-  brandTag: { fontSize: 11, color: '#D4B570', letterSpacing: 3, fontWeight: '700' },
+  brandTag: { fontSize: 12, color: '#D4B570', letterSpacing: 1, fontWeight: '700', fontFamily: 'IBMPlexSansArabic_500Medium' },
   brandSub: { fontSize: 13, color: 'rgba(245, 239, 224, 0.75)', marginTop: 8, textAlign: 'center', maxWidth: 280 },
 
   formScroll: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 30 },

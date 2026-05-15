@@ -47,7 +47,7 @@ export default function AboutScreen() {
         </Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={[styles.eyebrow, { color: t.colors.accent }]}>عن التطبيق</Text>
-          <Text style={[styles.topTitle, { color: t.colors.textPrimary }]}>{APP_INFO.name}</Text>
+          <Text style={[styles.topTitle, { color: t.colors.textPrimary, fontFamily: t.fontFamilies.sansBold }]}>{APP_INFO.name}</Text>
         </View>
         <View style={[styles.iconBtn, { borderColor: 'transparent' }]} />
       </View>

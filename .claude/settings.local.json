@@ -26,7 +26,8 @@
       "Bash(git remote *)",
       "Bash(git push *)",
       "Bash(git commit -m 'style: تحسين بطاقة الإهداء - RTL + maxWidth + تصميم أبرز *)",
-      "Bash(git commit -m 'feat: دخول مباشر كزائر + زر تسجيل دخول بارز في الصفحة الرئيسية *)"
+      "Bash(git commit -m 'feat: دخول مباشر كزائر + زر تسجيل دخول بارز في الصفحة الرئيسية *)",
+      "Bash(git commit -m 'fix: إصلاح كسر الحروف العربية في الكلمات \\(نَفَحات وغيرها\\) *)"
     ]
   }
 }

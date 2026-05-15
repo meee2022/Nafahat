@@ -241,8 +241,8 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-45deg' }],
   },
   glyph: { fontSize: 38, color: '#D4B570', fontFamily: 'serif', fontWeight: '500' },
-  brandName: { fontSize: 36, fontWeight: '700', color: '#F5EFE0', marginTop: 36, letterSpacing: 4 },
-  brandTagline: { fontSize: 11, color: '#D4B570', marginTop: 10, letterSpacing: 4, fontWeight: '500' },
+  brandName: { fontSize: 40, fontWeight: '700', color: '#F5EFE0', marginTop: 36, fontFamily: 'IBMPlexSansArabic_700Bold' },
+  brandTagline: { fontSize: 12, color: '#D4B570', marginTop: 10, letterSpacing: 1, fontWeight: '600', fontFamily: 'IBMPlexSansArabic_500Medium' },
 
   charityWrap: {
     position: 'absolute',

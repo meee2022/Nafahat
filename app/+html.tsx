@@ -4,8 +4,8 @@
  *  - IBM Plex Sans Arabic : واجهة عربية
  *  - Inter                : واجهة لاتينية
  *
- * هذا التحميل احتياطي/مكمّل لـ @expo-google-fonts؛ يضمن ظهور الخط فوراً قبل
- * اكتمال تحميل expo-font عبر JS على الويب.
+ * يضمن أن كل النصوص العربية في كل أنحاء التطبيق تستخدم خطاً عربياً صحيحاً
+ * يدعم الـ tashkeel والحروف المتصلة بدون انقطاع.
  */
 import React from 'react';
 import { ScrollViewStyleReset } from 'expo-router/html';
@@ -29,8 +29,36 @@ export default function Root({ children }: Props) {
 
         <style dangerouslySetInnerHTML={{ __html: `
           html, body, #root { margin: 0; min-height: 100vh; }
+
+          /* الخط العربي العام لكل العناصر - مع fallback شامل */
+          html, body, #root, div, span, p, h1, h2, h3, h4, h5, h6,
+          button, input, textarea, select, label, a, li, td, th {
+            font-family: "IBM Plex Sans Arabic", "Inter", -apple-system, BlinkMacSystemFont,
+                         "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+            font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+            -webkit-font-feature-settings: "kern" 1, "liga" 1, "calt" 1;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+          }
+
           body {
             font-family: "IBM Plex Sans Arabic", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+          }
+
+          /* النص القرآني - خط Amiri Quran فقط */
+          [data-quran-text="true"], .quran-text {
+            font-family: "Amiri Quran", "Traditional Arabic", serif !important;
+          }
+
+          /* منع كسر الكلمات العربية */
+          * {
+            word-spacing: normal;
+          }
+
+          /* عزل الاتجاه - يساعد على تجنّب كسر الحروف العربية المتصلة */
+          [dir="rtl"] * {
+            unicode-bidi: isolate;
           }
         `}} />
 

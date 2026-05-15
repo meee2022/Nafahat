@@ -14,6 +14,7 @@ import { useAuthStore } from '@store/authStore';
 import { useT } from '@store/languageStore';
 import { TranslationKey } from '@/i18n/index';
 import { useAppInfo } from '@store/appConfigStore';
+import { authErrorMessage } from '@store/authStore';
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
   'invalid-email':       'auth.error.invalidEmail',
@@ -127,13 +128,25 @@ export default function LoginScreen() {
               <Text style={[styles.formTitle, { color: t.colors.textPrimary }]}>{tr('auth.signInSubtitle')}</Text>
             </View>
 
-            {/* خطأ */}
+            {/* خطأ - مع زر "إنشئ حساب" لو الحساب مش موجود */}
             {error ? (
               <View style={[styles.errorBox, { backgroundColor: t.colors.error + '12', borderColor: t.colors.error }]}>
                 <AlertCircle size={16} color={t.colors.error} />
-                <Text variant="bodySm" color={t.colors.error} style={{ flex: 1, fontWeight: '600' }}>
-                  {tr(ERROR_KEYS[error] ?? 'auth.error.unknown')}
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text variant="bodySm" color={t.colors.error} style={{ fontWeight: '600' }}>
+                    {authErrorMessage(error)}
+                  </Text>
+                  {error === 'account-not-found' ? (
+                    <Pressable
+                      onPress={() => router.push(`/register?email=${encodeURIComponent(email.trim())}`)}
+                      style={{ marginTop: 6 }}
+                    >
+                      <Text variant="bodySm" color={t.colors.accent} style={{ fontWeight: '800', textDecorationLine: 'underline' }}>
+                        أنشئ حساباً جديداً ←
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               </View>
             ) : null}
 

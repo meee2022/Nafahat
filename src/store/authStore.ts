@@ -28,6 +28,7 @@ export interface AuthUser {
 
 export type AuthError =
   | 'invalid-credentials'
+  | 'account-not-found'
   | 'email-in-use'
   | 'weak-password'
   | 'invalid-email'
@@ -113,7 +114,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const db = await loadUsersDb();
       const stored = db[email.toLowerCase()];
 
-      if (!stored || stored.passwordHash !== simpleHash(password)) {
+      // التمييز بين "حساب غير موجود" و "كلمة سر غلط"
+      if (!stored) {
+        set({ loading: false, error: 'account-not-found' });
+        return false;
+      }
+      if (stored.passwordHash !== simpleHash(password)) {
         set({ loading: false, error: 'invalid-credentials' });
         return false;
       }
@@ -244,7 +250,8 @@ export const authErrorMessage = (e: AuthError | null): string => {
   if (!e) return '';
   switch (e) {
     case 'invalid-email':       return 'صيغة البريد غير صحيحة';
-    case 'invalid-credentials': return 'البريد أو كلمة المرور غير صحيحة';
+    case 'account-not-found':   return 'لا يوجد حساب بهذا البريد - أنشئ حساباً جديداً أولاً';
+    case 'invalid-credentials': return 'كلمة المرور غير صحيحة';
     case 'email-in-use':        return 'هذا البريد مسجّل بالفعل';
     case 'weak-password':       return 'كلمة المرور قصيرة (6 أحرف على الأقل)';
     case 'network':             return 'تعذّر الاتصال - تحقق من الإنترنت';

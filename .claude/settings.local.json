@@ -28,7 +28,8 @@
       "Bash(git commit -m 'style: تحسين بطاقة الإهداء - RTL + maxWidth + تصميم أبرز *)",
       "Bash(git commit -m 'feat: دخول مباشر كزائر + زر تسجيل دخول بارز في الصفحة الرئيسية *)",
       "Bash(git commit -m 'fix: إصلاح كسر الحروف العربية في الكلمات \\(نَفَحات وغيرها\\) *)",
-      "Bash(git commit -m 'fix: استخدام خط Amiri Quran للأسماء الكبيرة + إصلاح تشكيل نَفَحات *)"
+      "Bash(git commit -m 'fix: استخدام خط Amiri Quran للأسماء الكبيرة + إصلاح تشكيل نَفَحات *)",
+      "Bash(git commit -m 'fix: تحسين رسائل خطأ تسجيل الدخول *)"
     ]
   }
 }

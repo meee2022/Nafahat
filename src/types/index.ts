@@ -103,14 +103,42 @@ export interface ReadingSession {
   lastAyah: number;
 }
 
+export type DhikrCategory =
+  // الفئات الأساسية
+  | 'morning' | 'evening' | 'after-prayer' | 'sleep' | 'wake' | 'general'
+  // فئات حصن المسلم الكاملة
+  | 'home'         // أذكار البيت (الدخول/الخروج)
+  | 'eating'       // أذكار الأكل والشرب
+  | 'mosque'       // أذكار المسجد
+  | 'purification' // أذكار الطهارة (الوضوء/الخلاء)
+  | 'sneezing'     // ما يقال عند العطاس والتثاؤب
+  | 'protection'   // التعوذ من السحر والعين والحسد
+  | 'travel'       // أذكار السفر
+  | 'illness'      // المرض والهم والكرب
+  | 'fasting'      // أذكار الصيام
+  | 'fear'         // الخوف والفزع
+  | 'family'       // الزواج والأسرة
+  | 'nature'       // الظواهر الكونية (المطر/الرعد)
+  | 'death'        // الموت والحياة
+  | 'hajj'         // الحج والعمرة
+  | 'money'        // المال والبيع والتجارة
+  | 'social'       // الأذكار الاجتماعية
+  | 'tasbeeh'      // فضل التسبيح والتهليل والتكبير
+  | 'istighfar'    // الاستغفار والتوبة
+  | 'ruqya'        // الرقية والتعوذ من الفتن
+  | 'clothing'     // اللباس والزينة
+  | 'misc';        // أذكار متفرقة
+
 export interface DhikrItem {
   id: string;
-  category: 'morning' | 'evening' | 'after-prayer' | 'sleep' | 'wake' | 'general';
+  category: DhikrCategory;
   title: string;
   body: string;
   count: number;
   source?: string;
   benefit?: string;
+  /** هل النص آية/آيات قرآنية - يُعرض بأسلوب المصحف (إطار ذهبي + رصائع). */
+  quranic?: boolean;
 }
 
 export interface TasbeehItem {
@@ -186,15 +214,33 @@ export interface UserProfile {
 
 export type QuizLevel = 'beginner' | 'intermediate' | 'advanced';
 
-/** أنواع الأسئلة المدعومة. */
+/** أنواع الأسئلة المدعومة - شاملة وتغطّي الجزء بالكامل. */
 export type QuizQuestionKind =
-  | 'whichSurah'      // عرض نص آية، اختيار السورة من 4
-  | 'nextAyah'        // عرض آية، اختيار النص التالي من 4
-  | 'meccanMedinan'   // سورة كذا: مكية أم مدنية؟
-  | 'verseCount'      // كم عدد آيات سورة كذا؟
-  | 'completeVerse'   // إكمال الجزء الثاني من الآية
-  | 'isFromSurah'     // صح/خطأ: هل هذه الآية من سورة X؟
-  | 'typeNextWord';   // اكتب الكلمة التالية في الآية
+  // ───── تعريف السورة/الموضع ─────
+  | 'whichSurah'        // عرض نص آية، اختيار السورة من 4
+  | 'whichJuz'          // عرض آية، اختيار الجزء من 4
+  | 'isFromSurah'       // صح/خطأ: هل هذه الآية من سورة X؟
+  | 'ayahPosition'      // الآية رقم كم في السورة؟
+
+  // ───── التسلسل (Sequence) ─────
+  | 'nextAyah'          // ما الآية التي تأتي بعد هذه؟
+  | 'previousAyah'      // ما الآية التي تأتي قبل هذه؟
+  | 'firstWordOfNext'   // ما أول كلمة في الآية التالية؟
+
+  // ───── أجزاء الآية ─────
+  | 'completeVerse'     // النصف الأول → اختيار الثاني
+  | 'verseBeginning'    // النصف الأخير → اختيار الأول
+  | 'ayahEnding'        // 4 خيارات لنهاية آية (آخر الآية)
+  | 'typeNextWord'      // اكتب الكلمة التالية في الآية
+  | 'fillBlank'         // ملء فراغ في وسط الآية (typing)
+
+  // ───── معلومات السورة ─────
+  | 'meccanMedinan'     // مكية أم مدنية؟
+  | 'verseCount'        // كم عدد آيات السورة؟
+  | 'surahBefore'       // أي سورة قبل سورة X؟
+  | 'surahAfter'        // أي سورة بعد سورة X؟
+  | 'firstAyahOfSurah'  // ما أول آية في سورة X؟
+  | 'lastAyahOfSurah';  // ما آخر آية في سورة X؟
 
 /** سؤال اختبار: قد يكون اختيار من متعدّد أو صح/خطأ أو إدخال نصّي. */
 export interface QuizQuestion {

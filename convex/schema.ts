@@ -33,6 +33,14 @@ export default defineSchema({
     .index('by_token', ['token'])
     .index('by_user', ['userId']),
 
+  // ----------------- صور صفحات مصحف المدينة (1-604) -----------------
+  mushafPages: defineTable({
+    page:       v.number(),            // رقم الصفحة 1-604
+    storageId:  v.id('_storage'),      // معرف الصورة في Convex Storage
+    uploadedAt: v.number(),
+  })
+    .index('by_page', ['page']),
+
   // ----------------- المستخدمون والملفات الشخصية -----------------
   profiles: defineTable({
     deviceId:   v.string(),                     // معرف الجهاز (UUID محلي)

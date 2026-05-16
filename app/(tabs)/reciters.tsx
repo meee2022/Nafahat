@@ -23,17 +23,17 @@ import { ReciterAvatar } from '@components/reciter/ReciterAvatar';
 type StyleFilter = 'all' | 'مرتل' | 'مجود' | 'معلم';
 
 const STYLE_FILTERS: { id: StyleFilter; labelKey: string; emoji: string; color: string }[] = [
-  { id: 'all',  labelKey: 'audio.styleAll',      emoji: '✦', color: '#B8923B' },
+  { id: 'all',  labelKey: 'audio.styleAll',      emoji: '✦', color: '#D4B570' },
   { id: 'مرتل', labelKey: 'audio.styleMurattal', emoji: '◇', color: '#0F4A41' },
-  { id: 'مجود', labelKey: 'audio.styleMujawwad', emoji: '◆', color: '#A2384B' },
-  { id: 'معلم', labelKey: 'audio.styleMuallim',  emoji: '★', color: '#2F5A8C' },
+  { id: 'مجود', labelKey: 'audio.styleMujawwad', emoji: '◆', color: '#1A5C4F' },
+  { id: 'معلم', labelKey: 'audio.styleMuallim',  emoji: '★', color: '#B8923B' },
 ];
 
-// لون مميّز لكل نمط تلاوة - يُستخدم في الـ avatars
+// لون مميّز لكل نمط تلاوة - زمرد وذهب فقط
 const STYLE_COLORS: Record<string, string> = {
-  'مرتل': '#0A3D38', // زمرد عميق
-  'مجود': '#A2384B', // قرمزي
-  'معلم': '#2F5A8C', // لازوردي
+  'مرتل': '#0F4A41', // زمرد عميق
+  'مجود': '#1A5C4F', // زمرد متوسط
+  'معلم': '#B8923B', // ذهبي داكن
 };
 
 export default function RecitersScreen() {
@@ -63,7 +63,7 @@ export default function RecitersScreen() {
 
       {/* 🎧 Now Playing Banner - يظهر فقط لو فيه قارئ شغّال */}
       {currentReciter ? (
-        <Pressable onPress={() => router.push('/player')}>
+        <View>
           <LinearGradient
             colors={[STYLE_COLORS[currentReciter.style] ?? '#0A3D38', '#062825']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
@@ -83,31 +83,35 @@ export default function RecitersScreen() {
             </Svg>
 
             <View style={styles.nowPlayingContent}>
-              {/* الأفاتار */}
-              <ReciterAvatar letter={currentReciter.nameAr.charAt(0)} size={56} isPlaying={isPlaying} />
-
-              {/* المعلومات */}
-              <View style={{ flex: 1, marginStart: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <View style={[styles.nowPlayingDot, { backgroundColor: isPlaying ? '#22C55E' : '#D4B570' }]} />
-                  <Text style={styles.nowPlayingLabel}>
-                    {isPlaying ? 'يُشغّل الآن' : 'متوقف مؤقتاً'}
+              {/* المنطقة اليسرى (avatar + معلومات) Pressable لفتح المشغّل */}
+              <Pressable
+                onPress={() => router.push('/player')}
+                accessibilityRole="button"
+                accessibilityLabel="فتح المشغّل الكامل"
+                style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+              >
+                <ReciterAvatar letter={currentReciter.nameAr.charAt(0)} size={56} isPlaying={isPlaying} />
+                <View style={{ flex: 1, marginStart: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <View style={[styles.nowPlayingDot, { backgroundColor: isPlaying ? '#22C55E' : '#D4B570' }]} />
+                    <Text style={styles.nowPlayingLabel}>
+                      {isPlaying ? 'يُشغّل الآن' : 'متوقف مؤقتاً'}
+                    </Text>
+                  </View>
+                  <Text style={styles.nowPlayingName} numberOfLines={1}>
+                    {currentReciter.nameAr}
+                  </Text>
+                  <Text style={styles.nowPlayingMeta} numberOfLines={1}>
+                    {current?.surahName ?? ''} {current?.surahName && currentReciter.countryAr ? '·' : ''} {currentReciter.countryAr}
                   </Text>
                 </View>
-                <Text style={styles.nowPlayingName} numberOfLines={1}>
-                  {currentReciter.nameAr}
-                </Text>
-                <Text style={styles.nowPlayingMeta} numberOfLines={1}>
-                  {current?.surahName ?? ''} {current?.surahName && currentReciter.countryAr ? '·' : ''} {currentReciter.countryAr}
-                </Text>
-              </View>
+              </Pressable>
 
-              {/* زر تشغيل/إيقاف */}
+              {/* زر تشغيل/إيقاف - شقيق منفصل */}
               <Pressable
-                onPress={(e) => {
-                  e.stopPropagation();
-                  toggle();
-                }}
+                onPress={toggle}
+                accessibilityRole="button"
+                accessibilityLabel={isPlaying ? 'إيقاف' : 'تشغيل'}
                 style={({ pressed }) => [
                   styles.nowPlayingPlayBtn,
                   { opacity: pressed ? 0.85 : 1 },
@@ -122,7 +126,7 @@ export default function RecitersScreen() {
               </Pressable>
             </View>
           </LinearGradient>
-        </Pressable>
+        </View>
       ) : null}
 
       {/* بحث pill بأيقونة ذهبية مدوّرة */}

@@ -6,3 +6,4 @@ export { SurahListItem } from './SurahListItem';
 export { AudioPlayerBar } from './AudioPlayerBar';
 export { PremiumBar } from './PremiumBar';
 export { WeeklyChart } from './WeeklyChart';
+export { QuranicBlock } from './QuranicBlock';

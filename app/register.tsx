@@ -1,9 +1,9 @@
 /**
  * شاشة إنشاء حساب جديد.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { Mail, Lock, Eye, EyeOff, User, ArrowLeft, AlertCircle, Check, ArrowRight } from 'lucide-react-native';
@@ -27,10 +27,11 @@ export default function RegisterScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
+  const params = useLocalSearchParams<{ email?: string }>();
   const { signUp, loading, error, clearError } = useAuthStore();
 
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(params.email ?? '');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);

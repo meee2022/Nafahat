@@ -1,5 +1,10 @@
-export { MushafBorder }   from './MushafBorder';
-export { MushafHeader }   from './MushafHeader';
-export { MushafFooter }   from './MushafFooter';
-export { AyahRosette }    from './AyahRosette';
+export { MushafBorder }    from './MushafBorder';
+export { MushafHeader }    from './MushafHeader';
+export { MushafFooter }    from './MushafFooter';
+export { AyahRosette }     from './AyahRosette';
 export { AyahDetailSheet } from './AyahDetailSheet';
+export { MushafPageImage } from './MushafPageImage';
+export { MushafQpcPage } from './MushafQpcPage';
+export { MushafWord }    from './MushafWord';
+export { MushafBottomBar } from './MushafBottomBar';
+export { AyahListSheet }   from './AyahListSheet';

@@ -26,10 +26,22 @@ export default function Root({ children }: Props) {
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://cdn.jsdelivr.net" crossOrigin="anonymous" />
         <link
           rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Scheherazade+New:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
         />
+
+        {/* 🕌 الخط الرسمي لمجمع الملك فهد (KFGQPC Uthmanic Hafs) */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          @font-face {
+            font-family: 'KFGQPC Uthmanic Hafs';
+            src: url('https://cdn.jsdelivr.net/npm/kfgqpc-uthmanic-script-hafs-regular@1.0.0/arabic.otf') format('opentype');
+            font-display: swap;
+            font-weight: normal;
+            font-style: normal;
+          }
+        `}} />
 
         <style dangerouslySetInnerHTML={{ __html: `
           html, body, #root { margin: 0; min-height: 100vh; }
@@ -50,9 +62,17 @@ export default function Root({ children }: Props) {
             font-family: "IBM Plex Sans Arabic", "Inter", system-ui, -apple-system, sans-serif;
           }
 
-          /* ════ النص القرآني - خط Amiri Quran ════ */
+          /* ════ النص القرآني ════ */
+          /* الأولوية: KFGQPC Uthmanic Hafs (خط مجمع الملك فهد الرسمي) → Scheherazade New → Amiri Quran */
           [data-quran-text="true"], .quran-text {
-            font-family: "Amiri Quran", "Traditional Arabic", serif !important;
+            font-family: "KFGQPC Uthmanic Hafs", "Scheherazade New", "Amiri Quran", "Traditional Arabic", serif !important;
+            font-feature-settings: "kern" 1, "liga" 1, "calt" 1, "ss01" 1 !important;
+          }
+
+          /* تحسين رسم النص القرآني خصوصاً مع Scheherazade New */
+          .quran-text, [data-quran-text="true"] {
+            -webkit-font-smoothing: subpixel-antialiased;
+            font-variant-ligatures: contextual common-ligatures;
           }
 
           /* ════ 🔑 الحل الجوهري: منع letter-spacing على النصوص العربية ════

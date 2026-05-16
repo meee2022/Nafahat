@@ -1,6 +1,15 @@
 /**
- * إطار صفحات المصحف - تصميم لاسية مزخرفة كثيفة (Dense Manuscript Lacework).
- * مستوحى من إطار مصاحف المخطوطات الكلاسيكية ومجمع الملك فهد.
+ * 📜 إطار صفحة المصحف - تصميم Royal Manuscript على غرار مصاحف المخطوطات الأصلية.
+ *
+ * الطبقات (من الخارج للداخل):
+ *  ١. حدود ذهبية سميكة (frame outline)
+ *  ٢. فراغ كريمي رفيع
+ *  ٣. شريط زخرفي كثيف (4 جوانب) بنقش هندسي إسلامي
+ *  ٤. رصائع زاوية (medallion) بمعيّن مزدوج + نقاط
+ *  ٥. إطار داخلي مزدوج
+ *  ٦. خلفية الصفحة الكريمية
+ *
+ * النقش الزخرفي مصمّم ليكون كثيفاً ومتراصاً (lacework) مثل مصاحف المدينة.
  */
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
@@ -16,33 +25,33 @@ interface Props {
 
 export const MushafBorder: React.FC<Props> = ({
   children,
-  goldColor   = '#A87C3F',
-  goldDeep    = '#6F4F22',
-  pageColor   = '#FDF8EA',
-  ornamentBg  = '#F4EACE',
+  goldColor   = '#BE995E',
+  goldDeep    = '#8B6239',
+  pageColor   = '#FFFFFF',
+  ornamentBg  = '#FFFFFF',
 }) => {
   return (
     <View style={[styles.outer, { backgroundColor: pageColor }]}>
-      <View style={[styles.thickFrame, { borderColor: goldDeep }]}>
+      {/* Outer thin border */}
+      <View style={[styles.thickFrame, { borderColor: goldDeep, borderWidth: 1 }]}>
         <View style={[styles.gap, { backgroundColor: pageColor }]}>
-          <View style={[styles.thinFrame, { borderColor: goldColor }]}>
-            <View style={[styles.ornamentBand, { backgroundColor: ornamentBg }]}>
+          {/* Main ornament band */}
+          <View style={[styles.ornamentBand, { backgroundColor: ornamentBg }]}>
 
-              {/* نقش لاسية كثيفة على الجوانب الأربعة */}
-              <DenseLacework color={goldDeep} accent={goldColor} pageColor={pageColor} />
+            {/* النقش المزخرف الكثيف - الجوانب الأربعة */}
+            <DenseOrnament color={goldDeep} accent={goldColor} pageColor={pageColor} />
 
-              {/* رصائع الزوايا الأربع */}
-              <CornerMedallion style={styles.cornerTL} color={goldDeep} accent={goldColor} pageColor={pageColor} />
-              <CornerMedallion style={styles.cornerTR} color={goldDeep} accent={goldColor} pageColor={pageColor} />
-              <CornerMedallion style={styles.cornerBL} color={goldDeep} accent={goldColor} pageColor={pageColor} />
-              <CornerMedallion style={styles.cornerBR} color={goldDeep} accent={goldColor} pageColor={pageColor} />
+            {/* رصائع الزوايا الأربع */}
+            <CornerMedallion style={styles.cornerTL} color={goldDeep} accent={goldColor} pageColor={pageColor} />
+            <CornerMedallion style={styles.cornerTR} color={goldDeep} accent={goldColor} pageColor={pageColor} />
+            <CornerMedallion style={styles.cornerBL} color={goldDeep} accent={goldColor} pageColor={pageColor} />
+            <CornerMedallion style={styles.cornerBR} color={goldDeep} accent={goldColor} pageColor={pageColor} />
 
-              {/* إطار رفيع داخلي حول النص */}
-              <View style={[styles.contentFrame, { borderColor: goldColor, backgroundColor: pageColor }]}>
-                <View style={[styles.contentFrameInner, { borderColor: goldColor }]}>
-                  <View style={styles.content}>
-                    {children}
-                  </View>
+            <View style={[styles.gap, { padding: 3, backgroundColor: pageColor }]}>
+              {/* Inner thin frame */}
+              <View style={[styles.contentFrame, { borderColor: goldDeep, backgroundColor: pageColor, borderWidth: 1 }]}>
+                <View style={styles.content}>
+                  {children}
                 </View>
               </View>
             </View>
@@ -53,120 +62,124 @@ export const MushafBorder: React.FC<Props> = ({
   );
 };
 
-// ─────────── نقش لاسية كثيفة ───────────
+// ════════ نقش لاسية كثيفة جداً (lacework) ════════
 
-const HorizontalLace: React.FC<{ color: string; accent: string; pageColor: string; id: string }> = ({ color, accent, pageColor, id }) => (
+/**
+ * نمط أفقي مكثّف جداً - وحدة 8×10 px (نصف الحجم السابق).
+ * شبكة ضيقة من النجوم الصغيرة + علامات + متشابكة - زي مصحف المدينة.
+ */
+const HorizontalLace: React.FC<{ color: string; accent: string; pageColor: string; id: string }> = ({
+  color, accent, pageColor, id,
+}) => (
   <Svg width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
     <Defs>
-      <Pattern id={id} x="0" y="0" width="14" height="20" patternUnits="userSpaceOnUse">
+      <Pattern id={id} x="0" y="0" width="8" height="10" patternUnits="userSpaceOnUse">
         <G>
-          {/* معيّن مركزي صغير */}
-          <Path d="M7 5 L10 10 L7 15 L4 10 Z" fill={color} />
-          {/* نواة فاتحة */}
-          <Path d="M7 7.5 L8.5 10 L7 12.5 L5.5 10 Z" fill={pageColor} />
-          {/* نقاط زخرفية بين المعيّنات */}
-          <Circle cx="0" cy="10" r="1" fill={accent} />
-          <Circle cx="14" cy="10" r="1" fill={accent} />
-          {/* خطوط رابطة رفيعة - مرسومة بـ Path */}
-          <Path d="M0 10 L4 10" stroke={color} strokeWidth={0.4} />
-          <Path d="M10 10 L14 10" stroke={color} strokeWidth={0.4} />
-          {/* أوراق صغيرة فوق وتحت */}
-          <Path d="M7 0 L8.2 2 L7 5 L5.8 2 Z" fill={accent} opacity={0.9} />
-          <Path d="M7 20 L8.2 18 L7 15 L5.8 18 Z" fill={accent} opacity={0.9} />
-          {/* نقاط صغيرة جداً للكثافة */}
-          <Circle cx="0" cy="3" r="0.5" fill={color} opacity={0.7} />
-          <Circle cx="14" cy="3" r="0.5" fill={color} opacity={0.7} />
-          <Circle cx="0" cy="17" r="0.5" fill={color} opacity={0.7} />
-          <Circle cx="14" cy="17" r="0.5" fill={color} opacity={0.7} />
+          {/* نجمة 4 بتلات صغيرة في المركز */}
+          <Path d="M4 1 L5 4 L4 5 L3 4 Z M4 9 L5 6 L4 5 L3 6 Z" fill={color} />
+          {/* علامات + صغيرة */}
+          <Path d="M0 5 L3 5 L4 5 L4 4 L4 6 L4 5 L5 5 L8 5" stroke={color} strokeWidth={0.5} fill="none" />
+          {/* نقاط الأطراف */}
+          <Circle cx="0" cy="5" r="0.6" fill={accent} />
+          <Circle cx="8" cy="5" r="0.6" fill={accent} />
+          {/* نقاط زاوية صغيرة */}
+          <Circle cx="0" cy="0" r="0.3" fill={color} opacity={0.7} />
+          <Circle cx="8" cy="0" r="0.3" fill={color} opacity={0.7} />
+          <Circle cx="0" cy="10" r="0.3" fill={color} opacity={0.7} />
+          <Circle cx="8" cy="10" r="0.3" fill={color} opacity={0.7} />
         </G>
       </Pattern>
     </Defs>
+    <Rect x="0" y="0" width="100%" height="0.5" fill={color} opacity={0.9} />
     <Rect width="100%" height="100%" fill={`url(#${id})`} />
+    <Rect x="0" y="0" width="100%" height="0.4" fill={color} opacity={0.7} />
   </Svg>
 );
 
-const VerticalLace: React.FC<{ color: string; accent: string; pageColor: string; id: string }> = ({ color, accent, pageColor, id }) => (
+const VerticalLace: React.FC<{ color: string; accent: string; pageColor: string; id: string }> = ({
+  color, accent, pageColor, id,
+}) => (
   <Svg width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
     <Defs>
-      <Pattern id={id} x="0" y="0" width="20" height="14" patternUnits="userSpaceOnUse">
+      <Pattern id={id} x="0" y="0" width="10" height="8" patternUnits="userSpaceOnUse">
         <G>
-          {/* معيّن مركزي صغير */}
-          <Path d="M5 7 L10 10 L15 7 L10 4 Z" fill={color} />
-          {/* نواة فاتحة */}
-          <Path d="M7.5 7 L10 8.5 L12.5 7 L10 5.5 Z" fill={pageColor} />
-          {/* نقاط زخرفية أعلى وأسفل */}
-          <Circle cx="10" cy="0" r="1" fill={accent} />
-          <Circle cx="10" cy="14" r="1" fill={accent} />
-          {/* خطوط رابطة عمودية - مرسومة بـ Path */}
-          <Path d="M10 0 L10 4" stroke={color} strokeWidth={0.4} />
-          <Path d="M10 10 L10 14" stroke={color} strokeWidth={0.4} />
-          {/* أوراق جانبية */}
-          <Path d="M0 7 L2 8.2 L5 7 L2 5.8 Z" fill={accent} opacity={0.9} />
-          <Path d="M20 7 L18 8.2 L15 7 L18 5.8 Z" fill={accent} opacity={0.9} />
-          {/* نقاط صغيرة للكثافة */}
-          <Circle cx="3" cy="0" r="0.5" fill={color} opacity={0.7} />
-          <Circle cx="17" cy="0" r="0.5" fill={color} opacity={0.7} />
-          <Circle cx="3" cy="14" r="0.5" fill={color} opacity={0.7} />
-          <Circle cx="17" cy="14" r="0.5" fill={color} opacity={0.7} />
+          {/* نجمة 4 بتلات صغيرة */}
+          <Path d="M1 4 L4 5 L5 4 L4 3 Z M9 4 L6 5 L5 4 L6 3 Z" fill={color} />
+          {/* علامات + */}
+          <Path d="M5 0 L5 3 L5 4 L4 4 L6 4 L5 4 L5 5 L5 8" stroke={color} strokeWidth={0.5} fill="none" />
+          <Circle cx="5" cy="0" r="0.6" fill={accent} />
+          <Circle cx="5" cy="8" r="0.6" fill={accent} />
+          <Circle cx="0" cy="0" r="0.3" fill={color} opacity={0.7} />
+          <Circle cx="10" cy="0" r="0.3" fill={color} opacity={0.7} />
+          <Circle cx="0" cy="8" r="0.3" fill={color} opacity={0.7} />
+          <Circle cx="10" cy="8" r="0.3" fill={color} opacity={0.7} />
         </G>
       </Pattern>
     </Defs>
+    <Rect x="0" y="0" width="0.5" height="100%" fill={color} opacity={0.9} />
     <Rect width="100%" height="100%" fill={`url(#${id})`} />
+    <Rect x="0" y="0" width="0.4" height="100%" fill={color} opacity={0.7} />
   </Svg>
 );
 
-const DenseLacework: React.FC<{ color: string; accent: string; pageColor: string }> = ({ color, accent, pageColor }) => {
-  return (
-    <>
-      <View style={styles.bandTop} pointerEvents="none">
-        <HorizontalLace color={color} accent={accent} pageColor={pageColor} id="dlH1" />
-      </View>
-      <View style={styles.bandBottom} pointerEvents="none">
-        <HorizontalLace color={color} accent={accent} pageColor={pageColor} id="dlH2" />
-      </View>
-      <View style={styles.bandRight} pointerEvents="none">
-        <VerticalLace color={color} accent={accent} pageColor={pageColor} id="dlV1" />
-      </View>
-      <View style={styles.bandLeft} pointerEvents="none">
-        <VerticalLace color={color} accent={accent} pageColor={pageColor} id="dlV2" />
-      </View>
-    </>
-  );
-};
-
-// ─────────── رصيعة الزاوية ───────────
-
-const CornerMedallion: React.FC<{ style: any; color: string; accent: string; pageColor: string }> = ({ style, color, accent, pageColor }) => {
-  return (
-    <View style={[styles.medallion, style]} pointerEvents="none">
-      <Svg width="100%" height="100%" viewBox="0 0 32 32">
-        <Rect x="1" y="1" width="30" height="30" fill={pageColor} stroke={color} strokeWidth="0.8" />
-        <Path d="M 16 3 L 29 16 L 16 29 L 3 16 Z" fill={color} opacity={0.95} />
-        <Path d="M 16 7 L 25 16 L 16 25 L 7 16 Z" fill={pageColor} opacity={0.95} />
-        <Path d="M 16 10 L 22 16 L 16 22 L 10 16 Z" fill={accent} opacity={0.9} />
-        <Path d="M 16 13 L 19 16 L 16 19 L 13 16 Z" fill={color} />
-        <Circle cx="16" cy="6" r="1.1" fill={color} />
-        <Circle cx="26" cy="16" r="1.1" fill={color} />
-        <Circle cx="16" cy="26" r="1.1" fill={color} />
-        <Circle cx="6" cy="16" r="1.1" fill={color} />
-      </Svg>
+const DenseOrnament: React.FC<{ color: string; accent: string; pageColor: string }> = ({
+  color, accent, pageColor,
+}) => (
+  <>
+    <View style={styles.bandTop} pointerEvents="none">
+      <HorizontalLace color={color} accent={accent} pageColor={pageColor} id="ornH1" />
     </View>
-  );
-};
+    <View style={styles.bandBottom} pointerEvents="none">
+      <HorizontalLace color={color} accent={accent} pageColor={pageColor} id="ornH2" />
+    </View>
+    <View style={styles.bandLeft} pointerEvents="none">
+      <VerticalLace color={color} accent={accent} pageColor={pageColor} id="ornV1" />
+    </View>
+    <View style={styles.bandRight} pointerEvents="none">
+      <VerticalLace color={color} accent={accent} pageColor={pageColor} id="ornV2" />
+    </View>
+  </>
+);
 
-// ─────────── الأنماط ───────────
+// ════════ رصيعة الزاوية ════════
 
-const BORDER_THICK = 3;
-const BORDER_GAP   = 3;
-const BORDER_THIN  = 1;
-const ORNAMENT_W   = 22;
-const MEDALLION    = 28;
+const CornerMedallion: React.FC<{
+  style: any; color: string; accent: string; pageColor: string;
+}> = ({ style, color, accent, pageColor }) => (
+  <View style={[styles.medallion, style]} pointerEvents="none">
+    <Svg width="100%" height="100%" viewBox="0 0 32 32">
+      {/* الإطار المربّع */}
+      <Rect x="1" y="1" width="30" height="30" fill={pageColor} stroke={color} strokeWidth="0.8" />
+      {/* رصيعة معيّن خارجية ممتلئة */}
+      <Path d="M 16 3 L 29 16 L 16 29 L 3 16 Z" fill={color} opacity={0.95} />
+      {/* معيّن داخلي فاتح */}
+      <Path d="M 16 7 L 25 16 L 16 25 L 7 16 Z" fill={pageColor} />
+      {/* معيّن داخلي بلون الـ accent */}
+      <Path d="M 16 10 L 22 16 L 16 22 L 10 16 Z" fill={accent} />
+      {/* نواة معيّن صغيرة */}
+      <Path d="M 16 13 L 19 16 L 16 19 L 13 16 Z" fill={color} />
+      {/* 4 نقاط على الأطراف */}
+      <Circle cx="16" cy="6" r="1.2" fill={color} />
+      <Circle cx="26" cy="16" r="1.2" fill={color} />
+      <Circle cx="16" cy="26" r="1.2" fill={color} />
+      <Circle cx="6" cy="16" r="1.2" fill={color} />
+      {/* خطوط قطرية رقيقة */}
+      <Path d="M 5 5 L 27 27" stroke={accent} strokeWidth={0.25} opacity={0.5} />
+      <Path d="M 27 5 L 5 27" stroke={accent} strokeWidth={0.25} opacity={0.5} />
+    </Svg>
+  </View>
+);
+
+// ════════ الأنماط ════════
+
+const BORDER_GAP   = 2;
+const ORNAMENT_W   = 16;
+const MEDALLION    = 20;
 
 const styles = StyleSheet.create({
-  outer: { flex: 1, padding: 6 },
-  thickFrame: { flex: 1, borderWidth: BORDER_THICK, padding: BORDER_GAP },
+  outer: { flex: 1, paddingHorizontal: 4, paddingVertical: 0 },
+  thickFrame: { flex: 1, padding: BORDER_GAP },
   gap: { flex: 1, padding: BORDER_GAP },
-  thinFrame: { flex: 1, borderWidth: BORDER_THIN },
   ornamentBand: { flex: 1, padding: ORNAMENT_W, position: 'relative' },
 
   bandTop:    { position: 'absolute', top: 0,    left: 0, right: 0,  height: ORNAMENT_W },
@@ -175,12 +188,11 @@ const styles = StyleSheet.create({
   bandRight:  { position: 'absolute', top: ORNAMENT_W, bottom: ORNAMENT_W, right: 0, width: ORNAMENT_W },
 
   medallion: { position: 'absolute', width: MEDALLION, height: MEDALLION, zIndex: 5 },
-  cornerTL: { top: -3, left: -3 },
-  cornerTR: { top: -3, right: -3 },
-  cornerBL: { bottom: -3, left: -3 },
-  cornerBR: { bottom: -3, right: -3 },
+  cornerTL: { top: -2, left: -2 },
+  cornerTR: { top: -2, right: -2 },
+  cornerBL: { bottom: -2, left: -2 },
+  cornerBR: { bottom: -2, right: -2 },
 
-  contentFrame: { flex: 1, borderWidth: BORDER_THIN, padding: 2 },
-  contentFrameInner: { flex: 1, borderWidth: 0.5 },
-  content: { flex: 1, padding: 4 },
+  contentFrame: { flex: 1, padding: 0 },
+  content: { flex: 1, padding: 0 },
 });

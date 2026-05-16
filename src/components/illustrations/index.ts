@@ -15,4 +15,6 @@ export {
   IllMosques,
   IllStats,
   IllAchievements,
+  IllHadith,
+  IllNotes,
 } from './Illustration';

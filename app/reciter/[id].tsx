@@ -77,19 +77,35 @@ export default function ReciterScreen() {
 
       <View style={{ gap: 6 }}>
         {SURAHS.slice(0, 25).map((s) => (
-          <Card key={s.id} onPress={() => play({ reciter, surahId: s.id, surahName: s.nameAr })} padding={t.spacing.md} elevation="xs">
+          <Card key={s.id} padding={t.spacing.md} elevation="xs">
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={[styles.numWrap, { backgroundColor: t.colors.primarySoft }]}>
-                <Text variant="label" color={t.colors.primary}>{arabicNumber(s.id)}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text variant="subtitle">{s.nameAr}</Text>
-                <Text variant="caption" color={t.colors.textSecondary}>{arabicNumber(s.versesCount)} {tr('common.ayah')}</Text>
-              </View>
-              <Pressable hitSlop={t.hitSlop} style={styles.iconBtn}>
+              {/* المنطقة اليسرى Pressable لتشغيل السورة */}
+              <Pressable
+                onPress={() => play({ reciter, surahId: s.id, surahName: s.nameAr })}
+                accessibilityRole="button"
+                accessibilityLabel={`تشغيل سورة ${s.nameAr}`}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}
+              >
+                <View style={[styles.numWrap, { backgroundColor: t.colors.primarySoft }]}>
+                  <Text variant="label" color={t.colors.primary}>{arabicNumber(s.id)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text variant="subtitle">{s.nameAr}</Text>
+                  <Text variant="caption" color={t.colors.textSecondary}>{arabicNumber(s.versesCount)} {tr('common.ayah')}</Text>
+                </View>
+              </Pressable>
+
+              {/* أزرار جانبية شقيقة */}
+              <Pressable hitSlop={t.hitSlop} style={styles.iconBtn} accessibilityRole="button" accessibilityLabel="تحميل">
                 <Download size={16} color={t.colors.textTertiary} />
               </Pressable>
-              <Pressable hitSlop={t.hitSlop} style={[styles.playBtn, { backgroundColor: t.colors.primary }]}>
+              <Pressable
+                onPress={() => play({ reciter, surahId: s.id, surahName: s.nameAr })}
+                hitSlop={t.hitSlop}
+                style={[styles.playBtn, { backgroundColor: t.colors.primary }]}
+                accessibilityRole="button"
+                accessibilityLabel="تشغيل"
+              >
                 <Play size={14} color="#fff" fill="#fff" />
               </Pressable>
             </View>

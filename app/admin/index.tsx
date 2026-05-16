@@ -217,6 +217,32 @@ export default function AdminScreen() {
           </View>
         ) : null}
 
+        {/* رابط إدارة المستخدمين - بارز فوق */}
+        <Pressable
+          onPress={() => router.push('/admin/users')}
+          style={({ pressed }) => [
+            styles.quickLink,
+            {
+              backgroundColor: t.colors.accent + '12',
+              borderColor: t.colors.accent + '50',
+              opacity: pressed ? 0.9 : 1,
+            },
+          ]}
+        >
+          <View style={[styles.quickLinkIcon, { backgroundColor: t.colors.accent }]}>
+            <Users size={18} color={t.colors.onAccent} strokeWidth={2.2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 14, fontWeight: '800', color: t.colors.textPrimary }}>
+              👥 إدارة المستخدمين
+            </Text>
+            <Text style={{ fontSize: 11, color: t.colors.textSecondary, marginTop: 2 }}>
+              عرض كل الحسابات في Convex وإدارتها
+            </Text>
+          </View>
+          <ArrowRight size={16} color={t.colors.accent} style={{ transform: [{ rotate: '180deg' }] }} />
+        </Pressable>
+
         {/* قسم: إدارة المشرفين (الأدمنز) */}
         <Section title="إدارة المشرفين" icon={<Users size={16} color={t.colors.accent} />}>
           <Text style={[styles.adminSectionHint, { color: t.colors.textSecondary }]}>
@@ -515,6 +541,22 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     marginBottom: 16,
+  },
+  quickLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    marginBottom: 18,
+  },
+  quickLinkIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   sectionHeader: {

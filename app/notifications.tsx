@@ -22,6 +22,8 @@ interface NotificationItem {
   time: string;
   read: boolean;
   color: string;
+  /** المسار الذي يفتح عند الضغط على الإشعار. */
+  route: string;
 }
 
 interface SettingItem {
@@ -58,10 +60,10 @@ export default function NotificationsScreen() {
 
   // عناصر الإشعارات (تستخدم tr داخل المكون)
   const ITEMS: NotificationItem[] = [
-    { id: '1', icon: <Sunrise size={18} />, color: '#F5A742', title: tr('notif.sample.wirdTitle'),     desc: tr('notif.sample.wirdDesc'),     time: tr('notif.timeAgo.min12'),      read: false },
-    { id: '2', icon: <Brain size={18} />,   color: '#A2384B', title: tr('notif.sample.reviewTitle'),   desc: tr('notif.sample.reviewDesc'),   time: tr('notif.timeAgo.hour1'),      read: false },
-    { id: '3', icon: <Moon size={18} />,    color: '#1B2747', title: tr('notif.sample.adhkarTitle'),   desc: tr('notif.sample.adhkarDesc'),   time: tr('notif.timeAgo.yesterday'),  read: true  },
-    { id: '4', icon: <BookOpen size={18} />,color: '#0F4A41', title: tr('notif.sample.continueTitle'), desc: tr('notif.sample.continueDesc'), time: tr('notif.timeAgo.twoDaysAgo'), read: true  },
+    { id: '1', icon: <Sunrise size={18} />, color: '#F5A742', title: tr('notif.sample.wirdTitle'),     desc: tr('notif.sample.wirdDesc'),     time: tr('notif.timeAgo.min12'),      read: false, route: '/wird'         },
+    { id: '2', icon: <Brain size={18} />,   color: '#A2384B', title: tr('notif.sample.reviewTitle'),   desc: tr('notif.sample.reviewDesc'),   time: tr('notif.timeAgo.hour1'),      read: false, route: '/review'       },
+    { id: '3', icon: <Moon size={18} />,    color: '#1B2747', title: tr('notif.sample.adhkarTitle'),   desc: tr('notif.sample.adhkarDesc'),   time: tr('notif.timeAgo.yesterday'),  read: true,  route: '/adhkar'       },
+    { id: '4', icon: <BookOpen size={18} />,color: '#0F4A41', title: tr('notif.sample.continueTitle'), desc: tr('notif.sample.continueDesc'), time: tr('notif.timeAgo.twoDaysAgo'), read: true,  route: '/(tabs)/mushaf' },
   ];
 
   useEffect(() => {
@@ -148,25 +150,33 @@ export default function NotificationsScreen() {
 
         <View style={{ gap: 10 }}>
           {ITEMS.map((n) => (
-            <Card key={n.id} padding={14} elevation="xs" bordered background={n.read ? undefined : t.colors.accent + '06'}>
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <View style={[styles.notifIcon, { backgroundColor: n.color + '14', borderColor: n.color }]}>
-                  {React.cloneElement(n.icon as any, { color: n.color })}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text variant="subtitle">{n.title}</Text>
-                    {!n.read ? <View style={[styles.unreadDot, { backgroundColor: t.colors.error }]} /> : null}
+            <Pressable
+              key={n.id}
+              onPress={() => router.push(n.route as any)}
+              accessibilityRole="button"
+              accessibilityLabel={`${n.title} - ${n.desc}`}
+              style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+            >
+              <Card padding={14} elevation="xs" bordered background={n.read ? undefined : t.colors.accent + '06'}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                  <View style={[styles.notifIcon, { backgroundColor: n.color + '14', borderColor: n.color }]}>
+                    {React.cloneElement(n.icon as any, { color: n.color })}
                   </View>
-                  <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
-                    {n.desc}
-                  </Text>
-                  <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 4 }}>
-                    {n.time}
-                  </Text>
+                  <View style={{ flex: 1 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text variant="subtitle">{n.title}</Text>
+                      {!n.read ? <View style={[styles.unreadDot, { backgroundColor: t.colors.error }]} /> : null}
+                    </View>
+                    <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
+                      {n.desc}
+                    </Text>
+                    <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 4 }}>
+                      {n.time}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </Card>
+              </Card>
+            </Pressable>
           ))}
         </View>
 

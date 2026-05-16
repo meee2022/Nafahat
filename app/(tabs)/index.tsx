@@ -4,14 +4,14 @@
  */
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Dimensions } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Dimensions, Image } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { Bell, Search, MapPin, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
-import { IllMushaf, IllAdhkar, IllTasbeeh, IllQibla, IllMosques, IllCalendar, IllDuas, IllTajweed, IllKhatma, IllZakat, IllStats, IllMemo, IllAudio } from '@components/illustrations';
+import { IllMushaf, IllAdhkar, IllTasbeeh, IllQibla, IllMosques, IllCalendar, IllDuas, IllTajweed, IllKhatma, IllZakat, IllStats, IllMemo, IllAudio, IllHadith, IllNotes, IllAchievements } from '@components/illustrations';
 import { useSettingsStore } from '@store/index';
 import { useT, useLanguage } from '@store/languageStore';
 import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@services/prayerTimes';
@@ -20,7 +20,7 @@ import { useWirdStore, useMemoStore } from '@store/index';
 import { useAuthStore } from '@store/authStore';
 import { getDueTasks } from '@services/memorization';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LogIn } from 'lucide-react-native';
+import { LogIn, Cloud } from 'lucide-react-native';
 
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
@@ -135,14 +135,14 @@ export default function HomeScreen() {
     { id: 'audio',   title: tr('feature.audio'),  icon: <IllAudio   size={68} />, path: '/reciters' },
     { id: 'khatma',  title: tr('tool.khatma'),    icon: <IllKhatma  size={68} />, path: '/khatma' },
     { id: 'tajweed', title: tr('learn.tajweed'),  icon: <IllTajweed size={68} />, path: '/tajweed' },
-    { id: 'hadith',  title: 'الأحاديث',           icon: <IllStats   size={68} />, path: '/hadith' },
+    { id: 'hadith',  title: 'الأحاديث',           icon: <IllHadith  size={68} />, path: '/hadith' },
   ];
 
   const extraFeatures = [
     { id: 'mosques', title: tr('tool.mosques'),       icon: <IllMosques size={68} />, path: '/mosques' },
     { id: 'zakat',   title: tr('tool.zakatShort'),    icon: <IllZakat   size={68} />, path: '/zakat' },
-    { id: 'quiz',    title: tr('home.featureQuiz'),   icon: <IllStats   size={68} />, path: '/quiz' },
-    { id: 'notes',   title: tr('home.featureNotes'),  icon: <IllStats   size={68} />, path: '/notes' },
+    { id: 'quiz',    title: tr('home.featureQuiz'),   icon: <IllAchievements size={68} />, path: '/quiz' },
+    { id: 'notes',   title: tr('home.featureNotes'),  icon: <IllNotes        size={68} />, path: '/notes' },
   ];
 
   const renderGrid = (items: any[]) => (
@@ -210,7 +210,19 @@ export default function HomeScreen() {
                 </Pressable>
               ) : isPremium ? (
                 <Text style={styles.premiumBadge}>{tr('home.premiumBadge')}</Text>
-              ) : null}
+              ) : (
+                <Pressable
+                  onPress={() => router.push('/cloud-sync')}
+                  style={({ pressed }) => [
+                    styles.syncedPill,
+                    { opacity: pressed ? 0.85 : 1 },
+                  ]}
+                  hitSlop={8}
+                >
+                  <Cloud size={12} color="#7FE3B4" strokeWidth={2.4} />
+                  <Text style={styles.syncedPillText}>متزامن</Text>
+                </Pressable>
+              )}
             </View>
             <View style={styles.heroHeaderRight}>
               <Pressable style={styles.iconBtn} onPress={() => router.push('/search')}>
@@ -219,9 +231,9 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Countdown Component (Fast updates isolated here) */}
+          {/* Countdown Component */}
           <HeroCountdown nextP={nextP} todayPrayers={todayPrayers} cityName={cityName} />
-          
+
           {/* Mosque Illustration */}
           <View style={styles.mosqueIllustrationContainer}>
             <IllMosques size={160} />
@@ -331,7 +343,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
     overflow: 'hidden',
     position: 'relative',
-    height: 340,
+    height: 380,
   },
   heroFrame: {
     position: 'absolute',
@@ -383,6 +395,23 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.3,
   },
+  syncedPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(127, 227, 180, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(127, 227, 180, 0.4)',
+  },
+  syncedPillText: {
+    color: '#7FE3B4',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   countdownContainer: {
     alignItems: 'center',
     marginTop: 20,
@@ -419,6 +448,15 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  heroLogoWrap: {
+    alignItems: 'center',
+    marginTop: 6,
+    zIndex: 10,
+  },
+  heroLogo: {
+    width: 140,
+    height: 140,
   },
   mosqueIllustrationContainer: {
     position: 'absolute',

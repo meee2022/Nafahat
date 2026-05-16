@@ -62,7 +62,8 @@ export const HeroReadingCard: React.FC<Props> = ({
 
   return (
     <Animated.View style={[styles.outer, { transform: [{ translateY: floatY }] }]}>
-      <Pressable onPress={onContinue} disabled={!onContinue}>
+      {/* البطاقة View (مش Pressable) - CTA الزرّ الداخلي هو الـ Pressable الوحيد */}
+      <View>
         <LinearGradient
           colors={[mColors.bg.elevated, mColors.bg.surface]}
           start={{ x: 0.2, y: 0 }}
@@ -133,7 +134,7 @@ export const HeroReadingCard: React.FC<Props> = ({
             </Pressable>
           </View>
         </LinearGradient>
-      </Pressable>
+      </View>
     </Animated.View>
   );
 };

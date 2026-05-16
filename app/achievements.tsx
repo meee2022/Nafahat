@@ -33,7 +33,13 @@ export default function AchievementsScreen() {
 
   return (
     <Screen>
-      <AppHeader onBack={() => router.back()} title={tr('achievements.title')} />
+      <AppHeader
+        onBack={() => {
+          if (router.canGoBack?.()) router.back();
+          else router.replace('/(tabs)/account');
+        }}
+        title={tr('achievements.title')}
+      />
 
       {/* ملخص */}
       <Card padding={t.spacing.lg} elevation="sm" background={t.colors.primarySoft}>

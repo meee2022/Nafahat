@@ -64,7 +64,7 @@ export default function FavoritesScreen() {
                 </View>
                 <View style={{ gap: 10 }}>
                   {favoriteAyahs.map((it, idx) => (
-                    <Card key={idx} onPress={() => router.push(`/surah/${it.surahId}`)} padding={14} elevation="xs" bordered>
+                    <Card key={idx} onPress={() => router.push(`/surah/${it.surahId}?ayah=${it.ayahNumber}`)} padding={14} elevation="xs" bordered>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                         <Heart size={18} color={t.colors.error} fill={t.colors.error} />
                         <View style={{ flex: 1 }}>
@@ -96,7 +96,7 @@ export default function FavoritesScreen() {
                   {bookmarks.map((b) => {
                     const surah = getSurahById(b.surahId);
                     return (
-                      <Card key={b.id} onPress={() => router.push(`/surah/${b.surahId}`)} padding={14} elevation="xs" bordered>
+                      <Card key={b.id} onPress={() => router.push(`/surah/${b.surahId}?ayah=${b.ayahNumber}`)} padding={14} elevation="xs" bordered>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                           <Bookmark size={18} color={t.colors.accent} fill={t.colors.accent} />
                           <View style={{ flex: 1 }}>

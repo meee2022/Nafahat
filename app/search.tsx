@@ -81,7 +81,14 @@ export default function SearchScreen() {
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       {/* ترويسة */}
       <View style={[styles.topBar, { borderBottomColor: t.colors.borderGold }]}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.iconBtn, { borderColor: t.colors.border }]}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack?.()) router.back();
+            else router.replace('/(tabs)');
+          }}
+          hitSlop={10}
+          style={[styles.iconBtn, { borderColor: t.colors.border }]}
+        >
           <X size={18} color={t.colors.textPrimary} strokeWidth={1.8} />
         </Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>

@@ -1,230 +1,101 @@
 /**
- * ترويسة المصحف الكلاسيكي - كارتوش (cartouche) ذهبي مزخرف بنمط مجمع الملك فهد:
- *  ┌────────────────────────────────────────┐
- *  │ [←]  ◆──  الجزء الأول  ──◆  سورة البقرة  ──◆  [≡]
- *  │            ◇  مكية  ·  ٢٨٦ آية  ◇
- *  └────────────────────────────────────────┘
+ * 📜 ترويسة المصحف المرجعية (King Fahd Style)
+ * لا تحتوي على أزرار، مجرد إطارين زخرفيين لاسم السورة والجزء
+ * مع خلفية من النقش الإسلامي.
  */
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
-import Svg, { Path, Circle, G, Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { ArrowLeft, Menu } from 'lucide-react-native';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import Svg, { Path, Rect, Defs, Pattern, G, Circle } from 'react-native-svg';
 
 interface Props {
   juzLabel: string;
   surahName: string;
-  /** نوع السورة + عدد الآيات (مثلاً "مكية · ٢٨٦ آية") - يُعرض كخط سفلي. */
-  subInfo?: string;
-  onBack?: () => void;
-  onMenu?: () => void;
   goldColor?: string;
   goldDeep?: string;
-  textColor?: string;
-  buttonBg?: string;
   pageColor?: string;
   quranFont: string;
+  onSurahPress?: () => void;
+  onJuzPress?: () => void;
 }
 
 export const MushafHeader: React.FC<Props> = ({
   juzLabel,
   surahName,
-  subInfo,
-  onBack,
-  onMenu,
-  goldColor = '#A87C3F',
-  goldDeep  = '#6F4F22',
-  textColor = '#3D2817',
-  buttonBg  = '#EFE4C7',
-  pageColor = '#FDF8EA',
+  goldColor = '#BE995E',
+  goldDeep = '#8B6239',
+  pageColor = '#FFFFFF',
   quranFont,
+  onSurahPress,
+  onJuzPress,
 }) => {
   return (
-    <View style={styles.wrap}>
-      {/* الكارتوش الذهبي العلوي */}
-      <View style={[styles.cartouche, { borderColor: goldDeep, backgroundColor: pageColor }]}>
-        {/* إطار ذهبي رقيق داخلي */}
-        <View style={[styles.cartoucheInner, { borderColor: goldColor }]}>
+    <View style={[styles.wrap, { borderColor: goldDeep, backgroundColor: pageColor }]}>
+      {/* خلفية النقش الإسلامي */}
+      <View style={[StyleSheet.absoluteFill, { padding: 2 }]}>
+         <TopLacePattern color={goldDeep} accent={goldColor} />
+      </View>
 
-          {/* SVG decorative side ornaments */}
-          <SideOrnament side="start" color={goldColor} />
-          <SideOrnament side="end"   color={goldColor} />
-
-          <View style={styles.row}>
-            <Pressable
-              onPress={onBack}
-              hitSlop={10}
-              accessible
-              accessibilityRole="button"
-              accessibilityLabel="رجوع"
-              style={({ pressed }) => [styles.iconBtn, { backgroundColor: buttonBg, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <ArrowLeft size={18} color={textColor} strokeWidth={2.2} />
-            </Pressable>
-
-            {/* الجزء (على اليمين/البداية) */}
-            <View style={styles.leftMeta}>
-              <Diamond color={goldColor} />
-              <Text
-                style={[styles.juzText, { color: textColor, fontFamily: quranFont }]}
-                numberOfLines={1}
-              >
-                {juzLabel}
-              </Text>
-            </View>
-
-            {/* اسم السورة في المنتصف */}
-            <View style={styles.centerBlock}>
-              <View style={styles.titleRow}>
-                <Diamond color={goldColor} />
-                <Text
-                  style={[styles.surahName, { color: textColor, fontFamily: quranFont }]}
-                  numberOfLines={1}
-                >
-                  {surahName}
-                </Text>
-                <Diamond color={goldColor} />
-              </View>
-              {subInfo ? (
-                <Text style={[styles.subInfo, { color: goldDeep, fontFamily: quranFont }]} numberOfLines={1}>
-                  {subInfo}
-                </Text>
-              ) : null}
-            </View>
-
-            {/* فراغ لمعادلة العرض */}
-            <View style={styles.rightMeta}>
-              <Diamond color={goldColor} />
-            </View>
-
-            <Pressable
-              onPress={onMenu}
-              hitSlop={10}
-              accessible
-              accessibilityRole="button"
-              accessibilityLabel="قائمة"
-              style={({ pressed }) => [styles.iconBtn, { backgroundColor: buttonBg, opacity: pressed ? 0.7 : 1 }]}
-            >
-              <Menu size={18} color={textColor} strokeWidth={2.2} />
-            </Pressable>
-          </View>
-
-        </View>
+      <View style={styles.cartouchesRow}>
+        <Cartouche text={juzLabel} font={quranFont} color={goldDeep} pageColor={pageColor} onPress={onJuzPress} />
+        <View style={{ width: 20 }} />
+        <Cartouche text={surahName} font={quranFont} color={goldDeep} pageColor={pageColor} onPress={onSurahPress} />
       </View>
     </View>
   );
 };
 
-// ───── معيّن صغير كفاصل بصري ─────
-const Diamond: React.FC<{ color: string; size?: number }> = ({ color, size = 6 }) => (
-  <View
-    style={{
-      width: size,
-      height: size,
-      backgroundColor: color,
-      transform: [{ rotate: '45deg' }],
-      marginHorizontal: 3,
-    }}
-  />
+const Cartouche: React.FC<{ text: string; font: string; color: string; pageColor: string; onPress?: () => void }> = ({
+  text, font, color, pageColor, onPress
+}) => (
+  <Pressable onPress={onPress} hitSlop={5} style={styles.cartoucheContainer}>
+    {/* شكل الخرطوش (مستطيل بأطراف مثلثة) */}
+    <View style={[StyleSheet.absoluteFill, { backgroundColor: pageColor, borderColor: color, borderWidth: 1.5, borderRadius: 24 }]} />
+    <Text style={[styles.cartoucheText, { color: color, fontFamily: font, paddingTop: Platform.OS === 'ios' ? 4 : 0 }]}>
+      {text}
+    </Text>
+  </Pressable>
 );
 
-// ───── زخرفة جانبية SVG (شريط نقش هندسي رقيق) ─────
-const SideOrnament: React.FC<{ side: 'start' | 'end'; color: string }> = ({ side, color }) => {
-  return (
-    <View
-      style={[
-        styles.sideOrnamentWrap,
-        side === 'start' ? { start: 0 } : { end: 0 },
-      ]}
-      pointerEvents="none"
-    >
-      <Svg width="100%" height="100%" viewBox="0 0 8 60" preserveAspectRatio="none">
-        <Path d="M 4 4 L 4 56" stroke={color} strokeWidth={0.6} opacity={0.6} />
-        <Circle cx="4" cy="14" r="1.2" fill={color} />
-        <Circle cx="4" cy="30" r="1.6" fill={color} />
-        <Circle cx="4" cy="46" r="1.2" fill={color} />
-      </Svg>
-    </View>
-  );
-};
+const TopLacePattern: React.FC<{ color: string; accent: string }> = ({ color, accent }) => (
+  <Svg width="100%" height="100%" preserveAspectRatio="none">
+    <Defs>
+      <Pattern id="topLace" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
+        <G>
+          <Path d="M6 1 L7 6 L11 7 L7 8 L6 11 L5 8 L1 7 L5 6 Z" fill={color} opacity={0.6} />
+          <Circle cx="6" cy="6" r="1.5" fill={accent} opacity={0.8} />
+          <Circle cx="0" cy="0" r="1" fill={color} opacity={0.5} />
+          <Circle cx="12" cy="12" r="1" fill={color} opacity={0.5} />
+        </G>
+      </Pattern>
+    </Defs>
+    <Rect width="100%" height="100%" fill="url(#topLace)" />
+  </Svg>
+);
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 2,
-    paddingVertical: 2,
-    marginBottom: 6,
-  },
-  cartouche: {
+    height: 48,
     borderWidth: 1.5,
-    padding: 1.5,
-    borderRadius: 2,
-  },
-  cartoucheInner: {
-    borderWidth: 0.6,
-    paddingVertical: 6,
-    paddingHorizontal: 6,
+    borderBottomWidth: 0,
+    marginHorizontal: 0,
+    justifyContent: 'center',
     position: 'relative',
+    overflow: 'hidden',
   },
-  sideOrnamentWrap: {
-    position: 'absolute',
-    top: 4, bottom: 4,
-    width: 8,
-  },
-  row: {
+  cartouchesRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 4,
-  },
-  leftMeta: {
-    flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  cartoucheContainer: {
     flex: 1,
-    justifyContent: 'center',
-  },
-  rightMeta: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  centerBlock: {
-    flex: 1.4,
-    alignItems: 'center',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  juzText: {
-    fontSize: 13,
-    fontWeight: '700',
-    marginHorizontal: 3,
-  },
-  surahName: {
-    fontSize: 17,
-    fontWeight: '800',
-    marginHorizontal: 3,
-    letterSpacing: 0.2,
-  },
-  subInfo: {
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
-    letterSpacing: 1.5,
-    opacity: 0.85,
-  },
-  iconBtn: {
-    width: 32,
     height: 32,
-    borderRadius: 10,
-    alignItems: 'center',
     justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 2,
-      },
-      android: { elevation: 1 },
-    }),
+    alignItems: 'center',
+  },
+  cartoucheText: {
+    fontSize: 20,
+    marginTop: -4,
   },
 });

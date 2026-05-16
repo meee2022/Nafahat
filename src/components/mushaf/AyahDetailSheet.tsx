@@ -29,6 +29,8 @@ import {
 } from '@services/tafsir';
 import { copyToClipboard, shareText } from '@utils/clipboard';
 import { getWordsByVerse, QuranWord } from '@services/wordByWord';
+import { getWordAudioUrl } from '@services/quranComApi';
+import { playOneShot } from '@services/audioPlayer';
 
 type Tab = 'tafsir' | 'translation' | 'words' | 'actions';
 
@@ -175,6 +177,16 @@ export const AyahDetailSheet: React.FC<Props> = ({
                 {ayahRef}
               </Text>
             </View>
+            <Pressable
+              onPress={onPlay}
+              hitSlop={10}
+              accessible
+              accessibilityRole="button"
+              accessibilityLabel="تشغيل الآية"
+              style={[styles.closeBtn, { backgroundColor: t.colors.accent + '1A', marginEnd: 8 }]}
+            >
+              <Play size={16} color={t.colors.accent} fill={t.colors.accent} />
+            </Pressable>
             <Pressable
               onPress={onClose}
               hitSlop={10}
@@ -439,6 +451,34 @@ export const AyahDetailSheet: React.FC<Props> = ({
                           <Text style={{ fontSize: 15, color: t.colors.textPrimary, textAlign: 'center', fontWeight: '600', lineHeight: 22 }}>
                             {selectedWord.translation || '(لا توجد ترجمة لهذه الكلمة)'}
                           </Text>
+
+                          {/* 🔊 زر استماع للكلمة من Tarteel */}
+                          <Pressable
+                            onPress={() => {
+                              const location = `${surahId}:${ayahNumber}:${selectedWord.position}`;
+                              const url = getWordAudioUrl(location);
+                              if (url) playOneShot(url);
+                            }}
+                            style={({ pressed }) => ({
+                              marginTop: 12,
+                              alignSelf: 'center',
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 6,
+                              paddingHorizontal: 16,
+                              paddingVertical: 8,
+                              borderRadius: 20,
+                              backgroundColor: t.colors.accent,
+                              opacity: pressed ? 0.75 : 1,
+                            })}
+                            accessibilityRole="button"
+                            accessibilityLabel="استماع للكلمة"
+                          >
+                            <Play size={14} color={t.colors.background} fill={t.colors.background} />
+                            <Text style={{ color: t.colors.background, fontSize: 12, fontWeight: '700' }}>
+                              استمع للكلمة
+                            </Text>
+                          </Pressable>
                         </View>
                       ) : (
                         <View style={{ alignItems: 'center', marginTop: 14, paddingVertical: 10 }}>

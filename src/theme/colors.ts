@@ -172,14 +172,14 @@ export const lightColors: ThemeColors = {
   info: palette.info,
   infoSurface: palette.infoLight,
 
-  featureEmerald:    '#0A3D38', // زمرد ملكي
-  featureGold:       '#B8923B',
-  featureCarmine:    '#A2384B',
-  featureLapis:      '#2F5A8C',
-  featureSaffron:    '#C77B2F',
-  featureMoss:       '#5E7F4F',
-  featureSepia:      '#7A5530',
-  featureTerracotta: '#B5563C',
+  featureEmerald:    '#0A3D38', // زمرد ملكي - القرآن
+  featureGold:       '#B8923B', // ذهب داكن - الأذكار
+  featureCarmine:    '#0F4A41', // زمرد عميق - التجويد
+  featureLapis:      '#1A5C4F', // زمرد متوسط - الحفظ
+  featureSaffron:    '#B8923B', // ذهب - المواقيت
+  featureMoss:       '#0A3D38', // زمرد - القبلة
+  featureSepia:      '#9C7A2D', // ذهب عتيق - الأدعية
+  featureTerracotta: '#D4B570', // ذهب فاتح - الإحصاءات
 };
 
 export const darkColors: ThemeColors = {
@@ -194,10 +194,10 @@ export const darkColors: ThemeColors = {
   accentDeep: palette.gold500,
   onAccent: palette.midnight900,
 
-  background: palette.midnight800,
-  surface: palette.midnight700,
-  surfaceElevated: palette.midnight600,
-  surfaceAlt: palette.midnight800,
+  background: '#000000',
+  surface: palette.midnight900,
+  surfaceElevated: palette.midnight800,
+  surfaceAlt: '#000000',
 
   textPrimary: palette.parchment100,
   textSecondary: palette.ink300,
@@ -225,13 +225,13 @@ export const darkColors: ThemeColors = {
   infoSurface: 'rgba(122, 176, 217, 0.12)',
 
   featureEmerald:    '#5B9F8E', // زمرد فاتح للوضع الداكن
-  featureGold:       '#D4B570',
-  featureCarmine:    '#D67A8A',
-  featureLapis:      '#7AA6D9',
-  featureSaffron:    '#E0A057',
-  featureMoss:       '#9FB57F',
-  featureSepia:      '#C9A175',
-  featureTerracotta: '#E08C75',
+  featureGold:       '#D4B570', // ذهب
+  featureCarmine:    '#3F8B80', // زمرد متوسط
+  featureLapis:      '#6BB5A8', // زمرد فاتح
+  featureSaffron:    '#D4B570', // ذهب
+  featureMoss:       '#5B9F8E', // زمرد
+  featureSepia:      '#C9A84C', // ذهب أمبر
+  featureTerracotta: '#E8C97A', // ذهب فاتح
 };
 
 export { palette };

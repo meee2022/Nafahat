@@ -1,82 +1,123 @@
 /**
- * شاشة قائمة الأذكار - شبكة بـ 6 بطاقات (الصباح، المساء، النوم، الاستيقاظ، بعد الصلاة، عامة).
- * كل بطاقة فيها مشهد SVG غني داخل قوس مسجد + اسم الفئة + عدد الأذكار.
+ * 📿 شاشة قائمة الأذكار - تصميم حصن المسلم الكامل.
+ *
+ * - شبكة 4 أعمدة (على ويب) أو 3 (على موبايل) من البطاقات
+ * - كل تصنيف بأيقونة دائرية (Lucide) + اسم + عدد الأذكار
+ * - ألوان هوية التطبيق (ذهبي/كريمي/أخضر زمردي)
+ * - بحث بسيط في الأعلى
  */
-import React from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, StyleSheet, Pressable, ScrollView, TextInput, useWindowDimensions, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import {
+  Sunrise, Moon, Bed, Heart, Home, Coffee, Landmark, Droplets, Wind,
+  Shield, Plane, Utensils, Activity, Users, CloudRain, Sunset, MapPin,
+  Wallet, Sparkles, BookOpen, Shirt, Star, Search,
+} from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text, AppHeader } from '@components/ui';
-import {
-  SceneMorning, SceneEvening, SceneSleep,
-  SceneWakeup, SceneAfterPrayer, SceneGeneral,
-} from '@components/illustrations/scenes';
-import { DHIKR_CATEGORIES, ADHKAR } from '@data/adhkar';
+import { DHIKR_CATEGORIES, getAdhkarCountForCategory } from '@data/adhkar';
 import { arabicNumber } from '@data/surahs';
+import { useSafeBack } from '@/utils/navigation';
 
-type CategoryId = typeof DHIKR_CATEGORIES[number]['id'];
-
-const SCENE_MAP: Record<CategoryId, React.FC<{ size?: number }>> = {
-  morning:        SceneMorning,
-  evening:        SceneEvening,
-  sleep:          SceneSleep,
-  wake:           SceneWakeup,
-  'after-prayer': SceneAfterPrayer,
-  general:        SceneGeneral,
+const ICON_MAP: Record<string, React.ComponentType<any>> = {
+  Sunrise, Moon, Bed, Heart, Home, Coffee, Landmark, Droplets, Wind,
+  Shield, Plane, Utensils, Activity, Users, CloudRain, Sunset, MapPin,
+  Wallet, Sparkles, BookOpen, Shirt, Star,
 };
 
 export default function AdhkarListScreen() {
   const t = useTheme();
   const router = useRouter();
+  const goBack = useSafeBack('/');
+  const { width } = useWindowDimensions();
+  const [query, setQuery] = useState('');
+
+  // عدد الأعمدة - 4 على ويب/تابلت، 3 على هاتف
+  const numColumns = width > 700 ? 4 : 3;
+  const cardWidth = `${100 / numColumns}%` as `${number}%`;
+
+  const filtered = useMemo(() => {
+    const q = query.trim();
+    if (!q) return DHIKR_CATEGORIES;
+    return DHIKR_CATEGORIES.filter((c) => c.titleAr.includes(q));
+  }, [query]);
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <AppHeader
-          onBack={() => router.back()}
-          title="قائمة الأذكار"
-          subtitle="حصن المسلم"
+          onBack={goBack}
+          title="حصن المسلم"
+          subtitle="من أذكار الكتاب والسنّة"
         />
 
-        {/* بطاقة هيرو علوية - ورد الأذكار */}
+        {/* بطاقة هيرو - ورد الأذكار اليومي */}
         <View style={[styles.hero, { backgroundColor: t.colors.primary + '12', borderColor: t.colors.primary + '30' }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.heroTitle, { color: t.colors.textPrimary }]}>ورد الأذكار اليومي</Text>
             <Text style={[styles.heroSub, { color: t.colors.textSecondary }]}>
-              ابدأ يومك ووجبة مع أذكار تحصّن قلبك
+              تحصّن بكلمات الله وذكر رسوله ﷺ
             </Text>
           </View>
           <View style={[styles.heroIcon, { backgroundColor: t.colors.primary }]}>
-            <Text style={{ fontSize: 22 }}>🎯</Text>
+            <Sparkles size={22} color={t.colors.background} strokeWidth={2} />
           </View>
+        </View>
+
+        {/* شريط البحث */}
+        <View style={[styles.searchBar, { backgroundColor: t.colors.surfaceAlt, borderColor: t.colors.border }]}>
+          <Search size={18} color={t.colors.textTertiary} strokeWidth={1.8} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="ابحث في تصنيفات الأذكار..."
+            placeholderTextColor={t.colors.textTertiary}
+            style={[styles.searchInput, { color: t.colors.textPrimary }]}
+          />
         </View>
 
         {/* شبكة الفئات */}
         <View style={styles.grid}>
-          {DHIKR_CATEGORIES.map((cat) => {
-            const Scene = SCENE_MAP[cat.id];
-            const count = ADHKAR.filter((a) => a.category === cat.id).length;
+          {filtered.map((cat) => {
+            const Icon = ICON_MAP[cat.icon] ?? BookOpen;
+            const count = getAdhkarCountForCategory(cat.id);
+            if (count === 0) return null;
             return (
-              <Pressable
-                key={cat.id}
-                onPress={() => router.push(`/adhkar/${cat.id}`)}
-                style={({ pressed }) => [
-                  styles.cardWrap,
-                  { transform: [{ scale: pressed ? 0.98 : 1 }] },
-                ]}
-              >
-                <View style={[styles.card, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
-                  <View style={styles.illustration}>
-                    <Scene size={92} />
+              <View key={cat.id} style={[styles.cardWrap, { width: cardWidth }]}>
+                <Pressable
+                  onPress={() => router.push(`/adhkar/${cat.id}` as any)}
+                  accessibilityRole="button"
+                  accessibilityLabel={cat.titleAr}
+                  style={({ pressed }) => [
+                    styles.card,
+                    {
+                      backgroundColor: t.colors.surface,
+                      borderColor: t.colors.borderGold,
+                      opacity: pressed ? 0.85 : 1,
+                      transform: [{ scale: pressed ? 0.97 : 1 }],
+                    },
+                  ]}
+                >
+                  {/* الأيقونة الدائرية الذهبية */}
+                  <View style={[styles.iconCircle, { backgroundColor: t.colors.accent + '14', borderColor: t.colors.accent + '40' }]}>
+                    <Icon size={26} color={t.colors.accent} strokeWidth={1.6} />
                   </View>
-                  <Text style={[styles.cardTitle, { color: t.colors.textPrimary }]} numberOfLines={1}>
+
+                  <Text
+                    style={[styles.cardTitle, { color: t.colors.textPrimary }]}
+                    numberOfLines={2}
+                  >
                     {cat.titleAr}
                   </Text>
-                  <Text style={[styles.cardCount, { color: t.colors.textSecondary }]}>
-                    {arabicNumber(count)} ذكر
-                  </Text>
-                </View>
-              </Pressable>
+
+                  <View style={[styles.countPill, { backgroundColor: t.colors.accent + '12' }]}>
+                    <Text style={[styles.cardCount, { color: t.colors.accentDeep }]}>
+                      {arabicNumber(count)} ذكر
+                    </Text>
+                  </View>
+                </Pressable>
+              </View>
             );
           })}
         </View>
@@ -96,7 +137,7 @@ export default function AdhkarListScreen() {
 
 const styles = StyleSheet.create({
   scroll: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 40,
   },
@@ -107,7 +148,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    marginBottom: 22,
+    marginBottom: 14,
   },
   heroTitle: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
   heroSub:   { fontSize: 12, marginTop: 4 },
@@ -115,35 +156,63 @@ const styles = StyleSheet.create({
     width: 48, height: 48, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
   },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 14,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500',
+    ...(Platform.OS === 'web' ? { outlineWidth: 0 } as any : {}),
+  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginHorizontal: -6,
+    marginHorizontal: -5,
   },
   cardWrap: {
-    width: '33.333%',
-    padding: 6,
+    padding: 5,
   },
   card: {
     borderWidth: 1,
     borderRadius: 16,
-    padding: 10,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     alignItems: 'center',
+    minHeight: 130,
+    justifyContent: 'space-between',
   },
-  illustration: {
-    width: 92, height: 92,
-    alignItems: 'center', justifyContent: 'center',
+  iconCircle: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   cardTitle: {
-    marginTop: 10,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 6,
+  },
+  countPill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   cardCount: {
-    marginTop: 3,
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '700',
   },
   footer: {
     flexDirection: 'row',

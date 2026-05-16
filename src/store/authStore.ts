@@ -15,6 +15,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { convex, convexApi } from '@services/convex';
+import { secureGet, secureSet, secureDelete } from '@services/secureStorage';
 
 const useCloudAuth = (): boolean => !!convex && !!convexApi?.users;
 
@@ -85,7 +86,12 @@ async function saveUsersDb(db: Record<string, StoredUser>): Promise<void> {
   } catch {}
 }
 
-// hash بسيط جداً - للديمو فقط، استخدم bcrypt على الـ backend الحقيقي
+// ⚠️⚠️⚠️ تحذير أمني: simpleHash ليس آمناً إطلاقاً لكلمات المرور.
+// يُستخدم فقط في حالة عدم توفّر Convex backend (offline-only demo path).
+// لا ترفع هذا التطبيق للإنتاج بدون:
+//   ١. تفعيل Convex Auth (موجود بالفعل، انظر useCloudAuth)
+//   ٢. حذف هذا الـ path المحلي تماماً
+//   ٣. تأكّد إن expo-secure-store مثبّت (انظر secureStorage.ts)
 function simpleHash(s: string): string {
   let h = 0;
   for (let i = 0; i < s.length; i++) {
@@ -131,7 +137,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           emailVerified: u.emailVerified,
         };
         await AsyncStorage.setItem(KEY_USER, JSON.stringify(user));
-        await AsyncStorage.setItem(KEY_TOKEN, result.token);
+        await secureSet(KEY_TOKEN, result.token);
         await AsyncStorage.setItem(KEY_STATUS, 'authenticated');
         set({ status: 'authenticated', user, token: result.token, loading: false, error: null });
         return true;
@@ -157,7 +163,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const token = genToken();
       await AsyncStorage.setItem(KEY_USER, JSON.stringify(stored.user));
-      await AsyncStorage.setItem(KEY_TOKEN, token);
+      await secureSet(KEY_TOKEN, token);
       await AsyncStorage.setItem(KEY_STATUS, 'authenticated');
 
       set({
@@ -204,7 +210,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           emailVerified: u.emailVerified,
         };
         await AsyncStorage.setItem(KEY_USER, JSON.stringify(user));
-        await AsyncStorage.setItem(KEY_TOKEN, result.token);
+        await secureSet(KEY_TOKEN, result.token);
         await AsyncStorage.setItem(KEY_STATUS, 'authenticated');
         set({ status: 'authenticated', user, token: result.token, loading: false, error: null });
         return true;
@@ -236,7 +242,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       const token = genToken();
       await AsyncStorage.setItem(KEY_USER, JSON.stringify(user));
-      await AsyncStorage.setItem(KEY_TOKEN, token);
+      await secureSet(KEY_TOKEN, token);
       await AsyncStorage.setItem(KEY_STATUS, 'authenticated');
 
       set({
@@ -256,13 +262,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async signInAsGuest() {
     await AsyncStorage.setItem(KEY_STATUS, 'guest');
     await AsyncStorage.removeItem(KEY_USER);
-    await AsyncStorage.removeItem(KEY_TOKEN);
+    await secureDelete(KEY_TOKEN);
     set({ status: 'guest', user: null, token: null, error: null });
   },
 
   async signOut() {
     await AsyncStorage.removeItem(KEY_USER);
-    await AsyncStorage.removeItem(KEY_TOKEN);
+    await secureDelete(KEY_TOKEN);
     await AsyncStorage.setItem(KEY_STATUS, 'guest');
     set({ status: 'guest', user: null, token: null, error: null });
   },
@@ -289,7 +295,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const status = (await AsyncStorage.getItem(KEY_STATUS)) as AuthStatus | null;
       const userRaw = await AsyncStorage.getItem(KEY_USER);
-      const token = await AsyncStorage.getItem(KEY_TOKEN);
+      const token = await secureGet(KEY_TOKEN);
 
       if (status === 'authenticated' && userRaw && token) {
         set({ status: 'authenticated', user: JSON.parse(userRaw), token });

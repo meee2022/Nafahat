@@ -138,3 +138,13 @@ export function arabicNumber(n: number): string {
   // بناءً على طلب المستخدم: استخدام الأرقام القياسية (0, 1, 2) بدلاً من (٠، ١، ٢)
   return String(n);
 }
+
+export const JUZ_PAGE_STARTS = [
+  1, 22, 42, 62, 82, 102, 122, 142, 162, 182,
+  202, 222, 242, 262, 282, 302, 322, 342, 362, 382,
+  402, 422, 442, 462, 482, 502, 522, 542, 562, 582
+];
+
+export function getSurahForPage(page: number): Surah {
+  return [...SURAHS].reverse().find((s) => s.pageStart <= page) || SURAHS[0];
+}

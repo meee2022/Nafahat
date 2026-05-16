@@ -63,26 +63,26 @@ export const SurahListItem: React.FC<Props> = ({ surah, onPress, isLastRead }) =
           <Svg width={56} height={56} viewBox="0 0 64 64">
             <Defs>
               <SvgGradient id={`star-${surah.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <Stop offset="0%"   stopColor={t.colors.accent} stopOpacity="0.22" />
-                <Stop offset="100%" stopColor={t.colors.accent} stopOpacity="0.06" />
+                <Stop offset="0%"   stopColor={t.colors.accent} stopOpacity="0.3" />
+                <Stop offset="100%" stopColor={t.colors.accent} stopOpacity="0.05" />
               </SvgGradient>
             </Defs>
             <Path
               d="M32,4 L36,20 L52,12 L44,28 L60,32 L44,36 L52,52 L36,44 L32,60 L28,44 L12,52 L20,36 L4,32 L20,28 L12,12 L28,20 Z"
               fill={`url(#star-${surah.id})`}
-              stroke={t.colors.accent}
-              strokeWidth={0.7}
-              strokeOpacity={0.55}
+              stroke={t.colors.accentDeep}
+              strokeWidth={1}
+              strokeOpacity={0.8}
             />
-            <Circle cx="32" cy="32" r="18" fill={t.colors.surface} stroke={t.colors.accent} strokeWidth="0.8" strokeOpacity="0.6" />
-            <Circle cx="32" cy="32" r="15" fill="none" stroke={t.colors.accent} strokeWidth="0.4" strokeOpacity="0.4" />
+            <Circle cx="32" cy="32" r="18" fill={t.colors.surface} stroke={t.colors.accentDeep} strokeWidth="1.2" strokeOpacity="0.8" />
+            <Circle cx="32" cy="32" r="14" fill="none" stroke={t.colors.accentDeep} strokeWidth="0.5" strokeOpacity="0.5" />
           </Svg>
           <Text
             style={{
               position: 'absolute',
               fontSize: 16,
               fontWeight: '800',
-              color: t.colors.accentDeep,
+              color: t.colors.primaryDark,
               letterSpacing: -0.3,
             }}
           >
@@ -91,18 +91,16 @@ export const SurahListItem: React.FC<Props> = ({ surah, onPress, isLastRead }) =
         </View>
 
         {/* اسم السورة + الميتا */}
-        <View style={{ flex: 1, marginStart: 14 }}>
+        <View style={{ flex: 1, marginStart: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text
               style={{
                 fontFamily: t.fontFamilies.arabicQuran,
-                fontSize: 23,
-                fontWeight: '700',
-                color: t.colors.textPrimary,
-                letterSpacing: -0.3,
+                fontSize: 24,
+                color: t.colors.primaryDark,
               }}
             >
-              {surah.nameAr}
+              سورة {surah.nameAr}
             </Text>
             {isLastRead ? (
               <View style={[styles.lastReadDot, { backgroundColor: t.colors.success }]} />
@@ -116,7 +114,7 @@ export const SurahListItem: React.FC<Props> = ({ surah, onPress, isLastRead }) =
                 {typeLabel}
               </Text>
             </View>
-            <Text style={{ fontSize: 12, color: t.colors.textSecondary, fontWeight: '600' }}>
+            <Text style={{ fontSize: 13, color: t.colors.textSecondary, fontWeight: '700' }}>
               {arabicNumber(surah.versesCount)} آية
             </Text>
           </View>
@@ -124,15 +122,12 @@ export const SurahListItem: React.FC<Props> = ({ surah, onPress, isLastRead }) =
 
         {/* عمود يمين — شارة جزء/صفحة */}
         <View style={styles.rightCol}>
-          <View style={[styles.juzPill, { backgroundColor: t.colors.accent + '14', borderColor: t.colors.accent + '30' }]}>
-            <Text style={{ fontSize: 9, fontWeight: '700', color: t.colors.accentDeep, letterSpacing: 1.2 }}>
-              الجزء
-            </Text>
-            <Text style={{ fontSize: 14, fontWeight: '800', color: t.colors.accentDeep, marginTop: 1 }}>
-              {arabicNumber(surah.juzStart)}
+          <View style={[styles.juzPill, { backgroundColor: t.colors.primaryDark, borderColor: t.colors.primaryDark }]}>
+            <Text style={{ fontSize: 12, fontWeight: '800', color: t.colors.accent, letterSpacing: 0.5 }}>
+              الجزء {arabicNumber(surah.juzStart)}
             </Text>
           </View>
-          <Text style={{ fontSize: 10, color: t.colors.textTertiary, marginTop: 5, fontWeight: '600' }}>
+          <Text style={{ fontSize: 11, color: t.colors.textTertiary, marginTop: 6, fontWeight: '700' }}>
             صفحة {arabicNumber(surah.pageStart)}
           </Text>
         </View>
@@ -150,8 +145,8 @@ const styles = StyleSheet.create({
   cardInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 12,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
   },
   numberWrap: {
     width: 56, height: 56,
@@ -161,7 +156,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 7,
+    marginTop: 14,
   },
   typeBadge: {
     flexDirection: 'row',

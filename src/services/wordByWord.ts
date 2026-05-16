@@ -11,6 +11,7 @@
  * Endpoint: GET https://api.quran.com/api/v4/verses/by_key/{surahId}:{ayahNumber}?words=true&word_translation_language=en
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LruCache } from '@/utils/lruCache';
 
 const API_BASE = 'https://api.quran.com/api/v4';
 const CACHE_PREFIX = '@nafahat/wbw/';
@@ -26,7 +27,8 @@ export interface QuranWord {
   position: number;
 }
 
-const memoryCache = new Map<string, QuranWord[]>();
+// كاش محدود بـ 150 آية لمنع تسرّب الذاكرة
+const memoryCache = new LruCache<string, QuranWord[]>(150);
 
 function cacheKey(surahId: number, ayahNumber: number): string {
   return `${surahId}:${ayahNumber}`;

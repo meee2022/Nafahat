@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { I18nManager, Platform, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { I18nManager, Platform, View, ActivityIndicator, StyleSheet, Image } from 'react-native';
+import Svg, { Rect } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts as useAmiriQuran, AmiriQuran_400Regular } from '@expo-google-fonts/amiri-quran';
 import {
@@ -19,11 +20,13 @@ import {
 } from '@expo-google-fonts/inter';
 import { ThemeProvider, useTheme } from '@theme/index';
 import { Text } from '@components/ui';
-import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore } from '@store/index';
+import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore, useAudioStore } from '@store/index';
 import { useLanguageStore } from '@store/languageStore';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
 import { useAppInfo } from '@store/appConfigStore';
+import { ToastProvider, useToast } from '@components/common/Toast';
+import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
 // عند الإقلاع نبدأ بـ RTL (لغة افتراضية عربية). languageStore يحدّث الاتجاه
@@ -56,9 +59,11 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <Root>
-            <AppGate />
-          </Root>
+          <ToastProvider>
+            <Root>
+              <AppGate />
+            </Root>
+          </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
@@ -69,6 +74,12 @@ function AppGate() {
   const router = useRouter();
   const segments = useSegments();
   const [hydrated, setHydrated] = useState(false);
+  const toast = useToast();
+
+  // 🏆 إشعار عند فتح إنجاز جديد
+  useAchievementNotifier((title, description) => {
+    toast.show({ title, description, type: 'achievement', duration: 5000 });
+  });
 
   const [fontsLoaded] = useAmiriQuran({
     AmiriQuran_400Regular,
@@ -96,6 +107,7 @@ function AppGate() {
   const hydrateWird = useWirdStore((s) => s.hydrate);
   const hydratePrefs = useUserPrefsStore((s) => s.hydrate);
   const hydrateAppConfig = useAppConfigStore((s) => s.hydrate);
+  const hydrateAudio = useAudioStore((s) => s.hydrate);
   const hasOnboarded = useUserStore((s) => s.hasOnboarded);
   const authStatus = useAuthStore((s) => s.status);
 
@@ -104,9 +116,9 @@ function AppGate() {
       await Promise.all([
         hydrateUser(), hydrateReading(), hydrateMemo(),
         hydrateStats(), hydrateTasbeeh(), hydrateLang(),
-        hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(),
+        hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(), hydrateAudio(),
       ]);
-      setTimeout(() => setHydrated(true), 900);
+      setTimeout(() => setHydrated(true), 1500);
     })();
   }, []);
 
@@ -149,6 +161,7 @@ function AppGate() {
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="surah/[id]" />
       <Stack.Screen name="reciter/[id]" />
+      <Stack.Screen name="adhkar/index" />
       <Stack.Screen name="adhkar/[category]" />
       <Stack.Screen name="tajweed/index" />
       <Stack.Screen name="tajweed/[id]" />
@@ -180,44 +193,55 @@ function SplashView() {
   const APP_INFO = useAppInfo();
   const quranFont = t.fontFamilies.arabicQuran;
   return (
-    <LinearGradient colors={['#143229', '#0A1815', '#070F0D']} style={styles.splash}>
+    <LinearGradient colors={['#0E261E', '#081712', '#040C09']} style={styles.splash}>
       <View style={styles.bgPattern} pointerEvents="none">
-        {Array.from({ length: 5 }).map((_, i) => (
+        {/* Subtle Concentric Circles */}
+        {Array.from({ length: 4 }).map((_, i) => (
           <View
             key={i}
             style={{
               position: 'absolute',
-              width: 200 + i * 80,
-              height: 200 + i * 80,
-              borderRadius: 1000,
-              borderWidth: 0.5,
-              borderColor: 'rgba(212, 181, 112, 0.06)',
+              width: 250 + i * 110,
+              height: 250 + i * 110,
+              borderRadius: 2000,
+              borderWidth: 0.8,
+              borderColor: 'rgba(212, 181, 112, 0.05)',
               top: '50%', left: '50%',
-              transform: [{ translateX: -(100 + i * 40) }, { translateY: -(100 + i * 40) }],
+              transform: [{ translateX: -(125 + i * 55) }, { translateY: -(125 + i * 55) }],
             }}
           />
         ))}
       </View>
 
-      <View style={styles.frameOuter}>
-        <View style={styles.frameInner}>
-          <Text style={styles.glyph}>﷽</Text>
-        </View>
+      <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+         {/* Rub el Hizb framing the Bismillah (Larger so it doesn't cross the text) */}
+         <View style={{ position: 'absolute', opacity: 0.6 }}>
+            <Svg width={200} height={200} viewBox="0 0 100 100">
+               <Rect x={18} y={18} width={64} height={64} fill="rgba(212, 181, 112, 0.03)" stroke="rgba(212, 181, 112, 0.4)" strokeWidth={0.5} />
+               <Rect x={18} y={18} width={64} height={64} fill="rgba(212, 181, 112, 0.03)" stroke="rgba(212, 181, 112, 0.4)" strokeWidth={0.5} transform="rotate(45 50 50)" />
+            </Svg>
+         </View>
+         
+         <Text style={{ fontSize: 56, color: '#E8C77F', fontFamily: 'serif', marginTop: -5, textShadowColor: 'rgba(212, 181, 112, 0.3)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 10 }}>
+            ﷽
+         </Text>
       </View>
 
       <Text style={[styles.brandName, { fontFamily: quranFont }]}>{APP_INFO.name}</Text>
-      <Text style={styles.brandTagline}>◇  صُحبة مع القرآن  ◇</Text>
-
-      <View style={{ marginTop: 48 }}>
-        <ActivityIndicator color="#D4B570" />
+      
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 16 }}>
+         <View style={{ width: 40, height: 1, backgroundColor: 'rgba(212, 181, 112, 0.3)' }} />
+         <Text style={styles.brandTagline}>صُحبة مع القرآن</Text>
+         <View style={{ width: 40, height: 1, backgroundColor: 'rgba(212, 181, 112, 0.3)' }} />
       </View>
 
-      {/* شارة "صدقة جارية" في أسفل الـ Splash */}
+      <View style={{ marginTop: 60 }}>
+        <ActivityIndicator color="#D4B570" size="large" />
+      </View>
+
       {APP_INFO.charityNotice ? (
         <View style={styles.charityWrap}>
-          <View style={styles.charityDot} />
           <Text style={styles.charityText}>{APP_INFO.charityNotice}</Text>
-          <View style={styles.charityDot} />
         </View>
       ) : null}
     </LinearGradient>
@@ -227,44 +251,20 @@ function SplashView() {
 const styles = StyleSheet.create({
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   bgPattern: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  frameOuter: {
-    width: 144, height: 144,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 181, 112, 0.5)',
-    alignItems: 'center', justifyContent: 'center',
-    transform: [{ rotate: '45deg' }],
-  },
-  frameInner: {
-    width: 96, height: 96,
-    borderWidth: 0.5,
-    borderColor: 'rgba(212, 181, 112, 0.7)',
-    alignItems: 'center', justifyContent: 'center',
-    transform: [{ rotate: '-45deg' }],
-  },
-  glyph: { fontSize: 38, color: '#D4B570', fontFamily: 'serif', fontWeight: '500' },
-  brandName: { fontSize: 46, fontWeight: '500', color: '#F5EFE0', marginTop: 30 },
-  brandTagline: { fontSize: 12, color: '#D4B570', marginTop: 10, letterSpacing: 1, fontWeight: '600', fontFamily: 'IBMPlexSansArabic_500Medium' },
+  brandName: { fontSize: 52, fontWeight: '500', color: '#FDFBF7', marginTop: 10, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 8 },
+  brandTagline: { fontSize: 13, color: '#D4B570', letterSpacing: 1.5, fontWeight: '600', fontFamily: 'IBMPlexSansArabic_500Medium' },
 
   charityWrap: {
     position: 'absolute',
     bottom: 50,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
     paddingHorizontal: 20,
   },
-  charityDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D4B570',
-    opacity: 0.7,
-  },
   charityText: {
-    color: 'rgba(245, 239, 224, 0.75)',
+    color: 'rgba(245, 239, 224, 0.5)',
     fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: 0.4,
+    fontWeight: '500',
+    letterSpacing: 0.5,
     textAlign: 'center',
   },
 });

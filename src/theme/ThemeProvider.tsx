@@ -106,8 +106,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fontScale: FONT_SCALE_MAP[fontScale],
   }), [resolvedMode, fontScale]);
 
+  const contextValue = useMemo(() => ({ theme, mode, setMode, fontScale, setFontScale }), [theme, mode, setMode, fontScale, setFontScale]);
+
   return (
-    <ThemeContext.Provider value={{ theme, mode, setMode, fontScale, setFontScale }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );

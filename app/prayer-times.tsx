@@ -16,6 +16,8 @@ import {
 } from '@services/prayerTimes';
 import { schedulePrayerNotifications, cancelAllPrayerNotifications, isAvailable as notifAvailable } from '@services/prayerNotifications';
 import { playAdhan, stopAdhan } from '@services/adhan';
+import { startAdhanScheduler, stopAdhanScheduler, updateAdhanTimes } from '@services/adhanScheduler';
+import { useSettingsStore } from '@store/index';
 import { Bell, BellOff, Volume2 } from 'lucide-react-native';
 
 // إحداثيات افتراضية - مكة المكرّمة
@@ -71,6 +73,23 @@ export default function PrayerTimesScreen() {
 
   const next = useMemo(() => nextPrayer(times, now), [times, now]);
 
+  // 🕌 الأذان التلقائي - يبدأ المُجدول لو مفعّل في الإعدادات
+  const autoAdhanEnabled = useSettingsStore((s) => s.autoAdhanEnabled);
+  const adhanVoice = useSettingsStore((s) => s.adhanVoice);
+  useEffect(() => {
+    if (autoAdhanEnabled) {
+      startAdhanScheduler(times, adhanVoice);
+    } else {
+      stopAdhanScheduler();
+    }
+    return () => stopAdhanScheduler();
+  }, [autoAdhanEnabled, adhanVoice]);
+
+  // حدّث المواقيت في المُجدول عند تغيير المنطقة أو الطريقة
+  useEffect(() => {
+    if (autoAdhanEnabled) updateAdhanTimes(times);
+  }, [times, autoAdhanEnabled]);
+
   const formatCountdown = (mins: number): string => {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
@@ -93,7 +112,14 @@ export default function PrayerTimesScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <View style={[styles.topBar, { borderBottomColor: t.colors.borderGold }]}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.iconBtn, { borderColor: t.colors.border }]}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack?.()) router.back();
+            else router.replace('/(tabs)');
+          }}
+          hitSlop={10}
+          style={[styles.iconBtn, { borderColor: t.colors.border }]}
+        >
           <ArrowRight size={18} color={t.colors.textPrimary} strokeWidth={1.6} />
         </Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>

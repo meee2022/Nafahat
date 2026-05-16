@@ -12,7 +12,7 @@ import { useTheme } from '@theme/index';
 import { Screen, Text, AppHeader } from '@components/ui';
 import { SurahListItem } from '@components/common';
 import { OrnamentalRule } from '@components/ornaments';
-import { SURAHS, JUZ_LIST, HIZB_LIST, arabicNumber } from '@data/surahs';
+import { SURAHS, JUZ_LIST, HIZB_LIST, arabicNumber, JUZ_PAGE_STARTS, getSurahForPage } from '@data/surahs';
 import { useT } from '@store/languageStore';
 
 type Tab = 'surah' | 'juz' | 'hizb';
@@ -46,6 +46,8 @@ export default function MushafScreen() {
             placeholderTextColor={t.colors.textTertiary}
             value={query}
             onChangeText={setQuery}
+            autoCapitalize="none"
+            autoCorrect={false}
             style={{ flex: 1, color: t.colors.textPrimary, textAlign: 'right', fontSize: 14, fontWeight: '500' }}
           />
         </View>
@@ -114,8 +116,9 @@ export default function MushafScreen() {
         {tab === 'juz' && (
           <JuzFlatList
             onItemPress={(juzId) => {
-              const firstSurah = SURAHS.find((s) => s.juzStart === juzId);
-              if (firstSurah) router.push(`/surah/${firstSurah.id}`);
+              const targetPage = JUZ_PAGE_STARTS[juzId - 1] || 1;
+              const surah = getSurahForPage(targetPage);
+              router.push(`/surah/${surah.id}?page=${targetPage}`);
             }}
           />
         )}
@@ -145,6 +148,10 @@ const SurahFlatList: React.FC<{
     keyExtractor={(item) => String(item.id)}
     contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 4 }}
     ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
+    removeClippedSubviews={Platform.OS !== 'web'}
+    initialNumToRender={12}
+    maxToRenderPerBatch={10}
+    windowSize={5}
     renderItem={({ item }) => <SurahListItem surah={item} onPress={() => onItemPress(item.id)} />}
     ListEmptyComponent={
       <View style={{ paddingTop: 60, alignItems: 'center' }}>
@@ -208,11 +215,11 @@ const JuzHizbCard: React.FC<{ number: number; title: string; kind: 'juz' | 'hizb
       style={({ pressed }) => [
         {
           flex: 1,
-          backgroundColor: hovered ? t.colors.accent + '08' : t.colors.surface,
-          borderWidth: 1,
-          borderColor: hovered ? t.colors.accent + '50' : t.colors.borderGold,
-          borderRadius: 14,
-          paddingVertical: isJuz ? 24 : 18,
+          backgroundColor: hovered ? t.colors.accent + '10' : t.colors.surface,
+          borderWidth: 1.5,
+          borderColor: hovered ? t.colors.primaryDark : 'rgba(212, 181, 112, 0.4)',
+          borderRadius: 16,
+          paddingVertical: isJuz ? 28 : 20,
           alignItems: 'center',
           opacity: pressed ? 0.92 : 1,
           transform: [
@@ -221,40 +228,40 @@ const JuzHizbCard: React.FC<{ number: number; title: string; kind: 'juz' | 'hizb
           ],
           shadowColor: hovered ? t.colors.accent : t.colors.shadowColor,
           shadowOffset: { width: 0, height: hovered ? 8 : 2 },
-          shadowOpacity: hovered ? 0.18 : 0.04,
-          shadowRadius: hovered ? 16 : 6,
+          shadowOpacity: hovered ? 0.15 : 0.05,
+          shadowRadius: hovered ? 16 : 8,
           elevation: hovered ? 4 : 1,
         },
       ]}
     >
-      {/* رصيعة ذهبية محيطة بالرقم */}
-      <View style={{ width: isJuz ? 64 : 50, height: isJuz ? 64 : 50, alignItems: 'center', justifyContent: 'center' }}>
-        <Svg width={isJuz ? 64 : 50} height={isJuz ? 64 : 50} viewBox="0 0 64 64" style={StyleSheet.absoluteFill}>
+      {/* رصيعة ذهبية وزمردية محيطة بالرقم */}
+      <View style={{ width: isJuz ? 68 : 54, height: isJuz ? 68 : 54, alignItems: 'center', justifyContent: 'center' }}>
+        <Svg width={isJuz ? 68 : 54} height={isJuz ? 68 : 54} viewBox="0 0 64 64" style={StyleSheet.absoluteFill}>
           <Defs>
             <SvgGradient id={`jh-grad-${kind}-${number}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <Stop offset="0%" stopColor={t.colors.accent} stopOpacity={hovered ? "0.24" : "0.14"} />
-              <Stop offset="100%" stopColor={t.colors.accent} stopOpacity="0.04" />
+              <Stop offset="0%" stopColor={t.colors.accent} stopOpacity={hovered ? "0.3" : "0.15"} />
+              <Stop offset="100%" stopColor={t.colors.accent} stopOpacity="0.05" />
             </SvgGradient>
           </Defs>
           {/* نجمة 8 بتلات */}
           <Path
             d="M32,4 L36,20 L52,12 L44,28 L60,32 L44,36 L52,52 L36,44 L32,60 L28,44 L12,52 L20,36 L4,32 L20,28 L12,12 L28,20 Z"
             fill={`url(#jh-grad-${kind}-${number})`}
-            stroke={t.colors.accent}
-            strokeWidth={hovered ? 0.7 : 0.5}
-            strokeOpacity={0.5}
+            stroke={t.colors.primaryDark}
+            strokeWidth={1}
+            strokeOpacity={0.8}
           />
           {/* دائرة مركزية مزدوجة */}
-          <Circle cx="32" cy="32" r="20" fill={t.colors.surface} stroke={t.colors.accent} strokeWidth="0.7" strokeOpacity="0.5" />
-          <Circle cx="32" cy="32" r="17" fill="none" stroke={t.colors.accent} strokeWidth="0.3" opacity="0.5" />
+          <Circle cx="32" cy="32" r="20" fill={t.colors.surface} stroke={t.colors.primaryDark} strokeWidth="1.2" strokeOpacity="0.8" />
+          <Circle cx="32" cy="32" r="16" fill="none" stroke={t.colors.primaryDark} strokeWidth="0.5" opacity="0.6" />
           {/* نقطة مركزية صغيرة */}
-          <Circle cx="32" cy="32" r="0.8" fill={t.colors.accent} opacity="0.4" />
+          <Circle cx="32" cy="32" r="1.5" fill={t.colors.primaryDark} opacity="0.5" />
         </Svg>
         <Text
           style={{
-            fontSize: isJuz ? 22 : 17,
+            fontSize: isJuz ? 24 : 18,
             fontWeight: '800',
-            color: t.colors.accentDeep,
+            color: t.colors.primaryDark,
             letterSpacing: -0.5,
           }}
         >
@@ -263,13 +270,12 @@ const JuzHizbCard: React.FC<{ number: number; title: string; kind: 'juz' | 'hizb
       </View>
 
       {isJuz ? (
-        <View style={{ marginTop: 10, alignItems: 'center' }}>
-          <OrnamentalRule width={50} color={t.colors.accent} variant="simple" />
+        <View style={{ marginTop: 14, alignItems: 'center' }}>
+          <OrnamentalRule width={60} color={t.colors.accent} variant="simple" />
           <Text style={{
-            marginTop: 6,
-            fontSize: 14,
-            fontWeight: '700',
-            color: t.colors.textPrimary,
+            marginTop: 8,
+            fontSize: 20,
+            color: t.colors.primaryDark,
             fontFamily: t.fontFamilies.arabicQuran,
           }}>
             {title}
@@ -277,9 +283,9 @@ const JuzHizbCard: React.FC<{ number: number; title: string; kind: 'juz' | 'hizb
         </View>
       ) : (
         <Text style={{
-          marginTop: 8,
-          fontSize: 12,
-          fontWeight: '600',
+          marginTop: 10,
+          fontSize: 14,
+          fontWeight: '700',
           color: t.colors.textSecondary,
           letterSpacing: 0.5,
         }}>

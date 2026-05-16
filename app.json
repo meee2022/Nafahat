@@ -25,7 +25,29 @@
       "package": "com.nafahat.app"
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "favicon": "./assets/icon.png",
+      "name": "نَفَحات - صحبة دائمة مع القرآن الكريم",
+      "shortName": "نَفَحات",
+      "lang": "ar",
+      "themeColor": "#0A1F17",
+      "backgroundColor": "#0A1F17",
+      "meta": {
+        "description": "نَفَحات — تطبيق القرآن الكريم الشامل. اقرأ القرآن بخط المصحف الشريف، استمع لأفضل القراء، تتبع حفظك، واحفظ أذكارك اليومية.",
+        "og:title": "نَفَحات — صحبة دائمة مع القرآن الكريم",
+        "og:description": "اقرأ القرآن الكريم بخط المدينة المنورة الأصيل، استمع لأفضل القراء، وتتبع ختمتك يومياً.",
+        "og:image": "https://nafahat.app/og-image.png",
+        "og:image:width": "1200",
+        "og:image:height": "630",
+        "og:type": "website",
+        "og:url": "https://nafahat.app",
+        "og:site_name": "نَفَحات",
+        "og:locale": "ar_AR",
+        "twitter:card": "summary_large_image",
+        "twitter:title": "نَفَحات — صحبة دائمة مع القرآن الكريم",
+        "twitter:description": "تطبيق القرآن الكريم الشامل — قراءة، استماع، حفظ، وأذكار.",
+        "twitter:image": "https://nafahat.app/og-image.png"
+      }
     },
     "plugins": [
       "expo-router",

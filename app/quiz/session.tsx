@@ -12,7 +12,7 @@ import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, TextInput }
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ArrowRight, Check, X, ChevronLeft, Sparkles, Flame, Trophy, Target, Award, AlertCircle,
+  ArrowRight, Check, X, ChevronLeft, ChevronRight, Sparkles, Flame, Trophy, Target, Award, AlertCircle,
 } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text, Card, Button, ProgressBar } from '@components/ui';
@@ -155,14 +155,54 @@ export default function QuizSessionScreen() {
     }
 
     const timeMs = Date.now() - questionStartRef.current;
-    setAnswers((prev) => [...prev, { questionId: current.id, correct, userAnswer, timeMs }]);
+    const newAnswer: QuizAnswer = { questionId: current.id, correct, userAnswer, timeMs };
+    // حفظ الإجابة بمفتاح index بدل push (لدعم الرجوع والتعديل)
+    setAnswers((prev) => {
+      const next = [...prev];
+      next[idx] = newAnswer;
+      return next;
+    });
     setRevealed(true);
+  };
+
+  /**
+   * استرجاع حالة الإجابة لسؤال محدد - يُستخدم لما المستخدم يرجع للسابق.
+   */
+  const restoreStateForIndex = (newIdx: number) => {
+    const stored = answers[newIdx];
+    if (stored) {
+      // مُجاب عليه - أظهر الحالة كاملة
+      setRevealed(true);
+      if (typeof stored.userAnswer === 'number') {
+        setSelectedOption(stored.userAnswer);
+        setTypedAnswer('');
+      } else if (typeof stored.userAnswer === 'string') {
+        setTypedAnswer(stored.userAnswer);
+        setSelectedOption(null);
+      } else {
+        setSelectedOption(null);
+        setTypedAnswer('');
+      }
+    } else {
+      // مش مُجاب عليه - حالة فاضية
+      setRevealed(false);
+      setSelectedOption(null);
+      setTypedAnswer('');
+    }
+    questionStartRef.current = Date.now();
+  };
+
+  const handlePrevious = () => {
+    if (idx === 0) return;
+    const newIdx = idx - 1;
+    setIdx(newIdx);
+    restoreStateForIndex(newIdx);
   };
 
   const handleNext = () => {
     if (idx >= questions.length - 1) {
       // إنهاء الجلسة وحفظها
-      const finalAnswers: QuizAnswer[] = answers;
+      const finalAnswers: QuizAnswer[] = answers.filter(Boolean);
       const stats = computeSessionStats(finalAnswers.map((a, i) => ({ correct: a.correct, questionPoints: questions[i]?.points ?? 10 })));
       recordSession(
         {
@@ -179,11 +219,9 @@ export default function QuizSessionScreen() {
       setFinished(true);
       return;
     }
-    setIdx((i) => i + 1);
-    setSelectedOption(null);
-    setTypedAnswer('');
-    setRevealed(false);
-    questionStartRef.current = Date.now();
+    const newIdx = idx + 1;
+    setIdx(newIdx);
+    restoreStateForIndex(newIdx);
   };
 
   const renderOption = (option: string, i: number) => {
@@ -211,7 +249,7 @@ export default function QuizSessionScreen() {
           fontWeight: '600',
           color: textColor,
           textAlign: 'center',
-          fontFamily: current.kind === 'nextAyah' || current.kind === 'completeVerse' ? t.fontFamilies.arabicQuran : undefined,
+          fontFamily: ['nextAyah', 'previousAyah', 'completeVerse', 'verseBeginning', 'ayahEnding', 'firstAyahOfSurah', 'lastAyahOfSurah'].includes(current.kind) ? t.fontFamilies.arabicQuran : undefined,
         }}>
           {option}
         </Text>
@@ -297,20 +335,20 @@ export default function QuizSessionScreen() {
         {/* لافتة الإجابة */}
         {revealed ? (
           <View style={[styles.feedbackBox, {
-            backgroundColor: (answers[answers.length - 1]?.correct ? t.colors.success : t.colors.error) + '14',
-            borderColor: answers[answers.length - 1]?.correct ? t.colors.success : t.colors.error,
+            backgroundColor: (answers[idx]?.correct ? t.colors.success : t.colors.error) + '14',
+            borderColor: answers[idx]?.correct ? t.colors.success : t.colors.error,
           }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {answers[answers.length - 1]?.correct ? (
+              {answers[idx]?.correct ? (
                 <Check size={18} color={t.colors.success} />
               ) : (
                 <X size={18} color={t.colors.error} />
               )}
-              <Text variant="subtitle" color={answers[answers.length - 1]?.correct ? t.colors.success : t.colors.error}>
-                {answers[answers.length - 1]?.correct ? tr('quiz.correct') : tr('quiz.wrong')}
+              <Text variant="subtitle" color={answers[idx]?.correct ? t.colors.success : t.colors.error}>
+                {answers[idx]?.correct ? tr('quiz.correct') : tr('quiz.wrong')}
               </Text>
             </View>
-            {!answers[answers.length - 1]?.correct && current.type === 'typing' ? (
+            {!answers[idx]?.correct && current.type === 'typing' ? (
               <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 6 }}>
                 {tr('quiz.correctAnswer')} {current.correctAnswer}
               </Text>
@@ -323,22 +361,66 @@ export default function QuizSessionScreen() {
           </View>
         ) : null}
 
-        {/* زر تحقّق / التالي */}
+        {/* أزرار التنقّل */}
         <View style={{ marginTop: 18 }}>
           {!revealed ? (
-            <Button
-              label={tr('quiz.checkAnswer')}
-              onPress={handleCheck}
-              disabled={current.type === 'typing' ? !typedAnswer.trim() : selectedOption === null}
-              fullWidth
-            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {idx > 0 ? (
+                <Pressable
+                  onPress={handlePrevious}
+                  style={({ pressed }) => [
+                    styles.navBtn,
+                    {
+                      borderColor: t.colors.border,
+                      backgroundColor: t.colors.surface,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <ChevronRight size={18} color={t.colors.textSecondary} strokeWidth={2.2} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textSecondary }}>
+                    السابق
+                  </Text>
+                </Pressable>
+              ) : null}
+              <View style={{ flex: 1 }}>
+                <Button
+                  label={tr('quiz.checkAnswer')}
+                  onPress={handleCheck}
+                  disabled={current.type === 'typing' ? !typedAnswer.trim() : selectedOption === null}
+                  fullWidth
+                />
+              </View>
+            </View>
           ) : (
-            <Button
-              label={idx >= questions.length - 1 ? tr('quiz.finish') : tr('quiz.next')}
-              iconLeft={<ChevronLeft size={18} color={t.colors.onPrimary} />}
-              onPress={handleNext}
-              fullWidth
-            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              {idx > 0 ? (
+                <Pressable
+                  onPress={handlePrevious}
+                  style={({ pressed }) => [
+                    styles.navBtn,
+                    {
+                      borderColor: t.colors.border,
+                      backgroundColor: t.colors.surface,
+                      opacity: pressed ? 0.85 : 1,
+                    },
+                  ]}
+                >
+                  <ChevronRight size={18} color={t.colors.textSecondary} strokeWidth={2.2} />
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textSecondary }}>
+                    السابق
+                  </Text>
+                </Pressable>
+              ) : null}
+              <View style={{ flex: 1 }}>
+                <Button
+                  label={idx >= questions.length - 1 ? tr('quiz.finish') : tr('quiz.next')}
+                  iconLeft={<ChevronLeft size={18} color={t.colors.onPrimary} />}
+                  onPress={handleNext}
+                  fullWidth
+                />
+              </View>
+            </View>
           )}
         </View>
       </ScrollView>
@@ -375,6 +457,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 16, paddingVertical: 14,
     borderWidth: 1.5, borderRadius: 8,
+  },
+
+  navBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderRadius: 12,
+    minWidth: 110,
+    justifyContent: 'center',
   },
 
   textInput: {

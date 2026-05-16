@@ -152,7 +152,7 @@ export default function WirdScreen() {
 
         {/* متابعة القراءة */}
         {lastRead ? (
-          <Pressable onPress={() => router.push(`/surah/${lastRead.surahId}`)}>
+          <Pressable onPress={() => router.push(`/surah/${lastRead.surahId}?ayah=${lastRead.ayahNumber}`)}>
             <Card padding={t.spacing.lg} elevation="sm" style={{ marginTop: 14 }} bordered>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                 <View style={[styles.continueIcon, { backgroundColor: t.colors.primary }]}>

@@ -675,6 +675,85 @@ export const IllAchievements: React.FC<IProps> = ({ size = 64 }) => (
     {/* ومضات */}
     <Circle cx="22" cy="26" r="1.5" fill="#FBF7EA" />
     <Circle cx="78" cy="24" r="1.2" fill="#FBF7EA" />
+    <Circle cx="20" cy="70" r="1" fill="#FBF7EA" />
+    <Circle cx="80" cy="72" r="1.3" fill="#FBF7EA" />
+  </Svg>
+);
+
+// =================== الأحاديث (طومار/مخطوطة) ===================
+export const IllHadith: React.FC<IProps> = ({ size = 64 }) => (
+  <Svg width={size} height={size} viewBox="0 0 100 100">
+    <Defs>
+      <LinearGradient id="bg-hadith" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#8B5A3C" />
+        <Stop offset="100%" stopColor="#5C3A24" />
+      </LinearGradient>
+      <LinearGradient id="scroll" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#FBF7EA" />
+        <Stop offset="100%" stopColor="#E8D8B0" />
+      </LinearGradient>
+    </Defs>
+    <Circle cx="50" cy="50" r="48" fill="url(#bg-hadith)" />
+    <Circle cx="50" cy="50" r="48" fill="none" stroke="#D4B570" strokeWidth="0.8" opacity="0.4" />
+
+    {/* الطومار الرئيسي */}
+    <Rect x="26" y="32" width="48" height="38" rx="2" fill="url(#scroll)" stroke="#8C7430" strokeWidth="0.8" />
+
+    {/* رولة علوية */}
+    <Path d="M 22 30 L 78 30 C 80 30, 80 36, 78 36 L 22 36 C 20 36, 20 30, 22 30 Z" fill="#D4B570" stroke="#8C7430" strokeWidth="0.6" />
+    <Circle cx="22" cy="33" r="2" fill="#8C7430" />
+    <Circle cx="78" cy="33" r="2" fill="#8C7430" />
+
+    {/* رولة سفلية */}
+    <Path d="M 22 66 L 78 66 C 80 66, 80 72, 78 72 L 22 72 C 20 72, 20 66, 22 66 Z" fill="#D4B570" stroke="#8C7430" strokeWidth="0.6" />
+    <Circle cx="22" cy="69" r="2" fill="#8C7430" />
+    <Circle cx="78" cy="69" r="2" fill="#8C7430" />
+
+    {/* أسطر النص */}
+    <Path d="M 32 42 L 68 42" stroke="#8C7430" strokeWidth="0.7" opacity="0.7" />
+    <Path d="M 32 47 L 64 47" stroke="#8C7430" strokeWidth="0.5" opacity="0.5" />
+    <Path d="M 32 52 L 68 52" stroke="#8C7430" strokeWidth="0.5" opacity="0.5" />
+    <Path d="M 32 57 L 62 57" stroke="#8C7430" strokeWidth="0.5" opacity="0.5" />
+    <Path d="M 32 62 L 66 62" stroke="#8C7430" strokeWidth="0.5" opacity="0.5" />
+
+    {/* زخرفة ذهبية في المنتصف */}
+    <Circle cx="50" cy="42" r="1.4" fill="#A2384B" />
+  </Svg>
+);
+
+// =================== الملاحظات (دفتر مع قلم) ===================
+export const IllNotes: React.FC<IProps> = ({ size = 64 }) => (
+  <Svg width={size} height={size} viewBox="0 0 100 100">
+    <Defs>
+      <LinearGradient id="bg-notes" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#6B4FBB" />
+        <Stop offset="100%" stopColor="#3F2A7F" />
+      </LinearGradient>
+    </Defs>
+    <Circle cx="50" cy="50" r="48" fill="url(#bg-notes)" />
+    <Circle cx="50" cy="50" r="48" fill="none" stroke="#D4B570" strokeWidth="0.8" opacity="0.4" />
+
+    {/* الدفتر */}
+    <Rect x="28" y="26" width="40" height="50" rx="2" fill="#FBF7EA" stroke="#8C7430" strokeWidth="0.8" />
+    {/* خط جانبي للتجليد */}
+    <Rect x="28" y="26" width="4" height="50" fill="#A2384B" />
+
+    {/* أسطر */}
+    <Path d="M 36 36 L 64 36" stroke="#8C7430" strokeWidth="0.5" opacity="0.6" />
+    <Path d="M 36 44 L 64 44" stroke="#8C7430" strokeWidth="0.5" opacity="0.6" />
+    <Path d="M 36 52 L 60 52" stroke="#8C7430" strokeWidth="0.5" opacity="0.6" />
+    <Path d="M 36 60 L 64 60" stroke="#8C7430" strokeWidth="0.5" opacity="0.6" />
+    <Path d="M 36 68 L 56 68" stroke="#8C7430" strokeWidth="0.5" opacity="0.6" />
+
+    {/* قلم بزاوية */}
+    <Path
+      d="M 64 22 L 78 36 L 74 40 L 60 26 Z"
+      fill="#D4B570" stroke="#8C7430" strokeWidth="0.5"
+    />
+    {/* رأس القلم */}
+    <Path d="M 78 36 L 82 32 L 84 34 L 80 38 Z" fill="#A2384B" />
+    {/* الجسم */}
+    <Path d="M 60 26 L 56 22 L 58 20 L 62 24 Z" fill="#5C3A24" />
     <Path d="M18,68 L19,71 L22,72 L19,73 L18,76 L17,73 L14,72 L17,71 Z" fill="#FBF7EA" opacity="0.8" />
   </Svg>
 );

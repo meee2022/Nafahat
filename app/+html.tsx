@@ -6,6 +6,10 @@
  *
  * يضمن أن كل النصوص العربية في كل أنحاء التطبيق تستخدم خطاً عربياً صحيحاً
  * يدعم الـ tashkeel والحروف المتصلة بدون انقطاع.
+ *
+ * 🔑 الحل الأساسي لمشكلة "الكلام مقطع":
+ *    letter-spacing: 0 !important على كل العناصر في RTL.
+ *    هذا يشمل inline styles من React Native Web ويحلّ المشكلة في كل الصفحات.
  */
 import React from 'react';
 import { ScrollViewStyleReset } from 'expo-router/html';
@@ -30,7 +34,7 @@ export default function Root({ children }: Props) {
         <style dangerouslySetInnerHTML={{ __html: `
           html, body, #root { margin: 0; min-height: 100vh; }
 
-          /* الخط العربي العام لكل العناصر - مع fallback شامل */
+          /* ════ الخطوط الأساسية ════ */
           html, body, #root, div, span, p, h1, h2, h3, h4, h5, h6,
           button, input, textarea, select, label, a, li, td, th {
             font-family: "IBM Plex Sans Arabic", "Inter", -apple-system, BlinkMacSystemFont,
@@ -43,22 +47,41 @@ export default function Root({ children }: Props) {
           }
 
           body {
-            font-family: "IBM Plex Sans Arabic", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+            font-family: "IBM Plex Sans Arabic", "Inter", system-ui, -apple-system, sans-serif;
           }
 
-          /* النص القرآني - خط Amiri Quran فقط */
+          /* ════ النص القرآني - خط Amiri Quran ════ */
           [data-quran-text="true"], .quran-text {
             font-family: "Amiri Quran", "Traditional Arabic", serif !important;
           }
 
-          /* منع كسر الكلمات العربية */
-          * {
-            word-spacing: normal;
+          /* ════ 🔑 الحل الجوهري: منع letter-spacing على النصوص العربية ════
+             letter-spacing الكبير بيكسر الحروف المتصلة والتشكيل في العربي.
+             نشيله من كل النصوص داخل RTL، والاستثناء على الأرقام فقط. */
+          [dir="rtl"] *,
+          html[dir="rtl"] body * {
+            letter-spacing: 0 !important;
+            word-spacing: normal !important;
           }
 
-          /* عزل الاتجاه - يساعد على تجنّب كسر الحروف العربية المتصلة */
-          [dir="rtl"] * {
+          /* الأرقام (ساعة العداد، الإحصائيات) ممكن تحتفظ بـ tabular-nums
+             لكن من غير letter-spacing عشان مايبقاش متباعد جداً */
+          [dir="rtl"] [data-tabular-nums="true"] {
+            font-variant-numeric: tabular-nums;
+            letter-spacing: 0 !important;
+          }
+
+          /* الـ unicode-bidi لعزل اتجاه النصوص داخل العنصر */
+          [dir="rtl"] {
             unicode-bidi: isolate;
+          }
+
+          /* ════ تحسينات إضافية ════ */
+          * { box-sizing: border-box; }
+
+          /* منع زوم iOS عند الضغط على input */
+          input, textarea, select {
+            font-size: 16px;
           }
         `}} />
 

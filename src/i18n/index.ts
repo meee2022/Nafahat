@@ -52,9 +52,38 @@ export function isRtlLanguage(code: LanguageCode): boolean {
   return getLanguageMeta(code).rtl;
 }
 
+/**
+ * ترتيب الـ fallback لما المفتاح مش موجود في لغة المستخدم:
+ *
+ * 1. اللغة المختارة
+ * 2. الإنجليزي (مفهومة لمعظم مستخدمين العالم)
+ * 3. العربي (للمسلمين اللي بيفهموا العربي)
+ * 4. اسم المفتاح كـ آخر حل (شائع في dev mode)
+ *
+ * ⚠️ ملاحظة: 7 لغات (fa, ha, id, ms, sw, tr, ur) عندها 106 مفتاح فقط
+ * من أصل 651 - يعني أكتر من 80% من النصوص هترجع للـ fallback.
+ * الحل النهائي: استكمال الترجمات بالـ AI أو مترجمين بشريين.
+ */
 export function translate(key: TranslationKey, lang: LanguageCode): string {
   const dict = DICTIONARIES[lang];
-  return dict[key] ?? ar[key] ?? key;
+  return dict[key] ?? en[key] ?? ar[key] ?? key;
+}
+
+/**
+ * إحصائيات اكتمال اللغات - يستخدمها UI لإظهار "completeness %".
+ */
+export function getLanguageCompleteness(lang: LanguageCode): {
+  translated: number;
+  total: number;
+  percent: number;
+} {
+  const total = Object.keys(ar).length;
+  const translated = Object.keys(DICTIONARIES[lang]).length;
+  return {
+    translated,
+    total,
+    percent: Math.round((translated / total) * 100),
+  };
 }
 
 export type { TranslationKey };

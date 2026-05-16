@@ -8,7 +8,7 @@ import { ArrowRight, Check, Globe } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Card } from '@components/ui';
 import { useLanguageStore, useT } from '@store/languageStore';
-import { LANGUAGES } from '@/i18n/index';
+import { LANGUAGES, getLanguageCompleteness } from '@/i18n/index';
 
 export default function LanguagesScreen() {
   const t = useTheme();
@@ -37,11 +37,11 @@ export default function LanguagesScreen() {
             <Globe size={20} color={t.colors.accent} />
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textPrimary }}>
-                لغات مدعومة بالكامل
+                نظام الترجمة الذكي
               </Text>
-              <Text style={{ fontSize: 12, color: t.colors.textSecondary, marginTop: 4 }}>
-                واجهة التطبيق متاحة بـ 3 لغات أساسية (عربي، إنجليزي، فرنسي).
-                الترجمة الجزئية لـ 7 لغات أخرى مع التطوير المستمر.
+              <Text style={{ fontSize: 12, color: t.colors.textSecondary, marginTop: 4, lineHeight: 18 }}>
+                3 لغات كاملة (العربية، الإنجليزية، الفرنسية). للغات الأخرى:
+                النصوص المُترجمة تظهر بلغتك، والباقي يرجع للإنجليزية تلقائياً.
               </Text>
             </View>
           </View>
@@ -52,7 +52,11 @@ export default function LanguagesScreen() {
         <Card padding={0} elevation="xs" bordered>
           {LANGUAGES.map((l, i) => {
             const isActive = l.code === lang;
-            const isComplete = l.code === 'ar' || l.code === 'en' || l.code === 'fr';
+            const stats = getLanguageCompleteness(l.code);
+            const isFull = stats.percent >= 95;
+            const isMostly = stats.percent >= 50;
+            const badgeColor = isFull ? t.colors.success : (isMostly ? t.colors.info : t.colors.warning);
+            const badgeLabel = isFull ? 'كاملة' : `${stats.percent}%`;
             return (
               <Pressable
                 key={l.code}
@@ -74,20 +78,19 @@ export default function LanguagesScreen() {
                     <Text style={{ fontSize: 15, fontWeight: '700', color: t.colors.textPrimary }}>
                       {l.nameNative}
                     </Text>
-                    {!isComplete ? (
-                      <View style={{
-                        paddingHorizontal: 6, paddingVertical: 2,
-                        borderRadius: 999,
-                        backgroundColor: t.colors.warning + '20',
-                      }}>
-                        <Text style={{ fontSize: 9, fontWeight: '700', color: t.colors.warning }}>
-                          ترجمة جزئية
-                        </Text>
-                      </View>
-                    ) : null}
+                    <View style={{
+                      paddingHorizontal: 6, paddingVertical: 2,
+                      borderRadius: 999,
+                      backgroundColor: badgeColor + '20',
+                    }}>
+                      <Text style={{ fontSize: 9, fontWeight: '800', color: badgeColor }}>
+                        {badgeLabel}
+                      </Text>
+                    </View>
                   </View>
                   <Text style={{ fontSize: 11, color: t.colors.textTertiary, marginTop: 2 }}>
                     {l.nameEn}{l.rtl ? '  ·  RTL' : ''}
+                    {!isFull ? `  ·  ${stats.translated}/${stats.total} نص` : ''}
                   </Text>
                 </View>
                 {isActive ? (

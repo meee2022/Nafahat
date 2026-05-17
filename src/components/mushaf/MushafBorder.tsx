@@ -172,12 +172,12 @@ const CornerMedallion: React.FC<{
 
 // ════════ الأنماط ════════
 
-const BORDER_GAP   = 2;
-const ORNAMENT_W   = 16;
-const MEDALLION    = 20;
+const BORDER_GAP   = 1;   // فراغ رفيع بين الطبقات
+const ORNAMENT_W   = 11;  // عرض الشريط الزخرفي - أقل لزيادة مساحة النص
+const MEDALLION    = 17;  // رصيعة الزاوية - أصغر
 
 const styles = StyleSheet.create({
-  outer: { flex: 1, paddingHorizontal: 4, paddingVertical: 0 },
+  outer: { flex: 1, paddingHorizontal: 3, paddingVertical: 0 },
   thickFrame: { flex: 1, padding: BORDER_GAP },
   gap: { flex: 1, padding: BORDER_GAP },
   ornamentBand: { flex: 1, padding: ORNAMENT_W, position: 'relative' },

@@ -420,12 +420,12 @@ export default function SurahDetail() {
       <View style={{ flex: 1, width: '100%', maxWidth: 700, alignSelf: 'center' }}>
         {/* ───── الترويسة ───── */}
         {/* شريط الإجراءات العلوي الشفاف (فوق الإطار) */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: Platform.OS === 'ios' ? 44 : 20, paddingBottom: 8 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: Platform.OS === 'ios' ? 44 : 16, paddingBottom: 4 }}>
           <Pressable onPress={() => router.push('/mushaf')} hitSlop={10}>
-            <Menu size={24} color={MUSHAF.inkSoft} strokeWidth={2} />
+            <Menu size={22} color={MUSHAF.inkSoft} strokeWidth={2} />
           </Pressable>
           <Pressable onPress={() => { if (router.canGoBack?.()) router.back(); else router.replace('/mushaf'); }} hitSlop={10}>
-            <ArrowLeft size={24} color={MUSHAF.inkSoft} strokeWidth={2} />
+            <ArrowLeft size={22} color={MUSHAF.inkSoft} strokeWidth={2} />
           </Pressable>
         </View>
 
@@ -477,19 +477,19 @@ export default function SurahDetail() {
 
         {/* شريط التحكم بالصوت */}
         {!isImmersive && !selectedAyah && (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7 }}>
             <Pressable onPress={handlePlay} hitSlop={10}>
-              {isCurrentlyPlaying ? <Pause size={24} color={MUSHAF.goldDeep} /> : <Play size={24} color={MUSHAF.goldDeep} />}
+              {isCurrentlyPlaying ? <Pause size={22} color={MUSHAF.goldDeep} /> : <Play size={22} color={MUSHAF.goldDeep} />}
             </Pressable>
 
-            <Pressable onPress={() => setShowRecitersModal(true)} style={{ backgroundColor: MUSHAF.buttonBg, paddingHorizontal: 14, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: MUSHAF.gold }}>
-              <Text style={{ color: MUSHAF.goldDeep, fontSize: 13, fontWeight: '700' }}>
+            <Pressable onPress={() => setShowRecitersModal(true)} style={{ backgroundColor: MUSHAF.buttonBg, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: MUSHAF.gold }}>
+              <Text style={{ color: MUSHAF.goldDeep, fontSize: 12, fontWeight: '700' }}>
                 بصوت: {activeReciter.nameAr.split(' ').slice(-2).join(' ')}
               </Text>
             </Pressable>
 
             <Pressable onPress={() => setIsImmersive(v => !v)} hitSlop={10}>
-              <Eye size={22} color={MUSHAF.inkSoft} strokeWidth={2} />
+              <Eye size={20} color={MUSHAF.inkSoft} strokeWidth={2} />
             </Pressable>
           </View>
         )}

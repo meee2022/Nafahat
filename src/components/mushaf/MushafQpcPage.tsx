@@ -292,7 +292,7 @@ const MushafLine: React.FC<LineProps> = ({
             style={{
               fontFamily: getQpcFontFamily(w.font),
               fontSize,
-              lineHeight: fontSize * 1.9,
+              lineHeight: fontSize * 1.7,
               color: isEnd ? goldColor : inkColor,
               backgroundColor: bg,
               writingDirection: 'rtl',
@@ -311,21 +311,19 @@ const MushafLine: React.FC<LineProps> = ({
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    paddingHorizontal: 6,
-    paddingTop: 6,
-    paddingBottom: 12, // مساحة إضافية للسطر الأخير حتى لا يلامس الإطار السفلي
+    paddingHorizontal: 4,
+    paddingTop: 4,
+    paddingBottom: 4,
     justifyContent: 'space-evenly',
-    overflow: 'hidden', // ⛔ يمنع الكلمات من الطلوع فوق الإطار
+    overflow: 'hidden',
   },
   line: {
     width: '100%',
-    // ⚠️ I18nManager.forceRTL(true) + dir="rtl" يقلبا flexDirection: 'row' تلقائياً.
-    //   فلو نحطّ 'row-reverse' هنحصل على قلب مزدوج (LTR)! الصح هو 'row' فقط.
     flexDirection: 'row',
-    justifyContent: 'center',  // Center groups words together safely on any screen width
+    justifyContent: 'center',
     alignItems: 'center',
     flexWrap: 'nowrap',
-    paddingVertical: 1,
+    paddingVertical: 0,
     overflow: 'hidden',
   },
   surahHeaderLine: {

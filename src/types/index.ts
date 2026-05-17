@@ -240,7 +240,16 @@ export type QuizQuestionKind =
   | 'surahBefore'       // أي سورة قبل سورة X؟
   | 'surahAfter'        // أي سورة بعد سورة X؟
   | 'firstAyahOfSurah'  // ما أول آية في سورة X؟
-  | 'lastAyahOfSurah';  // ما آخر آية في سورة X؟
+  | 'lastAyahOfSurah'   // ما آخر آية في سورة X؟
+
+  // ───── أسئلة جديدة على غرار اختبارات حفظ القرآن ─────
+  | 'surahOrder'        // ما ترتيب سورة X في المصحف؟ (1-114)
+  | 'whichPage'         // في أي صفحة تقع هذه الآية؟
+  | 'wordCountAyah'     // كم عدد كلمات هذه الآية؟
+  | 'arrangeAyahs'      // رتّب الآيات الثلاث بترتيبها الصحيح
+  | 'muqattaat'         // هل سورة X مبدوءة بحروف مقطّعة؟
+  | 'longestSurah'      // أيّ السور هي الأطول/الأقصر بين هذه؟
+  | 'pageCountSurah';   // كم صفحة تشغل سورة X في المصحف؟
 
 /** سؤال اختبار: قد يكون اختيار من متعدّد أو صح/خطأ أو إدخال نصّي. */
 export interface QuizQuestion {

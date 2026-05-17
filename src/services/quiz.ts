@@ -36,7 +36,7 @@
  *   - تنوّع في الأنواع بنسبة متوازنة
  */
 
-import { SURAHS, getSurahById } from '@data/surahs';
+import { SURAHS, getSurahById, arabicNumber } from '@data/surahs';
 import { getSurahAyahs } from '@services/quranApi';
 import { Ayah, QuizLevel, QuizQuestion, QuizQuestionKind } from '@/types/index';
 
@@ -547,6 +547,187 @@ function makeLastAyahOfSurah(surah: typeof SURAHS[number], ayahs: Ayah[]): QuizQ
   };
 }
 
+// ─── 19. ترتيب السورة في المصحف ───
+function makeSurahOrder(surah: typeof SURAHS[number], allSurahs: typeof SURAHS): QuizQuestion | null {
+  const correct = surah.id;
+  // 3 distractors قريبة من الرقم الصحيح
+  const distractorSet = new Set<number>();
+  while (distractorSet.size < 3) {
+    const offset = (Math.floor(Math.random() * 20) + 1) * (Math.random() < 0.5 ? -1 : 1);
+    const cand = correct + offset;
+    if (cand >= 1 && cand <= 114 && cand !== correct) distractorSet.add(cand);
+  }
+  const options = shuffle([correct, ...Array.from(distractorSet)]).map((n) => arabicNumber(n));
+  return {
+    id: `q-${surah.id}-order-${Date.now()}`,
+    kind: 'surahOrder', type: 'mcq',
+    prompt: `ما ترتيب سورة ${surah.nameAr} في المصحف؟`,
+    options,
+    correctIndex: options.indexOf(arabicNumber(correct)),
+    points: 10,
+    explanation: `سورة ${surah.nameAr} هي السورة رقم ${arabicNumber(correct)} في المصحف`,
+  };
+}
+
+// ─── 20. في أي صفحة تقع الآية ───
+function makeWhichPage(ayah: Ayah, surah: typeof SURAHS[number]): QuizQuestion | null {
+  const correctPage = ayah.page;
+  if (!correctPage) return null;
+  const distractorSet = new Set<number>();
+  while (distractorSet.size < 3) {
+    const offset = (Math.floor(Math.random() * 15) + 1) * (Math.random() < 0.5 ? -1 : 1);
+    const cand = correctPage + offset;
+    if (cand >= 1 && cand <= 604 && cand !== correctPage) distractorSet.add(cand);
+  }
+  const options = shuffle([correctPage, ...Array.from(distractorSet)]).map((n) => `صفحة ${arabicNumber(n)}`);
+  return {
+    id: `q-${surah.id}-${ayah.number}-page-${Date.now()}`,
+    kind: 'whichPage', type: 'mcq',
+    prompt: 'في أي صفحة تقع هذه الآية؟',
+    context: ayah.text,
+    options,
+    correctIndex: options.indexOf(`صفحة ${arabicNumber(correctPage)}`),
+    points: 12,
+    explanation: `هذه الآية في صفحة ${arabicNumber(correctPage)} من سورة ${surah.nameAr}`,
+  };
+}
+
+// ─── 21. عدد كلمات الآية ───
+function makeWordCountAyah(ayah: Ayah, surah: typeof SURAHS[number]): QuizQuestion | null {
+  const words = ayah.text.split(/\s+/).filter(Boolean).length;
+  if (words < 2) return null;
+  const distractorSet = new Set<number>();
+  while (distractorSet.size < 3) {
+    const offset = (Math.floor(Math.random() * 4) + 1) * (Math.random() < 0.5 ? -1 : 1);
+    const cand = words + offset;
+    if (cand > 0 && cand !== words) distractorSet.add(cand);
+  }
+  const options = shuffle([words, ...Array.from(distractorSet)]).map((n) => `${arabicNumber(n)} كلمة`);
+  return {
+    id: `q-${surah.id}-${ayah.number}-wc-${Date.now()}`,
+    kind: 'wordCountAyah', type: 'mcq',
+    prompt: 'كم عدد كلمات هذه الآية؟',
+    context: ayah.text,
+    options,
+    correctIndex: options.indexOf(`${arabicNumber(words)} كلمة`),
+    points: 10,
+    explanation: `الآية فيها ${arabicNumber(words)} كلمة`,
+  };
+}
+
+// ─── 22. ترتيب الآيات الثلاث ───
+function makeArrangeAyahs(sameSurahAyahs: Ayah[], surah: typeof SURAHS[number]): QuizQuestion | null {
+  if (sameSurahAyahs.length < 5) return null;
+  // اختر 3 آيات متتالية
+  const startIdx = Math.floor(Math.random() * (sameSurahAyahs.length - 3));
+  const trio = sameSurahAyahs.slice(startIdx, startIdx + 3);
+  const correctOrder = trio.map((a) => a.text);
+  // 4 ترتيبات: واحد صحيح + 3 خطأ
+  const wrong1 = [trio[1].text, trio[0].text, trio[2].text];
+  const wrong2 = [trio[2].text, trio[1].text, trio[0].text];
+  const wrong3 = [trio[0].text, trio[2].text, trio[1].text];
+  const opts = shuffle([correctOrder, wrong1, wrong2, wrong3]);
+  const options = opts.map((arr) =>
+    arr.map((t) => t.length > 25 ? t.slice(0, 25) + '...' : t).join('  →  '),
+  );
+  const correctText = correctOrder.map((t) => t.length > 25 ? t.slice(0, 25) + '...' : t).join('  →  ');
+  return {
+    id: `q-${surah.id}-${startIdx}-arrange-${Date.now()}`,
+    kind: 'arrangeAyahs', type: 'mcq',
+    prompt: 'رتّب الآيات حسب ورودها الصحيح في السورة:',
+    context: `سورة ${surah.nameAr}`,
+    options,
+    correctIndex: options.indexOf(correctText),
+    points: 18,
+    explanation: `الترتيب الصحيح: من الآية ${arabicNumber(trio[0].number)} إلى ${arabicNumber(trio[2].number)}`,
+  };
+}
+
+/** قائمة السور التي تبدأ بحروف مقطّعة (29 سورة). */
+const MUQATTAAT_SURAH_IDS = new Set<number>([
+  2, 3, 7, 10, 11, 12, 13, 14, 15, 19, 20, 26, 27, 28, 29, 30,
+  31, 32, 36, 38, 40, 41, 42, 43, 44, 45, 46, 50, 68,
+]);
+
+// ─── 23. حروف مقطّعة (صح/خطأ) ───
+function makeMuqattaat(surah: typeof SURAHS[number]): QuizQuestion {
+  const isActuallyMuqattaat = MUQATTAAT_SURAH_IDS.has(surah.id);
+  // تساوي احتمالية السؤال الصحيح والخطأ
+  const askTruthy = Math.random() < 0.5;
+  // لو askTruthy، نسأل عن المقطّعة (الإجابة الصحيحة لو is muqattaat)
+  // لو ! askTruthy، نسأل بالعكس
+  const correctIndex = askTruthy
+    ? (isActuallyMuqattaat ? 0 : 1)  // 0 = نعم، 1 = لا
+    : (isActuallyMuqattaat ? 1 : 0);
+  return {
+    id: `q-${surah.id}-muqat-${Date.now()}`,
+    kind: 'muqattaat', type: 'truefalse',
+    prompt: askTruthy
+      ? `هل تبدأ سورة ${surah.nameAr} بحروف مقطّعة؟`
+      : `هل سورة ${surah.nameAr} ليست من السور المبتدئة بحروف مقطّعة؟`,
+    options: ['نعم', 'لا'],
+    correctIndex,
+    points: 8,
+    explanation: isActuallyMuqattaat
+      ? `نعم، سورة ${surah.nameAr} من السور التسع والعشرين المبتدئة بحروف مقطّعة`
+      : `سورة ${surah.nameAr} لا تبدأ بحروف مقطّعة`,
+  };
+}
+
+// ─── 24. السورة الأطول/الأقصر ───
+function makeLongestSurah(allSurahs: typeof SURAHS): QuizQuestion | null {
+  // اختر 4 سور عشوائية
+  const picked = pickN(allSurahs, 4);
+  if (picked.length < 4) return null;
+  const askLongest = Math.random() < 0.5;
+  const sorted = [...picked].sort((a, b) => askLongest
+    ? b.versesCount - a.versesCount
+    : a.versesCount - b.versesCount,
+  );
+  const correct = sorted[0];
+  const options = picked.map((s) => `سورة ${s.nameAr}`);
+  return {
+    id: `q-longest-${correct.id}-${Date.now()}`,
+    kind: 'longestSurah', type: 'mcq',
+    prompt: askLongest
+      ? 'أيّ السور التالية هي الأطول (أكثر آيات)؟'
+      : 'أيّ السور التالية هي الأقصر (أقلّ آيات)؟',
+    options,
+    correctIndex: options.indexOf(`سورة ${correct.nameAr}`),
+    points: 10,
+    explanation: `سورة ${correct.nameAr} فيها ${arabicNumber(correct.versesCount)} آية`,
+  };
+}
+
+// ─── 25. عدد صفحات السورة ───
+function makePageCountSurah(surah: typeof SURAHS[number], allSurahs: typeof SURAHS): QuizQuestion | null {
+  // احسب عدد الصفحات: السورة التالية pageStart - السورة الحالية pageStart
+  const nextSurah = allSurahs.find((s) => s.id === surah.id + 1);
+  const pageCount = nextSurah
+    ? Math.max(1, nextSurah.pageStart - surah.pageStart)
+    : Math.max(1, 605 - surah.pageStart); // الناس آخر سورة
+  if (pageCount < 1) return null;
+  const distractorSet = new Set<number>();
+  while (distractorSet.size < 3) {
+    const offset = (Math.floor(Math.random() * 4) + 1) * (Math.random() < 0.5 ? -1 : 1);
+    const cand = pageCount + offset;
+    if (cand >= 1 && cand !== pageCount) distractorSet.add(cand);
+  }
+  const options = shuffle([pageCount, ...Array.from(distractorSet)]).map((n) =>
+    n === 1 ? 'صفحة واحدة' : `${arabicNumber(n)} صفحات`,
+  );
+  const correctLabel = pageCount === 1 ? 'صفحة واحدة' : `${arabicNumber(pageCount)} صفحات`;
+  return {
+    id: `q-${surah.id}-pages-${Date.now()}`,
+    kind: 'pageCountSurah', type: 'mcq',
+    prompt: `كم صفحة تقريباً تشغل سورة ${surah.nameAr} في المصحف؟`,
+    options,
+    correctIndex: options.indexOf(correctLabel),
+    points: 12,
+    explanation: `سورة ${surah.nameAr} تبدأ في الصفحة ${arabicNumber(surah.pageStart)} وتشغل ${correctLabel}`,
+  };
+}
+
 // ═════════════ Public API ═════════════
 
 export interface QuizGenerationOptions {
@@ -570,12 +751,17 @@ function allowedKindsForLevel(level: QuizLevel): QuizQuestionKind[] {
       return [
         'whichSurah', 'meccanMedinan', 'verseCount', 'isFromSurah',
         'firstAyahOfSurah', 'lastAyahOfSurah', 'surahBefore', 'surahAfter',
+        // أسئلة سهلة جديدة
+        'surahOrder', 'longestSurah', 'muqattaat',
       ];
     case 'intermediate':
       return [
         'whichSurah', 'whichJuz', 'isFromSurah', 'meccanMedinan',
         'verseCount', 'completeVerse', 'verseBeginning', 'ayahEnding',
         'nextAyah', 'firstAyahOfSurah', 'lastAyahOfSurah', 'firstWordOfNext',
+        // أسئلة متوسّطة جديدة
+        'surahOrder', 'whichPage', 'wordCountAyah', 'muqattaat',
+        'longestSurah', 'pageCountSurah',
       ];
     case 'advanced':
       return [
@@ -583,6 +769,9 @@ function allowedKindsForLevel(level: QuizLevel): QuizQuestionKind[] {
         'nextAyah', 'previousAyah', 'firstWordOfNext',
         'completeVerse', 'verseBeginning', 'ayahEnding', 'typeNextWord', 'fillBlank',
         'verseCount', 'surahBefore', 'surahAfter',
+        // أسئلة متقدّمة جديدة - تحدّي حقيقي للحفّاظ
+        'surahOrder', 'whichPage', 'wordCountAyah', 'arrangeAyahs',
+        'muqattaat', 'longestSurah', 'pageCountSurah',
       ];
   }
 }
@@ -643,10 +832,14 @@ export async function generateQuiz(options: QuizGenerationOptions): Promise<Quiz
     let q: QuizQuestion | null = null;
 
     // أسئلة تعتمد على السورة فقط
-    if (kind === 'meccanMedinan')      q = makeMeccanMedinan(surah);
-    else if (kind === 'verseCount')    q = makeVerseCount(surah);
-    else if (kind === 'surahBefore')   q = makeSurahBefore(surah);
-    else if (kind === 'surahAfter')    q = makeSurahAfter(surah);
+    if (kind === 'meccanMedinan')        q = makeMeccanMedinan(surah);
+    else if (kind === 'verseCount')      q = makeVerseCount(surah);
+    else if (kind === 'surahBefore')     q = makeSurahBefore(surah);
+    else if (kind === 'surahAfter')      q = makeSurahAfter(surah);
+    else if (kind === 'surahOrder')      q = makeSurahOrder(surah, scopeSurahs);
+    else if (kind === 'muqattaat')       q = makeMuqattaat(surah);
+    else if (kind === 'longestSurah')    q = makeLongestSurah(scopeSurahs);
+    else if (kind === 'pageCountSurah')  q = makePageCountSurah(surah, scopeSurahs);
     else if (kind === 'firstAyahOfSurah') {
       const ayahs = ayahsBySurah.get(surah.id) ?? [];
       if (ayahs.length > 0) q = makeFirstAyahOfSurah(surah, ayahs);
@@ -654,6 +847,10 @@ export async function generateQuiz(options: QuizGenerationOptions): Promise<Quiz
     else if (kind === 'lastAyahOfSurah') {
       const ayahs = ayahsBySurah.get(surah.id) ?? [];
       if (ayahs.length > 0) q = makeLastAyahOfSurah(surah, ayahs);
+    }
+    else if (kind === 'arrangeAyahs') {
+      const ayahs = ayahsBySurah.get(surah.id) ?? [];
+      if (ayahs.length >= 5) q = makeArrangeAyahs(ayahs, surah);
     }
     // أسئلة تحتاج آية محددة من السورة
     else {
@@ -673,6 +870,8 @@ export async function generateQuiz(options: QuizGenerationOptions): Promise<Quiz
       else if (kind === 'ayahEnding')    q = makeAyahEnding(ayah, ayahs);
       else if (kind === 'typeNextWord')  q = makeTypeNextWord(ayah);
       else if (kind === 'fillBlank')     q = makeFillBlank(ayah);
+      else if (kind === 'whichPage')     q = makeWhichPage(ayah, surah);
+      else if (kind === 'wordCountAyah') q = makeWordCountAyah(ayah, surah);
     }
 
     if (q && !usedIds.has(q.id)) {

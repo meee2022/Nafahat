@@ -68,7 +68,8 @@
       "Bash(curl -s \"https://api.quran.com/api/v4/recitations/7/by_chapter/1?segments=true\" --max-time 15)",
       "Bash(curl -s \"https://api.quran.com/api/v4/chapter_recitations/7/2\" --max-time 15)",
       "Bash(curl -s \"https://api.quran.com/api/v4/recitations\" --max-time 15)",
-      "Bash(curl -s \"https://api.quran.com/api/v4/quran/recitations/7?chapter_number=2\" --max-time 15)"
+      "Bash(curl -s \"https://api.quran.com/api/v4/quran/recitations/7?chapter_number=2\" --max-time 15)",
+      "WebFetch(domain:docs.google.com)"
     ]
   }
 }

@@ -42,17 +42,36 @@ import { getSurahTimings, type SurahTimings } from '@services/audioTimings';
  * تُحسَب ديناميكياً من theme.colors لتدعم light/dark mode.
  */
 function buildMushafPalette(t: ReturnType<typeof useTheme>) {
+  const isDark = t.colors.background === '#000000' || t.colors.background.startsWith('#0');
+
+  if (isDark) {
+    // الثيم الداكن — محفوظ كما هو
+    return {
+      page:     t.colors.background,
+      pageWarm: t.colors.surfaceAlt,
+      ink:      t.colors.textPrimary,
+      inkSoft:  t.colors.textSecondary,
+      gold:     t.colors.accent,
+      goldDeep: t.colors.accentDeep,
+      buttonBg: t.colors.surface,
+      selected: t.colors.accentSoft,
+      ruby:     t.colors.error,
+      emerald:  t.colors.primary,
+    };
+  }
+
+  // الثيم الفاتح — ألوان الكريمي والذهبي المطابقة للمرجع
   return {
-    page:     t.colors.background,      // parchment100 / midnight800
-    pageWarm: t.colors.surfaceAlt,      // parchment200 / midnight800
-    ink:      t.colors.textPrimary,     // ink900 / parchment100
-    inkSoft:  t.colors.textSecondary,   // ink600 / ink300
-    gold:     t.colors.accent,          // gold500 / gold300
-    goldDeep: t.colors.accentDeep,      // gold700 / gold500
-    buttonBg: t.colors.surface,         // parchment50 / midnight700
-    selected: t.colors.accentSoft,      // gold50 / rgba gold
-    ruby:     t.colors.error,
-    emerald:  t.colors.primary,         // emerald700 / gold300
+    page:     '#F5EDD8',   // كريمي دافئ
+    pageWarm: '#EDE0C4',   // كريمي أغمق للتباين
+    ink:      '#1A0800',   // حبر داكن
+    inkSoft:  '#5C3D1E',   // حبر بني
+    gold:     '#C9A84C',   // ذهبي - لون الإطار
+    goldDeep: '#3D2314',   // ذهبي داكن - للنصوص والأيقونات
+    buttonBg: '#EDE0C4',   // خلفية الأزرار
+    selected: 'rgba(201, 168, 76, 0.25)',
+    ruby:     '#B84A3E',
+    emerald:  '#0A3D38',
   };
 }
 
@@ -118,6 +137,10 @@ export default function SurahDetail() {
 
   const totalPages = pages?.length ?? 0;
   const currentPage = pages?.[currentPageIdx] ?? null;
+
+  // ارتفاع الـ overlays العائمة — نقيسها بـ onLayout ونطبّقها كـ padding داخل الإطار
+  const [topOverlayH,    setTopOverlayH]    = useState(Platform.OS === 'ios' ? 130 : 100);
+  const [bottomOverlayH, setBottomOverlayH] = useState(80);
 
   // عند تحميل سورة جديدة - ابدأ من الصفحة المطلوبة (أو الأولى)
   useEffect(() => {
@@ -417,21 +440,70 @@ export default function SurahDetail() {
 
   return (
     <View style={{ flex: 1, backgroundColor: MUSHAF.page }}>
-      <View style={{ flex: 1, width: '100%', maxWidth: 700, alignSelf: 'center' }}>
-        {/* ───── الترويسة ───── */}
-        {/* شريط الإجراءات العلوي الشفاف (فوق الإطار) */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 14, paddingTop: Platform.OS === 'ios' ? 44 : 16, paddingBottom: 4 }}>
-          <Pressable onPress={() => router.push('/mushaf')} hitSlop={10}>
-            <Menu size={22} color={MUSHAF.inkSoft} strokeWidth={2} />
-          </Pressable>
-          <Pressable onPress={() => { if (router.canGoBack?.()) router.back(); else router.replace('/mushaf'); }} hitSlop={10}>
-            <ArrowLeft size={22} color={MUSHAF.inkSoft} strokeWidth={2} />
-          </Pressable>
-        </View>
+      <View style={{ flex: 1, width: '100%', maxWidth: 700, alignSelf: 'center', position: 'relative' }}>
 
-        {/* ───── الترويسة المرجعية الخالصة ───── */}
+        {/* ───── المصحف يملأ الشاشة كاملاً ───── */}
+        {useDecoFrame ? (
+          <MushafBorder
+            goldColor={MUSHAF.gold}
+            goldDeep={t.colors.primaryDark}
+            pageColor={MUSHAF.page}
+            ornamentBg={MUSHAF.pageWarm}
+            topInset={!isImmersive ? topOverlayH : 0}
+            bottomInset={!isImmersive && !selectedAyah ? bottomOverlayH : 0}
+          >
+            {pageContentNode}
+          </MushafBorder>
+        ) : (
+          <View style={{ flex: 1, backgroundColor: MUSHAF.page, paddingTop: !isImmersive ? topOverlayH : 0, paddingBottom: !isImmersive && !selectedAyah ? bottomOverlayH : 0 }}>
+            {pageContentNode}
+          </View>
+        )}
+
+        {/* ───── كونترولز علوية عائمة ───── */}
         {!isImmersive && (
-          <View style={styles.headerWrap}>
+          <View
+            style={styles.overlayTop}
+            pointerEvents="box-none"
+            onLayout={(e) => setTopOverlayH(e.nativeEvent.layout.height)}
+          >
+            {/* شريط التنقل - أزرار ذهبية أنيقة متناسقة مع المصحف */}
+            <View style={[styles.navBar, { paddingTop: Platform.OS === 'ios' ? 44 : 16, backgroundColor: MUSHAF.page + 'EE' }]}>
+              <Pressable
+                onPress={() => router.push('/mushaf')}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="القائمة"
+                style={({ pressed }) => [
+                  styles.navBtn,
+                  {
+                    backgroundColor: MUSHAF.buttonBg,
+                    borderColor: MUSHAF.gold,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Menu size={18} color={MUSHAF.goldDeep} strokeWidth={2} />
+              </Pressable>
+              <Pressable
+                onPress={() => { if (router.canGoBack?.()) router.back(); else router.replace('/mushaf'); }}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="رجوع"
+                style={({ pressed }) => [
+                  styles.navBtn,
+                  {
+                    backgroundColor: MUSHAF.buttonBg,
+                    borderColor: MUSHAF.gold,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <ArrowLeft size={18} color={MUSHAF.goldDeep} strokeWidth={2} />
+              </Pressable>
+            </View>
+
+            {/* شريط السورة والجزء */}
             <MushafHeader
               juzLabel={juzLabel}
               surahName={surahNameWithPrefix}
@@ -445,25 +517,14 @@ export default function SurahDetail() {
           </View>
         )}
 
-        {/* ───── محتوى الصفحة ───── */}
-        {useDecoFrame ? (
-          <MushafBorder
-            goldColor={MUSHAF.gold}
-            goldDeep={t.colors.primaryDark}
-            pageColor={MUSHAF.page}
-            ornamentBg={MUSHAF.pageWarm}
-          >
-            {pageContentNode}
-          </MushafBorder>
-        ) : (
-          <View style={{ flex: 1, backgroundColor: MUSHAF.page }}>
-            {pageContentNode}
-          </View>
-        )}
-
-        {/* ───── الشريط السفلي ───── */}
+        {/* ───── كونترولز سفلية عائمة ───── */}
         {!isImmersive && !selectedAyah && (
-          <View style={styles.footerWrap}>
+          <View
+            style={[styles.overlayBottom, { backgroundColor: MUSHAF.page + 'EE' }]}
+            pointerEvents="box-none"
+            onLayout={(e) => setBottomOverlayH(e.nativeEvent.layout.height)}
+          >
+            {/* رقم الصفحة */}
             <MushafFooter
               pageNumber={currentPage?.page ?? surah.pageStart}
               onPagePress={() => setShowPageJump(true)}
@@ -472,30 +533,55 @@ export default function SurahDetail() {
               pageColor={MUSHAF.page}
               amiriFont={quranFont}
             />
+            {/* شريط الصوت - أنيق متناسق مع المصحف */}
+            <View style={styles.audioBar}>
+              {/* زر التشغيل دائري ذهبي ممتلئ */}
+              <Pressable
+                onPress={handlePlay}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel={isCurrentlyPlaying ? 'إيقاف التلاوة' : 'تشغيل التلاوة'}
+                style={({ pressed }) => [
+                  styles.audioBarPlayBtn,
+                  { backgroundColor: MUSHAF.gold, opacity: pressed ? 0.85 : 1 },
+                ]}
+              >
+                {isCurrentlyPlaying
+                  ? <Pause size={18} color={MUSHAF.page} fill={MUSHAF.page} />
+                  : <Play size={18} color={MUSHAF.page} fill={MUSHAF.page} style={{ marginLeft: 2 }} />}
+              </Pressable>
+
+              {/* اسم القارئ - chip كريمي بحد ذهبي */}
+              <Pressable
+                onPress={() => setShowRecitersModal(true)}
+                style={({ pressed }) => [
+                  styles.reciterChip,
+                  { backgroundColor: MUSHAF.buttonBg, borderColor: MUSHAF.gold, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Text style={{ color: MUSHAF.goldDeep, fontSize: 12, fontWeight: '700' }}>
+                  بصوت: {activeReciter.nameAr.split(' ').slice(-2).join(' ')}
+                </Text>
+              </Pressable>
+
+              {/* زر العين - دائري بحد ذهبي مثل بقية الأزرار */}
+              <Pressable
+                onPress={() => setIsImmersive(v => !v)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="وضع القراءة الموسّع"
+                style={({ pressed }) => [
+                  styles.eyeBtn,
+                  { backgroundColor: MUSHAF.buttonBg, borderColor: MUSHAF.gold, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <Eye size={16} color={MUSHAF.goldDeep} strokeWidth={2} />
+              </Pressable>
+            </View>
           </View>
         )}
 
-        {/* شريط التحكم بالصوت */}
-        {!isImmersive && !selectedAyah && (
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7 }}>
-            <Pressable onPress={handlePlay} hitSlop={10}>
-              {isCurrentlyPlaying ? <Pause size={22} color={MUSHAF.goldDeep} /> : <Play size={22} color={MUSHAF.goldDeep} />}
-            </Pressable>
-
-            <Pressable onPress={() => setShowRecitersModal(true)} style={{ backgroundColor: MUSHAF.buttonBg, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: MUSHAF.gold }}>
-              <Text style={{ color: MUSHAF.goldDeep, fontSize: 12, fontWeight: '700' }}>
-                بصوت: {activeReciter.nameAr.split(' ').slice(-2).join(' ')}
-              </Text>
-            </Pressable>
-
-            <Pressable onPress={() => setIsImmersive(v => !v)} hitSlop={10}>
-              <Eye size={20} color={MUSHAF.inkSoft} strokeWidth={2} />
-            </Pressable>
-          </View>
-        )}
       </View>
-
-      {/* تم استبدال الأزرار العائمة بالشريط السفلي الشفاف خارج إطار المصحف */}
 
       {/* ───── قائمة الآيات للتفسير (في وضع الصور) ───── */}
       {currentPage ? (
@@ -720,11 +806,75 @@ function juzNameAr(juzNumber: number): string {
 }
 
 const styles = StyleSheet.create({
-  headerWrap: {
-    paddingTop: 6,
-    paddingBottom: 0,
-    zIndex: 10,
+  // ── Overlays عائمة فوق المصحف ──
+  overlayTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
   },
+  navBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingBottom: 2,
+  },
+  navBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overlayBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+  },
+  audioBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 10,
+  },
+  audioBarPlayBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#8B6F2C', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 5 },
+      android: { elevation: 3 },
+    }),
+  },
+  reciterChip: {
+    flex: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  eyeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // ── باقي الأنماط ──
+  headerWrap: { paddingTop: 6, paddingBottom: 0, zIndex: 10 },
+  footerWrap: { paddingTop: 0, paddingBottom: 6, zIndex: 10 },
+
   scroll: {
     paddingTop: 10,
     paddingBottom: 32,
@@ -797,11 +947,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     minWidth: 56,
   },
-  footerWrap: {
-    paddingTop: 0,
-    paddingBottom: 6,
-    zIndex: 10,
-  },
+
   floatingControlsWrap: {
     position: 'absolute',
     bottom: 56,

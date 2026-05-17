@@ -581,6 +581,27 @@ export default function SurahDetail() {
           </View>
         )}
 
+        {/* 👁️ زر الخروج من الـ immersive mode - دائم الظهور لما تكون فيه */}
+        {isImmersive && (
+          <Pressable
+            onPress={() => setIsImmersive(false)}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel="الخروج من وضع القراءة الموسّع"
+            style={({ pressed }) => [
+              styles.immersiveExit,
+              {
+                backgroundColor: MUSHAF.buttonBg,
+                borderColor: MUSHAF.gold,
+                top: Platform.OS === 'ios' ? 54 : 26,
+                opacity: pressed ? 0.7 : 1,
+              },
+            ]}
+          >
+            <Eye size={16} color={MUSHAF.goldDeep} strokeWidth={2} />
+          </Pressable>
+        )}
+
       </View>
 
       {/* ───── قائمة الآيات للتفسير (في وضع الصور) ───── */}
@@ -835,6 +856,26 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 20,
     paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+  },
+  immersiveExit: {
+    position: 'absolute',
+    end: 16,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 30,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B6F2C',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+      },
+      android: { elevation: 4 },
+    }),
   },
   audioBar: {
     flexDirection: 'row',

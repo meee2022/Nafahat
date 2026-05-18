@@ -63,7 +63,11 @@ const PrayerHero: React.FC<{ nextP: any; cityName: string }> = ({ nextP, cityNam
         {PRAYER_NAMES_AR[nextP.name as PrayerName]} {tr('home.heroNextSuffix')}
       </Text>
       <Text style={heroStyles.countdownTime}>{countdownText}</Text>
-      <Pressable style={heroStyles.locationBadge} onPress={() => router.push('/prayer-times')}>
+      <Pressable
+        style={heroStyles.locationBadge}
+        onPress={() => router.push('/location')}
+        accessibilityLabel="غيّر الموقع"
+      >
         <MapPin size={14} color="#FFF" />
         <Text style={heroStyles.locationText}>{cityName}</Text>
       </Pressable>

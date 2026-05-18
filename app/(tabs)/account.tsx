@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Award, BookOpen, Brain, Headphones, Heart, Flame, Calendar,
   Moon, Sun, Type, Bell, Globe, Download, Cloud, Info, ChevronLeft,
-  LogIn, FileText, Mic, Sparkles, Edit3, Shield, Wrench,
+  LogIn, FileText, Mic, Sparkles, Edit3, Shield, Wrench, MapPin,
 } from 'lucide-react-native';
 import { useIsAdmin } from '@store/appConfigStore';
 import { computeUserLevel } from '@utils/userLevel';
@@ -38,7 +38,7 @@ export default function AccountScreen() {
   // إعدادات التطبيق
   const {
     notificationsEnabled, autoSaveTasmee, cloudSyncEnabled,
-    estimatedDownloadsMB,
+    estimatedDownloadsMB, location,
     setNotifications, setAutoSaveTasmee,
   } = useSettingsStore();
 
@@ -211,6 +211,12 @@ export default function AccountScreen() {
           label={tr('settings.notificationsAutoSave')}
           value={autoSaveTasmee}
           onChange={setAutoSaveTasmee}
+        />
+        <Row
+          icon={<MapPin size={18} color={t.colors.featureLapis} />}
+          label="الموقع الجغرافي"
+          trailing={location.cityAr}
+          onPress={() => router.push('/location')}
         />
         <Row
           icon={<Globe size={18} color={t.colors.info} />}

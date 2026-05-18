@@ -193,6 +193,8 @@ function AppGate() {
       <Stack.Screen name="tools" />
       {/* Library — قائمة السور/الأجزاء/الأحزاب (كانت في tab المصحف القديم) */}
       <Stack.Screen name="library" />
+      {/* Location picker — يغيّر مواقيت الصلاة + الأذان + القبلة */}
+      <Stack.Screen name="location" />
       <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       <Stack.Screen name="player" options={{ presentation: 'modal' }} />
     </Stack>

@@ -56,7 +56,11 @@ const HeroCountdown = ({ nextP, todayPrayers, cityName }: { nextP: any, todayPra
     <View style={styles.countdownContainer}>
       <Text style={styles.nextPrayerText}>{PRAYER_NAMES_AR[nextP.name as PrayerName]} {tr('home.heroNextSuffix')}</Text>
       <Text style={styles.countdownTime}>{countdownText}</Text>
-      <Pressable style={styles.locationBadge} onPress={() => router.push('/prayer-times')}>
+      <Pressable
+        style={styles.locationBadge}
+        onPress={() => router.push('/location')}
+        accessibilityLabel="غيّر الموقع"
+      >
         <MapPin size={14} color="#FFF" />
         <Text style={styles.locationText}>{cityName}</Text>
       </Pressable>

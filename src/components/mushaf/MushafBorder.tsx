@@ -306,11 +306,12 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     // padding يمنع النص القرآني من الاصطدام بالإطار:
-    // العمودي = OUTER_INSET(14) + STRIP_H(16) + هامش(14) = 44
-    // الأفقي = OUTER_INSET(14) + sideMotif(12) + هامش(14) = 40
-    paddingTop: 44,
-    paddingBottom: 44,
-    paddingHorizontal: 40,
+    // عمودي: OUTER_INSET(14) + STRIP_H(16) + هامش(20) = 50
+    // أفقي:  OUTER_INSET(14) + sideMotif(12) + هامش مريح(22) = 48
+    //   هامش أكبر يضمن أن النص لا يلامس الزخارف الجانبية أبداً
+    paddingTop: 48,
+    paddingBottom: 48,
+    paddingHorizontal: 48,
     zIndex: 1,
   },
 });

@@ -21,6 +21,7 @@ import { useT } from '@store/languageStore';
 import { arabicNumber } from '@data/surahs';
 
 type ScopeMode = 'default' | 'custom' | 'all';
+type QuizMode = 'algorithmic' | 'curated' | 'mixed';
 
 export default function QuizHubScreen() {
   const t = useTheme();
@@ -31,6 +32,8 @@ export default function QuizHubScreen() {
   const [level, setLevel] = useState<QuizLevel>('beginner');
   const [scopeMode, setScopeMode] = useState<ScopeMode>('default');
   const [customJuzs, setCustomJuzs] = useState<number[]>([30]);
+  // نوع الأسئلة: خوارزمية (افتراضي)، منسَّقة، أو خليط
+  const [quizMode, setQuizMode] = useState<QuizMode>('algorithmic');
 
   const rank = useMemo(() => getRankForPoints(totalPoints), [totalPoints]);
   const accuracy = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
@@ -55,6 +58,7 @@ export default function QuizHubScreen() {
         level,
         juzs: juzs.join(','),
         total: String(questions),
+        mode: quizMode,
       },
     });
   };
@@ -249,6 +253,53 @@ export default function QuizHubScreen() {
             </Text>
           </View>
         ) : null}
+
+        {/* 🎯 اختيار نوع الأسئلة */}
+        <View style={{ marginTop: 18 }}>
+          <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginBottom: 8, fontWeight: '700' }}>
+            نوع الأسئلة:
+          </Text>
+          <View style={styles.scopeRow}>
+            <Pressable
+              onPress={() => setQuizMode('algorithmic')}
+              style={[styles.scopeChip, {
+                borderColor: quizMode === 'algorithmic' ? t.colors.accent : t.colors.border,
+                backgroundColor: quizMode === 'algorithmic' ? t.colors.accent + '14' : 'transparent',
+              }]}
+            >
+              <Text variant="caption" color={quizMode === 'algorithmic' ? t.colors.accent : t.colors.textSecondary} style={{ fontWeight: '700' }}>
+                خوارزمية
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setQuizMode('curated')}
+              style={[styles.scopeChip, {
+                borderColor: quizMode === 'curated' ? t.colors.accent : t.colors.border,
+                backgroundColor: quizMode === 'curated' ? t.colors.accent + '14' : 'transparent',
+              }]}
+            >
+              <Text variant="caption" color={quizMode === 'curated' ? t.colors.accent : t.colors.textSecondary} style={{ fontWeight: '700' }}>
+                ⭐ منسَّقة
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setQuizMode('mixed')}
+              style={[styles.scopeChip, {
+                borderColor: quizMode === 'mixed' ? t.colors.accent : t.colors.border,
+                backgroundColor: quizMode === 'mixed' ? t.colors.accent + '14' : 'transparent',
+              }]}
+            >
+              <Text variant="caption" color={quizMode === 'mixed' ? t.colors.accent : t.colors.textSecondary} style={{ fontWeight: '700' }}>
+                خليط
+              </Text>
+            </Pressable>
+          </View>
+          <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 8 }}>
+            {quizMode === 'algorithmic' && 'أسئلة مُولَّدة من الآيات والسور'}
+            {quizMode === 'curated' && 'أسئلة منسَّقة من امتحانات حفظ معتمدة (5 خيارات)'}
+            {quizMode === 'mixed' && 'خليط من الخوارزمية والمنسَّقة - تنوّع أكبر'}
+          </Text>
+        </View>
 
         {/* زر البدء */}
         <View style={{ marginTop: 22 }}>
@@ -459,6 +510,10 @@ const styles = StyleSheet.create({
     flex: 1, paddingVertical: 12,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1, borderRadius: 999,
+  },
+  scopeRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
 
   juzChip: {

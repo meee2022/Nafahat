@@ -63,13 +63,13 @@ const MushafQpcPageImpl: React.FC<Props> = ({
   const ink    = inkColor  ?? t.colors.textPrimary;
   const pageBg = pageColor ?? t.colors.background;
 
-  // 🎯 fontSize ديناميكي مع سقف صارم: خط QCF v4 مصمّم لعرض ~400-450px على مصحف الجيب.
-  //   السقف 28px يضمن أن النص لا يتضخّم على شاشات الويب الأعرض، فتبقى الصفحات
-  //   متطابقة بصرياً بغضّ النظر عن الجزء/السورة.
+  // 🎯 fontSize ديناميكي مُحافِظ: نأخذ pageWidth / 18 بدل /16 لمساحة تنفّس أكبر
+  //    + سقف 24 (بدل 28) عشان النص يبان كامل بدون قطع على الحواف الجانبية
+  //    + قاع 15 للأمان على الشاشات الصغيرة جداً
   const fontSize = explicitFontSize ?? (
     pageWidth > 0
-      ? Math.max(16, Math.min(28, pageWidth / 16))
-      : 22
+      ? Math.max(15, Math.min(24, pageWidth / 18))
+      : 20
   );
 
   useEffect(() => {

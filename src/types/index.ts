@@ -249,7 +249,10 @@ export type QuizQuestionKind =
   | 'arrangeAyahs'      // رتّب الآيات الثلاث بترتيبها الصحيح
   | 'muqattaat'         // هل سورة X مبدوءة بحروف مقطّعة؟
   | 'longestSurah'      // أيّ السور هي الأطول/الأقصر بين هذه؟
-  | 'pageCountSurah';   // كم صفحة تشغل سورة X في المصحف؟
+  | 'pageCountSurah'    // كم صفحة تشغل سورة X في المصحف؟
+
+  // ───── أسئلة منسَّقة يدوياً (curated) - من امتحانات حفظ معتمدة ─────
+  | 'curated';          // سؤال جاهز مع 5 خيارات و explanation
 
 /** سؤال اختبار: قد يكون اختيار من متعدّد أو صح/خطأ أو إدخال نصّي. */
 export interface QuizQuestion {

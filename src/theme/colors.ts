@@ -196,11 +196,11 @@ export const darkColors: ThemeColors = {
   accentDeep: palette.gold500,
   onAccent: palette.emerald900,
 
-  // 🌿 الخلفيات: زمردي عميق (هوية التطبيق) بدل الأسود الحالك
-  background:      palette.emerald900,    // #031816 - أعمق زمردي للخلفية الرئيسية
-  surface:         palette.midnight800,   // #0A1815 - layer أعلى قليلاً
-  surfaceElevated: palette.midnight700,   // #143229 - cards مرتفعة
-  surfaceAlt:      palette.emerald800,    // #062825 - alternate surfaces
+  // 🌿 الخلفيات: فحمي دافئ بلمسة زمردية - أنيق ومريح للعين
+  background:      '#0A1612',             // فحمي مع لمسة زمردية خفيفة
+  surface:         '#101F1A',             // أفتح قليلاً للـ surface
+  surfaceElevated: '#15251F',             // للـ cards المرتفعة
+  surfaceAlt:      '#0E1B16',             // alternate surfaces
 
   textPrimary: palette.parchment100,
   textSecondary: palette.ink300,

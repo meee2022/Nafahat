@@ -27,7 +27,7 @@ export default function QuizSessionScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
-  const params = useLocalSearchParams<{ level: string; juzs: string; total: string }>();
+  const params = useLocalSearchParams<{ level: string; juzs: string; total: string; mode?: string }>();
   const recordSession = useQuizStore((s) => s.recordSession);
 
   const level = (params.level as QuizLevel) ?? 'beginner';
@@ -36,6 +36,8 @@ export default function QuizSessionScreen() {
     return params.juzs.split(',').map((x) => Number(x.trim())).filter((x) => x >= 1 && x <= 30);
   }, [params.juzs]);
   const totalQuestions = Math.max(1, Math.min(30, Number(params.total) || 8));
+  // 🎯 mode الكويز: algorithmic (افتراضي) | curated | mixed
+  const mode = (params.mode === 'curated' || params.mode === 'mixed') ? params.mode : 'algorithmic';
 
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -53,7 +55,7 @@ export default function QuizSessionScreen() {
     let mounted = true;
     setQuestions(null);
     setLoadError(null);
-    generateQuiz({ level, juzs, totalQuestions })
+    generateQuiz({ level, juzs, totalQuestions, mode })
       .then((qs) => {
         if (!mounted) return;
         if (qs.length === 0) {

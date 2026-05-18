@@ -38,6 +38,7 @@
 
 import { SURAHS, getSurahById, arabicNumber } from '@data/surahs';
 import { getSurahAyahs } from '@services/quranApi';
+import { pickRandomCurated, CURATED_COUNT } from '@data/curatedQuiz';
 import { Ayah, QuizLevel, QuizQuestion, QuizQuestionKind } from '@/types/index';
 
 // ═════════════ Helpers ═════════════
@@ -734,6 +735,13 @@ export interface QuizGenerationOptions {
   level: QuizLevel;
   juzs: number[];
   totalQuestions: number;
+  /**
+   * نوع الأسئلة:
+   *  - 'algorithmic' = أسئلة مُولَّدة من بيانات السور والآيات (الافتراضي)
+   *  - 'curated'     = أسئلة منسَّقة يدوياً من امتحانات حفظ معتمدة
+   *  - 'mixed'       = خليط (نصف نصف)
+   */
+  mode?: 'algorithmic' | 'curated' | 'mixed';
 }
 
 export function defaultJuzsForLevel(level: QuizLevel): number[] {
@@ -801,11 +809,26 @@ async function loadAyahsForScope(juzs: number[]): Promise<Map<number, Ayah[]>> {
  * يضمن تغطية كل سور الجزء المختار + تنوّع في الأنواع.
  */
 export async function generateQuiz(options: QuizGenerationOptions): Promise<QuizQuestion[]> {
-  const { level, totalQuestions } = options;
+  const { level, totalQuestions, mode = 'algorithmic' } = options;
+
+  // 🎯 وضع curated فقط: ارجع N أسئلة منسَّقة عشوائية
+  if (mode === 'curated') {
+    return pickRandomCurated(totalQuestions);
+  }
+
+  // 🎯 وضع mixed: نصف منسَّق + نصف خوارزمي
+  let curatedQuestions: QuizQuestion[] = [];
+  let remainingForAlgo = totalQuestions;
+  if (mode === 'mixed') {
+    const curatedCount = Math.min(Math.floor(totalQuestions / 2), CURATED_COUNT);
+    curatedQuestions = pickRandomCurated(curatedCount);
+    remainingForAlgo = totalQuestions - curatedQuestions.length;
+  }
+
   const juzs = options.juzs.length > 0 ? options.juzs : defaultJuzsForLevel(level);
   const allowed = allowedKindsForLevel(level);
   const scopeSurahs = surahsInJuzs(juzs);
-  if (scopeSurahs.length === 0) return [];
+  if (scopeSurahs.length === 0) return curatedQuestions;
 
   const ayahsBySurah = await loadAyahsForScope(juzs);
   const surahsWithText = scopeSurahs.filter((s) => (ayahsBySurah.get(s.id)?.length ?? 0) > 0);
@@ -816,9 +839,9 @@ export async function generateQuiz(options: QuizGenerationOptions): Promise<Quiz
   let surahIdx = 0;
   let kindIdx = 0;
   let safety = 0;
-  const maxSafety = totalQuestions * 10;
+  const maxSafety = remainingForAlgo * 10;
 
-  while (questions.length < totalQuestions && safety < maxSafety) {
+  while (questions.length < remainingForAlgo && safety < maxSafety) {
     safety++;
 
     // اختر السورة التالية في الدور
@@ -878,6 +901,12 @@ export async function generateQuiz(options: QuizGenerationOptions): Promise<Quiz
       questions.push(q);
       usedIds.add(q.id);
     }
+  }
+
+  // 🎯 لو وضع mixed: امزج المنسَّقة مع الخوارزمية بترتيب عشوائي
+  if (mode === 'mixed' && curatedQuestions.length > 0) {
+    const combined = [...questions, ...curatedQuestions];
+    return combined.sort(() => Math.random() - 0.5);
   }
 
   return questions;

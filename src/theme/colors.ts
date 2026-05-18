@@ -153,15 +153,17 @@ export const lightColors: ThemeColors = {
   textInverse: palette.parchment50,
   textOnDark: palette.parchment100,
 
+  // ✨ حدود بلمسة زمردية خفيفة - لربط الهوية بصرياً
   border: palette.parchment300,
-  borderStrong: palette.parchment400,
+  borderStrong: 'rgba(10, 61, 56, 0.20)',           // زمردي خافت بدل البيج الميت
   borderGold: 'rgba(184, 146, 59, 0.32)',
-  divider: palette.parchment200,
+  divider: 'rgba(10, 61, 56, 0.10)',                // فاصل زمردي خفيف جداً
 
-  shadowColor: '#0A1612',
-  overlay: 'rgba(7, 15, 13, 0.55)',
-  ornamentLow: 'rgba(184, 146, 59, 0.08)',
-  ornamentHigh: 'rgba(184, 146, 59, 0.18)',
+  // 🌿 الظلال بتدرّج زمردي - تعطي عمقاً يطابق هوية التطبيق بدل الأسود الميت
+  shadowColor: palette.emerald800,                  // ظل زمردي عميق
+  overlay: 'rgba(10, 61, 56, 0.55)',                // overlay زمردي
+  ornamentLow:  'rgba(10, 61, 56, 0.06)',           // ✨ زخارف ناعمة زمردية في الخلفيات
+  ornamentHigh: 'rgba(10, 61, 56, 0.14)',
 
   success: palette.success,
   successSurface: palette.successLight,
@@ -187,31 +189,32 @@ export const darkColors: ThemeColors = {
   primaryDark: palette.gold500,
   primaryLight: palette.gold100,
   primarySoft: 'rgba(212, 181, 112, 0.10)',
-  onPrimary: palette.midnight900,
+  onPrimary: palette.emerald900,
 
   accent: palette.gold300,
   accentSoft: 'rgba(212, 181, 112, 0.10)',
   accentDeep: palette.gold500,
-  onAccent: palette.midnight900,
+  onAccent: palette.emerald900,
 
-  background: '#000000',
-  surface: palette.midnight900,
-  surfaceElevated: palette.midnight800,
-  surfaceAlt: '#000000',
+  // 🌿 الخلفيات: زمردي عميق (هوية التطبيق) بدل الأسود الحالك
+  background:      palette.emerald900,    // #031816 - أعمق زمردي للخلفية الرئيسية
+  surface:         palette.midnight800,   // #0A1815 - layer أعلى قليلاً
+  surfaceElevated: palette.midnight700,   // #143229 - cards مرتفعة
+  surfaceAlt:      palette.emerald800,    // #062825 - alternate surfaces
 
   textPrimary: palette.parchment100,
   textSecondary: palette.ink300,
   textTertiary: palette.ink400,
-  textInverse: palette.midnight900,
+  textInverse: palette.emerald900,
   textOnDark: palette.parchment100,
 
-  border: 'rgba(212, 181, 112, 0.12)',
-  borderStrong: 'rgba(212, 181, 112, 0.24)',
-  borderGold: 'rgba(212, 181, 112, 0.40)',
-  divider: 'rgba(212, 181, 112, 0.08)',
+  border: 'rgba(212, 181, 112, 0.14)',
+  borderStrong: 'rgba(212, 181, 112, 0.28)',
+  borderGold: 'rgba(212, 181, 112, 0.42)',
+  divider: 'rgba(212, 181, 112, 0.10)',
 
   shadowColor: '#000000',
-  overlay: 'rgba(0, 0, 0, 0.7)',
+  overlay: 'rgba(3, 24, 22, 0.75)',          // overlay بتدرج زمردي بدل أسود
   ornamentLow: 'rgba(212, 181, 112, 0.06)',
   ornamentHigh: 'rgba(212, 181, 112, 0.16)',
 

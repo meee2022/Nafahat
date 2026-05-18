@@ -43,36 +43,45 @@ import { getSurahTimings, type SurahTimings } from '@services/audioTimings';
  * تُحسَب ديناميكياً من theme.colors لتدعم light/dark mode.
  */
 function buildMushafPalette(t: ReturnType<typeof useTheme>) {
-  const isDark = t.colors.background === '#000000' || t.colors.background.startsWith('#0');
+  // detect dark theme: emerald900 starts with #03 or any pure black
+  const bg = t.colors.background.toLowerCase();
+  const isDark = bg === '#000000' || bg.startsWith('#03') || bg.startsWith('#04') || bg.startsWith('#05') || bg.startsWith('#06') || bg.startsWith('#07') || bg.startsWith('#08');
 
   if (isDark) {
-    // الثيم الداكن — محفوظ كما هو
+    // 🌙 الثيم الداكن — هوية التطبيق الزمردية بدرجاتها الطبيعية
+    //    متناسق مع الـ darkColors في theme/colors.ts
     return {
-      page:     t.colors.background,
-      pageWarm: t.colors.surfaceAlt,
-      ink:      t.colors.textPrimary,
-      inkSoft:  t.colors.textSecondary,
-      gold:     t.colors.accent,
-      goldDeep: t.colors.accentDeep,
-      buttonBg: t.colors.surface,
-      selected: t.colors.accentSoft,
-      ruby:     t.colors.error,
-      emerald:  t.colors.primary,
+      page:     '#062825',   // emerald800 - خلفية الصفحة الرئيسية
+      pageWarm: '#0A3D38',   // emerald700 - الهيدر/الفوتر (أفتح قليلاً للتمييز)
+      ink:      '#F5EFE0',   // parchment100 - النص عاجي
+      inkSoft:  '#C9C0A8',   // ink300 - النصوص الثانوية
+      gold:     '#D4B570',   // gold300 - ذهبي ساطع يلمع على الزمردي
+      goldDeep: '#B8923B',   // gold500 - ذهبي عميق
+      buttonBg: '#143229',   // midnight700 - خلفية الأزرار
+      selected: 'rgba(212, 181, 112, 0.30)',
+      ruby:     '#E8704F',
+      // 🟢 خلفية المودالات - أعمق من الصفحة لتمييز الـ layer
+      modalBg:  '#031816',   // emerald900
+      modalText:'#F5EFE0',
+      emerald:  '#5B9F8E',
     };
   }
 
-  // الثيم الفاتح — ألوان الكريمي والذهبي المطابقة للمرجع
+  // الثيم الفاتح — لوحة ألوان عثمانية (Soft Ottoman / Tezhip)
+  //   مع لمسة زمردية في الـ inkSoft + accents لربط هوية التطبيق
   return {
-    page:     '#F5EDD8',   // كريمي دافئ (خلفية الصفحة الرئيسية)
-    pageWarm: '#E5D5B0',   // كريمي أعمق للهيدر/الفوتر - تباين أوضح
-    ink:      '#1A0800',   // حبر داكن
-    inkSoft:  '#5C3D1E',   // حبر بني
-    gold:     '#C9A84C',   // ذهبي - لون الإطار
-    goldDeep: '#3D2314',   // ذهبي داكن - للنصوص والأيقونات
-    buttonBg: '#FBF5E3',   // خلفية أزرار الـ overlay - أفتح من pageWarm = contrast
-    selected: 'rgba(201, 168, 76, 0.25)',
+    page:     '#FBF8F2',                            // عاجي دافئ - خلفية الصفحة
+    pageWarm: '#F7F1E6',                            // كريمي أعمق - الهيدر/الفوتر
+    ink:      '#0A1815',                            // ✨ حبر بتدرّج زمردي خفيف بدل الأسود الميت
+    inkSoft:  '#0A3D38',                            // ✨ زمردي للنصوص الثانوية - لمسة هوية واضحة
+    gold:     '#BFA178',                            // ذهبي بيج - الإطار
+    goldDeep: '#9E7D4F',                            // ذهبي عميق
+    buttonBg: '#FBF8F2',                            // خلفية الأزرار
+    selected: 'rgba(10, 61, 56, 0.12)',             // ✨ تظليل الآية المختارة بلمسة زمردية
     ruby:     '#B84A3E',
-    emerald:  '#0A3D38',
+    modalBg:  '#0A3D38',                            // المودالات - زمردي عميق
+    modalText:'#FDFBF7',
+    emerald:  '#0A3D38',                            // الزمردي الأساسي
   };
 }
 
@@ -507,8 +516,9 @@ export default function SurahDetail() {
             juzLabel={juzLabel}
             surahName={surahNameWithPrefix}
             goldColor={MUSHAF.gold}
-            goldDeep={t.colors.primaryDark}
-            pageColor={MUSHAF.page}
+            goldDeep={MUSHAF.goldDeep}
+            pageColor={MUSHAF.pageWarm}
+            textColor={MUSHAF.emerald}
             quranFont={quranFont}
             onSurahPress={() => setShowSurahJump(true)}
             onJuzPress={() => setShowJuzJump(true)}
@@ -520,7 +530,7 @@ export default function SurahDetail() {
           {useDecoFrame ? (
             <MushafBorder
               goldColor={MUSHAF.gold}
-              goldDeep={t.colors.primaryDark}
+              goldDeep={MUSHAF.goldDeep}
               pageColor={MUSHAF.page}
               ornamentBg={MUSHAF.pageWarm}
             >
@@ -549,12 +559,15 @@ export default function SurahDetail() {
             pageNumber={currentPage?.page ?? surah.pageStart}
             onPagePress={() => setShowPageJump(true)}
             goldColor={MUSHAF.gold}
-            goldDeep={t.colors.primaryDark}
-            pageColor={MUSHAF.page}
+            goldDeep={MUSHAF.goldDeep}
+            pageColor={MUSHAF.pageWarm}
+            textColor={MUSHAF.emerald}
             amiriFont={quranFont}
           />
           {/* شريط الصوت */}
           <View style={styles.audioBar}>
+            {/* 🌿 زر التشغيل: زمردي ممتلئ + أيقونة ذهبية - أهم CTA في الصفحة
+                يبرز هوية التطبيق ويستحق الانتباه (Spotify/Apple Music style) */}
             <Pressable
               onPress={handlePlay}
               hitSlop={10}
@@ -562,12 +575,18 @@ export default function SurahDetail() {
               accessibilityLabel={isCurrentlyPlaying ? 'إيقاف التلاوة' : 'تشغيل التلاوة'}
               style={({ pressed }) => [
                 styles.audioBarPlayBtn,
-                { backgroundColor: MUSHAF.gold, opacity: pressed ? 0.85 : 1 },
+                {
+                  backgroundColor: MUSHAF.emerald,
+                  borderColor: MUSHAF.gold,
+                  borderWidth: 1.5,
+                  opacity: pressed ? 0.88 : 1,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
+                },
               ]}
             >
               {isCurrentlyPlaying
-                ? <Pause size={18} color={MUSHAF.page} fill={MUSHAF.page} />
-                : <Play size={18} color={MUSHAF.page} fill={MUSHAF.page} style={{ marginLeft: 2 }} />}
+                ? <Pause size={18} color={MUSHAF.gold} fill={MUSHAF.gold} />
+                : <Play size={18} color={MUSHAF.gold} fill={MUSHAF.gold} style={{ marginLeft: 2 }} />}
             </Pressable>
 
             <Pressable
@@ -709,40 +728,40 @@ export default function SurahDetail() {
       <Modal visible={showPageJump} transparent animationType="slide" onRequestClose={() => setShowPageJump(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowPageJump(false)} accessibilityLabel="إغلاق" />
-          <View style={[styles.modalContent, { backgroundColor: t.colors.primaryDark, height: 'auto', paddingBottom: Platform.OS === 'ios' ? 40 : 20 }]}>
+          <View style={[styles.modalContent, { backgroundColor: MUSHAF.modalBg, height: 'auto', paddingBottom: Platform.OS === 'ios' ? 40 : 20 }]}>
             <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 12 }} />
-            <View style={[styles.modalHeader, { borderBottomColor: 'rgba(212, 181, 112, 0.2)' }]}>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: '#D4B570', fontFamily: quranFont }}>الذهاب لصفحة</Text>
-              <Pressable onPress={() => setShowPageJump(false)} hitSlop={10} style={{ backgroundColor: 'rgba(212, 181, 112, 0.1)', padding: 6, borderRadius: 20 }}>
-                <X size={20} color="#D4B570" />
+            <View style={[styles.modalHeader, { borderBottomColor: MUSHAF.gold + '40' }]}>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: MUSHAF.gold, fontFamily: quranFont }}>الذهاب لصفحة</Text>
+              <Pressable onPress={() => setShowPageJump(false)} hitSlop={10} style={{ backgroundColor: MUSHAF.gold + '22', padding: 6, borderRadius: 20 }}>
+                <X size={20} color={MUSHAF.gold} />
               </Pressable>
             </View>
             <View style={{ padding: 24 }}>
-              <Text style={{ color: 'rgba(253, 251, 247, 0.8)', marginBottom: 16, fontSize: 15, fontWeight: '600' }}>
+              <Text style={{ color: MUSHAF.modalText + 'CC', marginBottom: 16, fontSize: 15, fontWeight: '600' }}>
                 أدخل رقم الصفحة من 1 إلى 604:
               </Text>
               <TextInput
                 style={{
-                  borderWidth: 1, borderColor: 'rgba(212, 181, 112, 0.4)', borderRadius: 12,
-                  padding: 16, fontSize: 24, textAlign: 'center', color: '#FDFBF7',
-                  backgroundColor: 'rgba(0,0,0,0.2)', fontWeight: '700'
+                  borderWidth: 1, borderColor: MUSHAF.gold, borderRadius: 12,
+                  padding: 16, fontSize: 24, textAlign: 'center', color: MUSHAF.ink,
+                  backgroundColor: MUSHAF.pageWarm, fontWeight: '700'
                 }}
                 keyboardType="number-pad"
                 value={jumpPageNum}
                 onChangeText={setJumpPageNum}
                 placeholder="مثال: 250"
-                placeholderTextColor="rgba(253, 251, 247, 0.3)"
+                placeholderTextColor={MUSHAF.inkSoft + '80'}
                 autoFocus
                 onSubmitEditing={handlePageJump}
               />
               <Pressable
                 onPress={handlePageJump}
                 style={({ pressed }) => ({
-                  backgroundColor: pressed ? '#B8923B' : '#D4B570', padding: 16, borderRadius: 12,
+                  backgroundColor: pressed ? MUSHAF.goldDeep : MUSHAF.gold, padding: 16, borderRadius: 12,
                   alignItems: 'center', marginTop: 24
                 })}
               >
-                <Text style={{ color: '#0A1815', fontSize: 18, fontWeight: '800' }}>انتقال للصفحة</Text>
+                <Text style={{ color: MUSHAF.modalBg, fontSize: 18, fontWeight: '800' }}>انتقال للصفحة</Text>
               </Pressable>
             </View>
           </View>
@@ -753,12 +772,12 @@ export default function SurahDetail() {
       <Modal visible={showSurahJump} transparent animationType="slide" onRequestClose={() => setShowSurahJump(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowSurahJump(false)} accessibilityLabel="إغلاق" />
-          <View style={[styles.modalContent, { backgroundColor: t.colors.primaryDark, maxHeight: '80%' }]}>
+          <View style={[styles.modalContent, { backgroundColor: MUSHAF.modalBg, maxHeight: '80%' }]}>
             <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 12 }} />
-            <View style={[styles.modalHeader, { borderBottomColor: 'rgba(212, 181, 112, 0.2)' }]}>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: '#D4B570', fontFamily: quranFont }}>اختر سورة للذهاب إليها</Text>
-              <Pressable onPress={() => setShowSurahJump(false)} hitSlop={10} style={{ backgroundColor: 'rgba(212, 181, 112, 0.1)', padding: 6, borderRadius: 20 }}>
-                <X size={20} color="#D4B570" />
+            <View style={[styles.modalHeader, { borderBottomColor: MUSHAF.gold + '40' }]}>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: MUSHAF.gold, fontFamily: quranFont }}>اختر سورة للذهاب إليها</Text>
+              <Pressable onPress={() => setShowSurahJump(false)} hitSlop={10} style={{ backgroundColor: MUSHAF.gold + '22', padding: 6, borderRadius: 20 }}>
+                <X size={20} color={MUSHAF.gold} />
               </Pressable>
             </View>
             <FlatList
@@ -772,14 +791,14 @@ export default function SurahDetail() {
                     executePageJump(item.pageStart);
                   }}
                   style={({ pressed }) => ({
-                    paddingHorizontal: 24, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(212, 181, 112, 0.1)',
+                    paddingHorizontal: 24, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: MUSHAF.gold + '20',
                     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                    backgroundColor: pressed ? 'rgba(212, 181, 112, 0.05)' : 'transparent'
+                    backgroundColor: pressed ? MUSHAF.gold + '15' : 'transparent'
                   })}
                 >
-                  <Text style={{ fontSize: 20, fontWeight: '700', color: '#FDFBF7', fontFamily: quranFont }}>سورة {item.nameAr}</Text>
-                  <View style={{ backgroundColor: 'rgba(212, 181, 112, 0.15)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(212, 181, 112, 0.3)' }}>
-                    <Text style={{ fontSize: 12, color: '#D4B570', fontWeight: '800' }}>صفحة {item.pageStart}</Text>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: MUSHAF.modalText, fontFamily: quranFont }}>سورة {item.nameAr}</Text>
+                  <View style={{ backgroundColor: MUSHAF.gold + '22', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: MUSHAF.gold + '55' }}>
+                    <Text style={{ fontSize: 12, color: MUSHAF.gold, fontWeight: '800' }}>صفحة {item.pageStart}</Text>
                   </View>
                 </Pressable>
               )}
@@ -792,12 +811,12 @@ export default function SurahDetail() {
       <Modal visible={showJuzJump} transparent animationType="slide" onRequestClose={() => setShowJuzJump(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowJuzJump(false)} accessibilityLabel="إغلاق" />
-          <View style={[styles.modalContent, { backgroundColor: t.colors.primaryDark, maxHeight: '80%' }]}>
+          <View style={[styles.modalContent, { backgroundColor: MUSHAF.modalBg, maxHeight: '80%' }]}>
             <View style={{ alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginTop: 12 }} />
-            <View style={[styles.modalHeader, { borderBottomColor: 'rgba(212, 181, 112, 0.2)' }]}>
-              <Text style={{ fontSize: 22, fontWeight: '800', color: '#D4B570', fontFamily: quranFont }}>اختر جزءاً للذهاب إليه</Text>
-              <Pressable onPress={() => setShowJuzJump(false)} hitSlop={10} style={{ backgroundColor: 'rgba(212, 181, 112, 0.1)', padding: 6, borderRadius: 20 }}>
-                <X size={20} color="#D4B570" />
+            <View style={[styles.modalHeader, { borderBottomColor: MUSHAF.gold + '40' }]}>
+              <Text style={{ fontSize: 22, fontWeight: '800', color: MUSHAF.gold, fontFamily: quranFont }}>اختر جزءاً للذهاب إليه</Text>
+              <Pressable onPress={() => setShowJuzJump(false)} hitSlop={10} style={{ backgroundColor: MUSHAF.gold + '22', padding: 6, borderRadius: 20 }}>
+                <X size={20} color={MUSHAF.gold} />
               </Pressable>
             </View>
             <FlatList
@@ -813,14 +832,14 @@ export default function SurahDetail() {
                       executePageJump(targetPage);
                     }}
                     style={({ pressed }) => ({
-                      paddingHorizontal: 24, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: 'rgba(212, 181, 112, 0.1)',
+                      paddingHorizontal: 24, paddingVertical: 18, borderBottomWidth: 1, borderBottomColor: MUSHAF.gold + '20',
                       flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-                      backgroundColor: pressed ? 'rgba(212, 181, 112, 0.05)' : 'transparent'
+                      backgroundColor: pressed ? MUSHAF.gold + '15' : 'transparent'
                     })}
                   >
-                    <Text style={{ fontSize: 20, fontWeight: '700', color: '#FDFBF7', fontFamily: quranFont }}>{item.nameAr}</Text>
-                    <View style={{ backgroundColor: 'rgba(212, 181, 112, 0.15)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(212, 181, 112, 0.3)' }}>
-                      <Text style={{ fontSize: 12, color: '#D4B570', fontWeight: '800' }}>صفحة {targetPage}</Text>
+                    <Text style={{ fontSize: 20, fontWeight: '700', color: MUSHAF.modalText, fontFamily: quranFont }}>{item.nameAr}</Text>
+                    <View style={{ backgroundColor: MUSHAF.gold + '22', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: MUSHAF.gold + '55' }}>
+                      <Text style={{ fontSize: 12, color: MUSHAF.gold, fontWeight: '800' }}>صفحة {targetPage}</Text>
                     </View>
                   </Pressable>
                 )
@@ -898,14 +917,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   audioBarPlayBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
+    // ظل زمردي خفيف يبرز الزر كأهم CTA في الصفحة
     ...Platform.select({
-      ios: { shadowColor: '#8B6F2C', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 5 },
-      android: { elevation: 3 },
+      ios: { shadowColor: '#0A3D38', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.35, shadowRadius: 6 },
+      android: { elevation: 4 },
     }),
   },
   reciterChip: {

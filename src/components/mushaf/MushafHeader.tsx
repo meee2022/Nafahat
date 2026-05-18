@@ -1,18 +1,25 @@
 /**
- * 📜 ترويسة المصحف المرجعية (King Fahd Style)
- * لا تحتوي على أزرار، مجرد إطارين زخرفيين لاسم السورة والجزء
- * مع خلفية من النقش الإسلامي.
+ * 📜 ترويسة المصحف - تصميم عثماني هادئ يتناسق مع الإطار.
+ *
+ * البنية:
+ *  - شريط زخرفة موجي علوي رفيع (نفس نمط شرائط الإطار).
+ *  - cartouches مدوّرة قليلاً بحدود ذهبية ناعمة لاسم السورة والجزء.
+ *  - الكل بخلفية عاجية دافئة.
  */
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
-import Svg, { Path, Rect, Defs, Pattern, G, Circle } from 'react-native-svg';
+import { View, Text, StyleSheet, Pressable, Platform, useWindowDimensions } from 'react-native';
+import { OrnamentStrip, MUSHAF_GOLD, MUSHAF_GOLD_LIGHT, MUSHAF_BG, MUSHAF_INK } from './MushafBorder';
 
 interface Props {
   juzLabel: string;
   surahName: string;
+  /** الذهبي الأساسي - من theme palette */
   goldColor?: string;
   goldDeep?: string;
+  /** خلفية الـ chrome (عاجي في light، داكن في dark) */
   pageColor?: string;
+  /** لون النص داخل الـ cartouches */
+  textColor?: string;
   quranFont: string;
   onSurahPress?: () => void;
   onJuzPress?: () => void;
@@ -21,81 +28,83 @@ interface Props {
 export const MushafHeader: React.FC<Props> = ({
   juzLabel,
   surahName,
-  goldColor = '#BE995E',
-  goldDeep = '#8B6239',
-  pageColor = '#FFFFFF',
+  goldColor = MUSHAF_GOLD,
+  pageColor = MUSHAF_BG,
+  textColor = MUSHAF_INK,
   quranFont,
   onSurahPress,
   onJuzPress,
 }) => {
+  const { width: screenW } = useWindowDimensions();
+  const stripW = Math.min(screenW, 900) - 24;
+
   return (
-    <View style={[styles.wrap, { borderColor: goldDeep, backgroundColor: pageColor }]}>
-      {/* خلفية النقش الإسلامي */}
-      <View style={[StyleSheet.absoluteFill, { padding: 2 }]}>
-         <TopLacePattern color={goldDeep} accent={goldColor} />
+    <View style={[styles.wrap, { backgroundColor: pageColor }]}>
+      {/* شريط زخرفة موجية رفيعة - يستخدم ألوان theme */}
+      <View style={styles.stripWrap}>
+        <OrnamentStrip length={stripW} isVertical={false} goldColor={goldColor} bgColor={pageColor} />
       </View>
 
-      <View style={styles.cartouchesRow}>
-        <Cartouche text={juzLabel} font={quranFont} color={goldDeep} pageColor={pageColor} onPress={onJuzPress} />
-        <View style={{ width: 20 }} />
-        <Cartouche text={surahName} font={quranFont} color={goldDeep} pageColor={pageColor} onPress={onSurahPress} />
+      {/* Cartouches */}
+      <View style={styles.row}>
+        <Cartouche text={juzLabel} font={quranFont} goldColor={goldColor} pageColor={pageColor} textColor={textColor} onPress={onJuzPress} />
+        <View style={{ width: 12 }} />
+        <Cartouche text={surahName} font={quranFont} goldColor={goldColor} pageColor={pageColor} textColor={textColor} onPress={onSurahPress} />
       </View>
     </View>
   );
 };
 
-const Cartouche: React.FC<{ text: string; font: string; color: string; pageColor: string; onPress?: () => void }> = ({
-  text, font, color, pageColor, onPress
-}) => (
-  <Pressable onPress={onPress} hitSlop={5} style={styles.cartoucheContainer}>
-    {/* شكل الخرطوش (مستطيل بأطراف مثلثة) */}
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: pageColor, borderColor: color, borderWidth: 1.5, borderRadius: 24 }]} />
-    <Text style={[styles.cartoucheText, { color: color, fontFamily: font, paddingTop: Platform.OS === 'ios' ? 4 : 0 }]}>
+/**
+ * Cartouche - كبسولة بحدود ذهبية ناعمة مدوّرة قليلاً.
+ */
+const Cartouche: React.FC<{
+  text: string; font: string; goldColor: string; pageColor: string; textColor: string; onPress?: () => void;
+}> = ({ text, font, goldColor, pageColor, textColor, onPress }) => (
+  <Pressable
+    onPress={onPress}
+    hitSlop={5}
+    accessibilityRole="button"
+    style={({ pressed }) => [
+      styles.cartouche,
+      { borderColor: goldColor, backgroundColor: pageColor, opacity: pressed ? 0.7 : 1 },
+    ]}
+  >
+    <Text
+      style={[styles.cartoucheText, { color: textColor, fontFamily: font }]}
+      numberOfLines={1}
+    >
       {text}
     </Text>
   </Pressable>
 );
 
-const TopLacePattern: React.FC<{ color: string; accent: string }> = ({ color, accent }) => (
-  <Svg width="100%" height="100%" preserveAspectRatio="none">
-    <Defs>
-      <Pattern id="topLace" x="0" y="0" width="12" height="12" patternUnits="userSpaceOnUse">
-        <G>
-          <Path d="M6 1 L7 6 L11 7 L7 8 L6 11 L5 8 L1 7 L5 6 Z" fill={color} opacity={0.6} />
-          <Circle cx="6" cy="6" r="1.5" fill={accent} opacity={0.8} />
-          <Circle cx="0" cy="0" r="1" fill={color} opacity={0.5} />
-          <Circle cx="12" cy="12" r="1" fill={color} opacity={0.5} />
-        </G>
-      </Pattern>
-    </Defs>
-    <Rect width="100%" height="100%" fill="url(#topLace)" />
-  </Svg>
-);
-
 const styles = StyleSheet.create({
   wrap: {
-    height: 48,
-    borderWidth: 1.5,
-    borderBottomWidth: 0,
-    marginHorizontal: 0,
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
+    paddingTop: 4,
   },
-  cartouchesRow: {
+  stripWrap: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
+  },
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  cartoucheContainer: {
+  cartouche: {
     flex: 1,
-    height: 32,
-    justifyContent: 'center',
+    height: 36,
+    borderRadius: 12,
+    borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
   },
   cartoucheText: {
-    fontSize: 20,
-    marginTop: -4,
+    fontSize: 14,
+    fontWeight: '700',
+    marginTop: Platform.OS === 'ios' ? 1 : 0,
   },
 });

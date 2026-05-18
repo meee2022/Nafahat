@@ -63,11 +63,12 @@ const MushafQpcPageImpl: React.FC<Props> = ({
   const ink    = inkColor  ?? t.colors.textPrimary;
   const pageBg = pageColor ?? t.colors.background;
 
-  // 🎯 fontSize ديناميكي: خط QCF v4 مصمّم لعرض ~400-450px على مصحف الجيب.
-  // نسمح بتكبير الخط على الشاشات الأعرض (مثل التابلت أو الويب)
+  // 🎯 fontSize ديناميكي مع سقف صارم: خط QCF v4 مصمّم لعرض ~400-450px على مصحف الجيب.
+  //   السقف 28px يضمن أن النص لا يتضخّم على شاشات الويب الأعرض، فتبقى الصفحات
+  //   متطابقة بصرياً بغضّ النظر عن الجزء/السورة.
   const fontSize = explicitFontSize ?? (
     pageWidth > 0
-      ? Math.max(16, pageWidth / 16)
+      ? Math.max(16, Math.min(28, pageWidth / 16))
       : 22
   );
 
@@ -312,9 +313,12 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     paddingHorizontal: 4,
-    paddingTop: 4,
-    paddingBottom: 4,
-    justifyContent: 'space-evenly',
+    paddingTop: 10,
+    paddingBottom: 10,
+    // ⭐ space-between يخلّي السطر الأول يلامس أعلى الإطار والسطر الأخير يلامس الأسفل
+    //    دائماً - بغضّ النظر عن عدد السطور أو طولها. صفحة الفاتحة والبقرة تظهر بنفس
+    //    الـ filling تماماً.
+    justifyContent: 'space-between',
     overflow: 'hidden',
   },
   line: {

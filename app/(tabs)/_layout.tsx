@@ -51,15 +51,15 @@ export default function TabsLayout() {
         },
       }}
     >
-      {/* الـ 4 tabs المرئية */}
-      <Tabs.Screen name="index"        options={{ tabBarIcon: ({ focused }) => <TabItem icon="book"  labelKey="tabs.mushaf"       focused={focused} /> }} />
-      <Tabs.Screen name="memorization" options={{ tabBarIcon: ({ focused }) => <TabItem icon="brain" labelKey="tabs.memorization" focused={focused} /> }} />
-      <Tabs.Screen name="daily"        options={{ tabBarIcon: ({ focused }) => <TabItem icon="home"  labelKey="tabs.daily"        focused={focused} /> }} />
-      <Tabs.Screen name="account"      options={{ tabBarIcon: ({ focused }) => <TabItem icon="user"  labelKey="tabs.account"      focused={focused} /> }} />
+      {/* الـ tabs المرئية - 5 tabs */}
+      <Tabs.Screen name="index"        options={{ tabBarIcon: ({ focused }) => <TabItem icon="home"       labelKey="tabs.home"         focused={focused} /> }} />
+      <Tabs.Screen name="mushaf"       options={{ tabBarIcon: ({ focused }) => <TabItem icon="book"       labelKey="tabs.mushaf"       focused={focused} /> }} />
+      <Tabs.Screen name="memorization" options={{ tabBarIcon: ({ focused }) => <TabItem icon="brain"      labelKey="tabs.memorization" focused={focused} /> }} />
+      <Tabs.Screen name="reciters"     options={{ tabBarIcon: ({ focused }) => <TabItem icon="headphones" labelKey="tabs.listen"       focused={focused} /> }} />
+      <Tabs.Screen name="account"      options={{ tabBarIcon: ({ focused }) => <TabItem icon="user"       labelKey="tabs.account"      focused={focused} /> }} />
 
-      {/* الـ tabs المخفية — موجودة كـ routes لكن مش في الـ tab bar */}
-      <Tabs.Screen name="mushaf"   options={{ href: null }} />
-      <Tabs.Screen name="reciters" options={{ href: null }} />
+      {/* الـ daily tab المخفي — accessible عبر روابط لكن مش في الـ tab bar */}
+      <Tabs.Screen name="daily" options={{ href: null }} />
     </Tabs>
   );
 }

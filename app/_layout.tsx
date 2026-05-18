@@ -191,6 +191,8 @@ function AppGate() {
       <Stack.Screen name="admin/users" />
       {/* Tools landing — يجمع كل الأدوات في صفحة واحدة */}
       <Stack.Screen name="tools" />
+      {/* Library — قائمة السور/الأجزاء/الأحزاب (كانت في tab المصحف القديم) */}
+      <Stack.Screen name="library" />
       <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       <Stack.Screen name="player" options={{ presentation: 'modal' }} />
     </Stack>

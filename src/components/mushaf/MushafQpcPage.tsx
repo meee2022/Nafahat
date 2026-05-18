@@ -55,22 +55,26 @@ const MushafQpcPageImpl: React.FC<Props> = ({
   const [pageData, setPageData] = useState<QpcPageData | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // 📏 عرض الصفحة المتاح - يُحسب من onLayout. نستخدمه لتكييف حجم الخط
-  //    بحيث ما يطلعش نص فوق إطار المصحف.
+  // 📏 أبعاد الصفحة المتاحة - تُقاس من onLayout. نستخدمها لتكييف fontSize
+  //    بحيث ما يطلعش نص فوق إطار المصحف لا أفقياً ولا عمودياً.
   const [pageWidth, setPageWidth] = useState(0);
+  const [pageHeight, setPageHeight] = useState(0);
 
   const gold   = goldColor ?? t.colors.accent;
   const ink    = inkColor  ?? t.colors.textPrimary;
   const pageBg = pageColor ?? t.colors.background;
 
-  // 🎯 fontSize ديناميكي مُحافِظ: نأخذ pageWidth / 18 بدل /16 لمساحة تنفّس أكبر
-  //    + سقف 24 (بدل 28) عشان النص يبان كامل بدون قطع على الحواف الجانبية
-  //    + قاع 15 للأمان على الشاشات الصغيرة جداً
-  const fontSize = explicitFontSize ?? (
-    pageWidth > 0
-      ? Math.max(15, Math.min(24, pageWidth / 18))
-      : 20
-  );
+  // 🎯 fontSize ديناميكي مقيّد بـ width + height معاً:
+  //   - widthBased: pageWidth / 18 لمساحة تنفّس أفقياً + سقف 24
+  //   - heightBased: 15 سطر × lineHeight 1.7 + padding 20 يجب أن لا يتجاوز pageHeight
+  //     → fontSize ≤ (pageHeight - 20) / (15 × 1.7) ≈ (pageHeight - 20) / 25.5
+  //   نأخذ الأصغر من الاتنين عشان النص ما يتقصّش لا من الجنب ولا من تحت.
+  const fontSize = explicitFontSize ?? (() => {
+    if (pageWidth === 0 || pageHeight === 0) return 18;
+    const widthBased  = Math.min(24, pageWidth / 18);
+    const heightBased = (pageHeight - 20) / 25.5;
+    return Math.max(13, Math.min(widthBased, heightBased));
+  })();
 
   useEffect(() => {
     let mounted = true;
@@ -128,7 +132,9 @@ const MushafQpcPageImpl: React.FC<Props> = ({
       style={[styles.page, { backgroundColor: pageBg }]}
       onLayout={(e) => {
         const w = e.nativeEvent.layout.width;
+        const h = e.nativeEvent.layout.height;
         if (Math.abs(w - pageWidth) > 1) setPageWidth(w);
+        if (Math.abs(h - pageHeight) > 1) setPageHeight(h);
       }}
     >
       {pageData.lines.map((line, idx) => {

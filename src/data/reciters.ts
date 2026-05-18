@@ -24,6 +24,19 @@ export const RECITERS: Reciter[] = [
   { id: 'shatry',     nameAr: 'أبو بكر الشاطري',       nameEn: 'Abu Bakr Al-Shatri',             countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server11.mp3quran.net/shatri' },
   { id: 'dosari',     nameAr: 'ياسر الدوسري',          nameEn: 'Yasser Al-Dosari',               countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server11.mp3quran.net/yasser' },
   { id: 'banna',      nameAr: 'محمود علي البنا',       nameEn: 'Mahmoud Ali Al-Banna',           countryAr: 'مصر',     style: 'مجود', bitrate: 192, cdnBase: 'https://server8.mp3quran.net/bna' },
+  // 🆕 قرّاء إضافيون من mp3quran.net (qcfRecitationId يُحقّق عند توفّر الـ ID)
+  { id: 'abkar',      nameAr: 'إدريس أبكر',            nameEn: 'Idris Abkar',                    countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server10.mp3quran.net/abkr' },
+  { id: 'qatami',     nameAr: 'ناصر القطامي',          nameEn: 'Nasser Al-Qatami',               countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server6.mp3quran.net/qtm' },
+  { id: 'jaleel',     nameAr: 'خالد الجليل',           nameEn: 'Khaled Al-Jaleel',               countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server13.mp3quran.net/jleel' },
+  { id: 'baleela',    nameAr: 'بندر بليلة',            nameEn: 'Bandar Baleela',                 countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server6.mp3quran.net/balilah' },
+  { id: 'bukhatir',   nameAr: 'صلاح بوخاطر',           nameEn: 'Salah Bukhatir',                 countryAr: 'الإمارات', style: 'مرتل', bitrate: 128, cdnBase: 'https://server11.mp3quran.net/bu_khtr' },
+  { id: 'abbad',      nameAr: 'فارس عباد',             nameEn: 'Fares Abbad',                    countryAr: 'اليمن',   style: 'مرتل', bitrate: 128, cdnBase: 'https://server8.mp3quran.net/frs_a' },
+  { id: 'jibreel',    nameAr: 'محمد جبريل',            nameEn: 'Mohammad Jibreel',               countryAr: 'مصر',     style: 'مرتل', bitrate: 128, cdnBase: 'https://server8.mp3quran.net/jbrl' },
+  { id: 'akhdar',     nameAr: 'إبراهيم الأخضر',         nameEn: 'Ibrahim Al-Akhdar',              countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server8.mp3quran.net/akdr' },
+  { id: 'ayyub',      nameAr: 'محمد أيوب',             nameEn: 'Muhammad Ayyub',                 countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server8.mp3quran.net/ayyub' },
+  { id: 'sayegh',     nameAr: 'توفيق الصايغ',          nameEn: 'Tawfeeq As-Sayegh',              countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server11.mp3quran.net/sayegh' },
+  { id: 'mutrod',     nameAr: 'عبد الله المطرود',       nameEn: 'Abdullah Al-Mutrood',            countryAr: 'السعودية', style: 'مرتل', bitrate: 128, cdnBase: 'https://server8.mp3quran.net/mtrod' },
+  { id: 'kurdi',      nameAr: 'رعد محمد الكردي',       nameEn: "Ra'ad Al-Kurdi",                 countryAr: 'العراق',  style: 'مرتل', bitrate: 128, cdnBase: 'https://server6.mp3quran.net/kurdi' },
 ];
 
 export const getReciterById = (id: string) => RECITERS.find((r) => r.id === id);

@@ -141,7 +141,8 @@ export const AyahDetailSheet: React.FC<Props> = ({
   };
 
   const currentTranslationLang = TRANSLATION_OPTIONS.find((o) => o.id === translationEdition)?.lang ?? 'en';
-  const isRTL = currentTranslationLang === 'ur';
+  // RTL languages: Urdu, Persian (Arabic is the source verse, not a translation choice)
+  const isRTL = currentTranslationLang === 'ur' || currentTranslationLang === 'fa';
 
   return (
     <Modal

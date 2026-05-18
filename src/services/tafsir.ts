@@ -35,7 +35,17 @@ export type TafsirEdition  =
   | 'ar.saadi'
   | 'ar.jalalayn'
   | 'ar.qurtubi';
-export type TranslationEdition = 'en.sahih' | 'en.pickthall' | 'fr.hamidullah' | 'ur.maududi';
+export type TranslationEdition =
+  // English
+  | 'en.sahih' | 'en.pickthall' | 'en.yusufali' | 'en.asad'
+  // French / Spanish / German
+  | 'fr.hamidullah' | 'es.cortes' | 'de.bubenheim'
+  // Asian
+  | 'tr.diyanet' | 'id.indonesian' | 'ms.basmeih' | 'ru.kuliev'
+  // Indian subcontinent
+  | 'ur.maududi' | 'ur.junagarhi' | 'bn.bengali' | 'fa.makarem'
+  // African languages
+  | 'ha.gumi' | 'sw.barwani';
 export type AyahTextEdition = TafsirEdition | TranslationEdition;
 
 /**
@@ -62,19 +72,43 @@ export const TAFSIR_OPTIONS: TafsirMeta[] = [
   { id: 'ar.qurtubi',   nameAr: 'القرطبي',   nameEn: 'Qurtubi',   description: 'تفسير موسوعي شامل' },
 ];
 
+export type TranslationLang =
+  | 'en' | 'fr' | 'es' | 'de'
+  | 'tr' | 'id' | 'ms' | 'ru'
+  | 'ur' | 'bn' | 'fa'
+  | 'ha' | 'sw';
+
 export interface TranslationMeta {
   id: TranslationEdition;
   nameAr: string;
   nameEn: string;
-  lang: 'en' | 'fr' | 'ur';
+  lang: TranslationLang;
   flag: string;
 }
 
 export const TRANSLATION_OPTIONS: TranslationMeta[] = [
-  { id: 'en.sahih',      nameAr: 'إنجليزية',  nameEn: 'English',  lang: 'en', flag: '🇺🇸' },
-  { id: 'en.pickthall',  nameAr: 'إنجليزية - بيكثول', nameEn: 'Pickthall', lang: 'en', flag: '🇬🇧' },
-  { id: 'fr.hamidullah', nameAr: 'فرنسية',    nameEn: 'Français', lang: 'fr', flag: '🇫🇷' },
-  { id: 'ur.maududi',    nameAr: 'أردية',     nameEn: 'Urdu',     lang: 'ur', flag: '🇵🇰' },
+  // English
+  { id: 'en.sahih',       nameAr: 'إنجليزية - صحيح',   nameEn: 'English (Sahih)',     lang: 'en', flag: '🇺🇸' },
+  { id: 'en.pickthall',   nameAr: 'إنجليزية - بيكثول', nameEn: 'English (Pickthall)', lang: 'en', flag: '🇬🇧' },
+  { id: 'en.yusufali',    nameAr: 'إنجليزية - يوسف علي', nameEn: 'English (Yusuf Ali)', lang: 'en', flag: '🇬🇧' },
+  { id: 'en.asad',        nameAr: 'إنجليزية - أسد',    nameEn: 'English (Asad)',      lang: 'en', flag: '🇺🇸' },
+  // European
+  { id: 'fr.hamidullah',  nameAr: 'فرنسية',            nameEn: 'Français',            lang: 'fr', flag: '🇫🇷' },
+  { id: 'es.cortes',      nameAr: 'إسبانية',           nameEn: 'Español',             lang: 'es', flag: '🇪🇸' },
+  { id: 'de.bubenheim',   nameAr: 'ألمانية',           nameEn: 'Deutsch',             lang: 'de', flag: '🇩🇪' },
+  { id: 'ru.kuliev',      nameAr: 'روسية',             nameEn: 'Русский',             lang: 'ru', flag: '🇷🇺' },
+  // Asian / SE Asian
+  { id: 'tr.diyanet',     nameAr: 'تركية',             nameEn: 'Türkçe',              lang: 'tr', flag: '🇹🇷' },
+  { id: 'id.indonesian',  nameAr: 'إندونيسية',         nameEn: 'Indonesia',           lang: 'id', flag: '🇮🇩' },
+  { id: 'ms.basmeih',     nameAr: 'ماليزية',           nameEn: 'Melayu',              lang: 'ms', flag: '🇲🇾' },
+  // Indian subcontinent
+  { id: 'ur.maududi',     nameAr: 'أردية - مودودي',    nameEn: 'Urdu (Maududi)',      lang: 'ur', flag: '🇵🇰' },
+  { id: 'ur.junagarhi',   nameAr: 'أردية - جوناكاره',  nameEn: 'Urdu (Junagarhi)',    lang: 'ur', flag: '🇵🇰' },
+  { id: 'bn.bengali',     nameAr: 'بنغالية',           nameEn: 'বাংলা',                lang: 'bn', flag: '🇧🇩' },
+  { id: 'fa.makarem',     nameAr: 'فارسية',            nameEn: 'فارسی',               lang: 'fa', flag: '🇮🇷' },
+  // African
+  { id: 'ha.gumi',        nameAr: 'هوسا',              nameEn: 'Hausa',               lang: 'ha', flag: '🇳🇬' },
+  { id: 'sw.barwani',     nameAr: 'سواحيلية',          nameEn: 'Kiswahili',           lang: 'sw', flag: '🇹🇿' },
 ];
 
 // كاش الذاكرة (خلال الجلسة الواحدة) - محدود بـ 200 آية لمنع تسرّب الذاكرة

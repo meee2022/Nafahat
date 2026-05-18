@@ -7,7 +7,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Award, BookOpen, Brain, Headphones, Heart, Flame, Calendar,
-  Moon, Sun, Type, Bell, Globe, Download, Cloud, Info, ChevronLeft,
+  Moon, Sun, Type, Bell, Globe, Download, Info, ChevronLeft,
   LogIn, FileText, Mic, Sparkles, Edit3, Shield,
 } from 'lucide-react-native';
 import { useIsAdmin } from '@store/appConfigStore';
@@ -37,7 +37,7 @@ export default function AccountScreen() {
 
   // إعدادات التطبيق
   const {
-    notificationsEnabled, autoSaveTasmee, cloudSyncEnabled,
+    notificationsEnabled, autoSaveTasmee,
     estimatedDownloadsMB,
     setNotifications, setAutoSaveTasmee,
   } = useSettingsStore();
@@ -202,7 +202,7 @@ export default function AccountScreen() {
           icon={<Bell size={18} color={t.colors.primary} />}
           label={tr('settings.notifications')}
           value={notificationsEnabled}
-          onChange={(v) => { setNotifications(v); router.push('/notifications'); }}
+          onChange={setNotifications}
         />
         <SettingToggle
           icon={<Mic size={18} color={t.colors.featureCarmine} />}
@@ -223,23 +223,17 @@ export default function AccountScreen() {
           onPress={() => router.push('/downloads')}
         />
         <Row
-          icon={<Cloud size={18} color={cloudSyncEnabled ? t.colors.success : t.colors.featureLapis} />}
-          label={tr('settings.cloudSync')}
-          trailing={cloudSyncEnabled ? tr('settings.cloudConnected') : tr('settings.cloudOffline')}
-          onPress={() => router.push('/cloud-sync')}
-        />
-        <Row
           icon={<Info size={18} color={t.colors.textSecondary} />}
           label={tr('settings.about')}
           onPress={() => router.push('/about')}
         />
       </View>
 
-      {/* لوحة تحكم الأدمن - تظهر فقط لإيميلات الأدمن المعرّفة في appInfo.ts */}
-      {isAdmin ? (
+      {/* لوحة تحكم الأدمن — نُقلت لـ web admin، مش موجودة في الـ client بعد V2 */}
+      {false && isAdmin ? (
         <View style={{ marginTop: t.spacing.lg }}>
           <Pressable
-            onPress={() => router.push('/admin')}
+            onPress={() => router.push('/about')}
             style={({ pressed }) => [
               styles.adminBtn,
               {

@@ -26,25 +26,9 @@ export default function TajweedLesson() {
     setJustCompleted(true);
     Alert.alert(
       'أحسنت! ✓',
-      `تم تسجيل إنهاء درس "${lesson.title}". هل تريد البدء بالاختبار الآن؟`,
-      [
-        { text: 'لاحقاً', style: 'cancel' },
-        { text: 'ابدأ الاختبار', onPress: handleStartQuiz },
-      ],
+      `تم تسجيل إنهاء درس "${lesson.title}".`,
+      [{ text: 'حسناً', style: 'default' }],
     );
-  };
-
-  const handleStartQuiz = () => {
-    // ننتقل لشاشة الاختبار - مع تمرير المستوى المناسب لتجاوب الأسئلة
-    const level = lesson.level === 'beginner' ? 'beginner' : lesson.level === 'intermediate' ? 'intermediate' : 'advanced';
-    router.push({
-      pathname: '/quiz/session',
-      params: {
-        level,
-        juzs: '30',
-        total: '5',
-      },
-    });
   };
 
   return (
@@ -118,7 +102,7 @@ export default function TajweedLesson() {
         <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
           5 أسئلة لتثبيت ما تعلمت.
         </Text>
-        <Button label="ابدأ الاختبار" variant="soft" onPress={handleStartQuiz} style={{ marginTop: 12 }} />
+        {/* V2: زر الاختبار اتشال - الـ quiz feature مؤجّلة لما نبني أسئلة كافية */}
       </Card>
     </Screen>
   );

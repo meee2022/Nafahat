@@ -4,7 +4,7 @@ export { useMemoStore } from './memorizationStore';
 export { useStatsStore } from './statsStore';
 export { useTasbeehStore } from './tasbeehStore';
 export { useAudioStore } from './audioStore';
-export { useQuizStore, getRankForPoints, defaultQuestionsForLevel } from './quizStore';
+// V2: quiz store removed - feature postponed
 export { useSettingsStore } from './settingsStore';
 export { useKhatmaStore } from './khatmaStore';
 export { useTajweedStore } from './tajweedStore';

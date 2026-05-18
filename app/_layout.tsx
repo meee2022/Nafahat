@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { I18nManager, Platform, View, ActivityIndicator, StyleSheet, Image } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import { I18nManager, Platform, View, ActivityIndicator, StyleSheet, Image, Animated, Easing } from 'react-native';
+import Svg, { Rect, Path, Circle, G, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFonts as useAmiriQuran, AmiriQuran_400Regular } from '@expo-google-fonts/amiri-quran';
 import {
@@ -204,59 +204,177 @@ function AppGate() {
   );
 }
 
+/**
+ * 🌟 Splash Screen — أول انطباع للمستخدم.
+ *
+ * البنية الجديدة:
+ *  - Gradient أخضر زمردي عميق
+ *  - Concentric circles + 4 corner ornaments عثمانية ذهبية
+ *  - Bismillah داخل cartouche ذهبي بسيط (مش rub el hizb عشوائي)
+ *  - شعار نَفَحات بـ pulse خفيف
+ *  - Spinner ذهبي مخصّص (arc دوّار - مش ActivityIndicator generic)
+ *  - Animation stagger: كل عنصر يدخل بـ fade-in + slide خفيف بترتيب أنيق
+ *  - Bottom: charity notice بـ ornament رفيع
+ */
 function SplashView() {
   const t = useTheme();
   const APP_INFO = useAppInfo();
   const quranFont = t.fontFamilies.arabicQuran;
+
+  // Animations: stagger fade + slide
+  const cartoucheAnim = React.useRef(new Animated.Value(0)).current;
+  const brandAnim     = React.useRef(new Animated.Value(0)).current;
+  const taglineAnim   = React.useRef(new Animated.Value(0)).current;
+  const pulse         = React.useRef(new Animated.Value(1)).current;
+  const spin          = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.stagger(180, [
+      Animated.timing(cartoucheAnim, { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(brandAnim,     { toValue: 1, duration: 600, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(taglineAnim,   { toValue: 1, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+    ]).start();
+
+    // Pulse subtle على الـ Bismillah
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1.025, duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.0,   duration: 1800, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+      ]),
+    ).start();
+
+    // Spinner rotation
+    Animated.loop(
+      Animated.timing(spin, { toValue: 1, duration: 1400, easing: Easing.linear, useNativeDriver: true }),
+    ).start();
+  }, [cartoucheAnim, brandAnim, taglineAnim, pulse, spin]);
+
+  const cartoucheStyle = {
+    opacity: cartoucheAnim,
+    transform: [
+      { translateY: cartoucheAnim.interpolate({ inputRange: [0, 1], outputRange: [-14, 0] }) },
+      { scale: pulse },
+    ],
+  };
+  const brandStyle = {
+    opacity: brandAnim,
+    transform: [{ translateY: brandAnim.interpolate({ inputRange: [0, 1], outputRange: [12, 0] }) }],
+  };
+  const taglineStyle = {
+    opacity: taglineAnim,
+    transform: [{ translateY: taglineAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) }],
+  };
+  const spinRot = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
   return (
     <LinearGradient colors={['#0E261E', '#081712', '#040C09']} style={styles.splash}>
+      {/* خلفية - دوائر متّحدة المركز + radial glow خفيف */}
       <View style={styles.bgPattern} pointerEvents="none">
-        {/* Subtle Concentric Circles */}
-        {Array.from({ length: 4 }).map((_, i) => (
+        {Array.from({ length: 5 }).map((_, i) => (
           <View
             key={i}
             style={{
               position: 'absolute',
-              width: 250 + i * 110,
-              height: 250 + i * 110,
+              width: 220 + i * 110,
+              height: 220 + i * 110,
               borderRadius: 2000,
               borderWidth: 0.8,
-              borderColor: 'rgba(212, 181, 112, 0.05)',
+              borderColor: `rgba(212, 181, 112, ${0.08 - i * 0.013})`,
               top: '50%', left: '50%',
-              transform: [{ translateX: -(125 + i * 55) }, { translateY: -(125 + i * 55) }],
+              transform: [{ translateX: -(110 + i * 55) }, { translateY: -(110 + i * 55) }],
             }}
           />
         ))}
       </View>
 
-      <View style={{ alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
-         {/* Rub el Hizb framing the Bismillah (Larger so it doesn't cross the text) */}
-         <View style={{ position: 'absolute', opacity: 0.6 }}>
-            <Svg width={200} height={200} viewBox="0 0 100 100">
-               <Rect x={18} y={18} width={64} height={64} fill="rgba(212, 181, 112, 0.03)" stroke="rgba(212, 181, 112, 0.4)" strokeWidth={0.5} />
-               <Rect x={18} y={18} width={64} height={64} fill="rgba(212, 181, 112, 0.03)" stroke="rgba(212, 181, 112, 0.4)" strokeWidth={0.5} transform="rotate(45 50 50)" />
-            </Svg>
-         </View>
-         
-         <Text style={{ fontSize: 56, color: '#E8C77F', fontFamily: 'serif', marginTop: -5, textShadowColor: 'rgba(212, 181, 112, 0.3)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 10 }}>
-            ﷽
-         </Text>
+      {/* 4 corner Ottoman ornaments - signature Nafahat */}
+      <CornerOrnament position="top-left" />
+      <CornerOrnament position="top-right" />
+      <CornerOrnament position="bottom-left" />
+      <CornerOrnament position="bottom-right" />
+
+      {/* Bismillah cartouche - إطار ذهبي ناعم بدل Rub el Hizb العشوائي */}
+      <Animated.View style={[{ alignItems: 'center', justifyContent: 'center', marginBottom: 36 }, cartoucheStyle]}>
+        <Svg width={280} height={130} viewBox="0 0 280 130" style={{ position: 'absolute' }}>
+          <Defs>
+            <RadialGradient id="cartoucheGlow" cx="50%" cy="50%" rx="55%" ry="50%">
+              <Stop offset="0%"   stopColor="rgba(212, 181, 112, 0.10)" />
+              <Stop offset="100%" stopColor="rgba(212, 181, 112, 0)" />
+            </RadialGradient>
+          </Defs>
+          {/* glow خلف الـ Bismillah */}
+          <Rect x="20" y="25" width="240" height="80" rx="40" fill="url(#cartoucheGlow)" />
+          {/* الإطار الخارجي - cartouche بيضاوي ممدود */}
+          <Path
+            d="M 50 30 Q 20 65, 50 100 L 230 100 Q 260 65, 230 30 Z"
+            fill="none" stroke="rgba(212, 181, 112, 0.55)" strokeWidth="0.7"
+          />
+          {/* إطار داخلي رفيع */}
+          <Path
+            d="M 55 36 Q 28 65, 55 94 L 225 94 Q 252 65, 225 36 Z"
+            fill="none" stroke="rgba(212, 181, 112, 0.25)" strokeWidth="0.4"
+          />
+          {/* نقطتين زخرفيتين على الجوانب */}
+          <Circle cx="22" cy="65" r="2" fill="#D4B570" />
+          <Circle cx="258" cy="65" r="2" fill="#D4B570" />
+          <Circle cx="22" cy="65" r="3.5" fill="none" stroke="rgba(212, 181, 112, 0.5)" strokeWidth="0.5" />
+          <Circle cx="258" cy="65" r="3.5" fill="none" stroke="rgba(212, 181, 112, 0.5)" strokeWidth="0.5" />
+        </Svg>
+        <Text style={{
+          fontSize: 54,
+          color: '#E8C77F',
+          fontFamily: 'serif',
+          textShadowColor: 'rgba(212, 181, 112, 0.35)',
+          textShadowOffset: { width: 0, height: 3 },
+          textShadowRadius: 12,
+          marginTop: 2,
+        }}>
+          ﷽
+        </Text>
+      </Animated.View>
+
+      {/* Brand name */}
+      <Animated.View style={brandStyle}>
+        <Text style={[styles.brandName, { fontFamily: quranFont }]}>{APP_INFO.name}</Text>
+      </Animated.View>
+
+      {/* Tagline مع ornamental rule */}
+      <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 14 }, taglineStyle]}>
+        <View style={styles.taglineRule} />
+        <View style={styles.taglineDot} />
+        <Text style={styles.brandTagline}>صُحبة مع القرآن</Text>
+        <View style={styles.taglineDot} />
+        <View style={styles.taglineRule} />
+      </Animated.View>
+
+      {/* Custom gold spinner - SVG arc دوّار */}
+      <View style={{ marginTop: 56 }}>
+        <Animated.View style={{ transform: [{ rotate: spinRot }] }}>
+          <Svg width={42} height={42} viewBox="0 0 42 42">
+            {/* خلفية الـ ring */}
+            <Circle cx="21" cy="21" r="17" fill="none" stroke="rgba(212, 181, 112, 0.12)" strokeWidth="2.4" />
+            {/* arc ذهبي متحرّك */}
+            <Path
+              d="M 21 4 A 17 17 0 0 1 38 21"
+              fill="none"
+              stroke="#D4B570"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+            />
+            {/* نقطة في رأس الـ arc */}
+            <Circle cx="38" cy="21" r="1.6" fill="#E8C77F" />
+          </Svg>
+        </Animated.View>
       </View>
 
-      <Text style={[styles.brandName, { fontFamily: quranFont }]}>{APP_INFO.name}</Text>
-      
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 16, gap: 16 }}>
-         <View style={{ width: 40, height: 1, backgroundColor: 'rgba(212, 181, 112, 0.3)' }} />
-         <Text style={styles.brandTagline}>صُحبة مع القرآن</Text>
-         <View style={{ width: 40, height: 1, backgroundColor: 'rgba(212, 181, 112, 0.3)' }} />
-      </View>
-
-      <View style={{ marginTop: 60 }}>
-        <ActivityIndicator color="#D4B570" size="large" />
-      </View>
-
+      {/* Bottom: charity notice مع ornament رفيع */}
       {APP_INFO.charityNotice ? (
         <View style={styles.charityWrap}>
+          <View style={styles.charityRuleRow}>
+            <View style={styles.charityRule} />
+            <View style={styles.charityDiamond} />
+            <View style={styles.charityRule} />
+          </View>
           <Text style={styles.charityText}>{APP_INFO.charityNotice}</Text>
         </View>
       ) : null}
@@ -264,20 +382,90 @@ function SplashView() {
   );
 }
 
+/**
+ * زخرفة ركنية عثمانية - signature Nafahat.
+ * 4 منهم على الأركان عشان الـ splash يحس fait.
+ */
+const CornerOrnament: React.FC<{ position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' }> = ({ position }) => {
+  const positionStyles: Record<string, any> = {
+    'top-left':     { top: 28, left: 20 },
+    'top-right':    { top: 28, right: 20 },
+    'bottom-left':  { bottom: 28, left: 20 },
+    'bottom-right': { bottom: 28, right: 20 },
+  };
+  const rotation: Record<string, number> = {
+    'top-left': 0, 'top-right': 90, 'bottom-right': 180, 'bottom-left': 270,
+  };
+  return (
+    <View pointerEvents="none" style={[{ position: 'absolute' }, positionStyles[position]]}>
+      <Svg width={52} height={52} viewBox="0 0 52 52">
+        <G transform={`rotate(${rotation[position]} 26 26)`}>
+          {/* L-shape ذهبي رفيع */}
+          <Path d="M 4 4 L 22 4" stroke="rgba(212, 181, 112, 0.55)" strokeWidth="0.8" strokeLinecap="round" />
+          <Path d="M 4 4 L 4 22" stroke="rgba(212, 181, 112, 0.55)" strokeWidth="0.8" strokeLinecap="round" />
+          {/* arc داخلي */}
+          <Path d="M 10 4 Q 10 10, 4 10" fill="none" stroke="rgba(212, 181, 112, 0.35)" strokeWidth="0.6" />
+          {/* نقطة decorative */}
+          <Circle cx="4" cy="4" r="1.6" fill="#D4B570" />
+          <Circle cx="4" cy="4" r="3" fill="none" stroke="rgba(212, 181, 112, 0.3)" strokeWidth="0.4" />
+        </G>
+      </Svg>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   bgPattern: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  brandName: { fontSize: 52, fontWeight: '500', color: '#FDFBF7', marginTop: 10, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 4 }, textShadowRadius: 8 },
-  brandTagline: { fontSize: 13, color: '#D4B570', letterSpacing: 1.5, fontWeight: '600', fontFamily: 'IBMPlexSansArabic_500Medium' },
+  brandName: {
+    fontSize: 56,
+    fontWeight: '500',
+    color: '#FDFBF7',
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 10,
+    letterSpacing: 1,
+  },
+  brandTagline: {
+    fontSize: 13,
+    color: '#D4B570',
+    letterSpacing: 2,
+    fontWeight: '600',
+    fontFamily: 'IBMPlexSansArabic_500Medium',
+  },
+  taglineRule: {
+    width: 32, height: 1,
+    backgroundColor: 'rgba(212, 181, 112, 0.5)',
+  },
+  taglineDot: {
+    width: 4, height: 4,
+    borderRadius: 2,
+    backgroundColor: '#D4B570',
+  },
 
   charityWrap: {
     position: 'absolute',
     bottom: 50,
     alignItems: 'center',
     paddingHorizontal: 20,
+    gap: 10,
+  },
+  charityRuleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  charityRule: {
+    width: 40, height: 0.6,
+    backgroundColor: 'rgba(212, 181, 112, 0.35)',
+  },
+  charityDiamond: {
+    width: 5, height: 5,
+    backgroundColor: 'rgba(212, 181, 112, 0.6)',
+    transform: [{ rotate: '45deg' }],
   },
   charityText: {
-    color: 'rgba(245, 239, 224, 0.5)',
+    color: 'rgba(245, 239, 224, 0.55)',
     fontSize: 11,
     fontWeight: '500',
     letterSpacing: 0.5,

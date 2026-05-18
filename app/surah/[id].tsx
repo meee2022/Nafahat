@@ -285,6 +285,21 @@ export default function SurahDetail() {
     if (!playingThisSurah || !ayahs || s.durationMs === 0) return null;
     return getCurrentAyah(s.positionMs, s.durationMs, ayahs, surah.id, timings);
   });
+
+  // 🔄 Auto-advance الصفحة لما الصوت يعدّي آخر آية في الصفحة الحالية.
+  //   نتأكّد إن playingAyahNumber موجود في صفحة لاحقة بالفعل، عشان ما نقفزش
+  //   لأماكن غلط لو حساب الـ getCurrentAyah كان قبل آية الصفحة (مثلاً اليوزر
+  //   عمل seek يدوي لورا).
+  useEffect(() => {
+    if (!playingAyahNumber || !pages || !currentPage) return;
+    const isOnCurrentPage = currentPage.ayahs.some((a) => a.number === playingAyahNumber);
+    if (isOnCurrentPage) return;
+    const newIdx = pages.findIndex((p) => p.ayahs.some((a) => a.number === playingAyahNumber));
+    if (newIdx > currentPageIdx) {
+      setCurrentPageIdx(newIdx);
+      setSelectedAyah(null);
+    }
+  }, [playingAyahNumber, currentPageIdx, pages, currentPage]);
   const showBismillah = surah.id !== 1 && surah.id !== 9;
   // 🎯 الجزء يتحدّث حسب الصفحة الحالية - لا يبقى ثابتاً على juzStart للسورة.
   //    سورة البقرة مثلاً تمتدّ عبر 3 أجزاء، فالـ header لازم يعكس الجزء الفعلي.

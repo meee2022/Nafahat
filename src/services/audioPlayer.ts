@@ -51,12 +51,13 @@ export async function unload(): Promise<void> {
 /**
  * يحمّل ملف صوتي ويُشغّله من موضع محدّد.
  *
- * الفلسفة:
- *  ١. كل استدعاء يأخذ رقم نسخة (loadRequestVersion). لو استدعاء أحدث يبدأ
- *     قبل ما ينتهي القديم، القديم يكتشف نفسه قديم ويُلغى تماماً.
- *  ٢. لو `computeStartMs` موجود، نحمّل بـ `shouldPlay: false` أولاً، ثم نـ seek،
- *     ثم نـ play - لمنع سماع البداية ثم القفز للمكان المطلوب.
- *  ٣. الـ listener القديم لا يفعل شيء بعد أن يصبح قديماً (يقارن version).
+ * الفلسفة (إعادة هيكلة لإصلاح صمت التشغيل من آية):
+ *  ١. كل استدعاء يأخذ رقم نسخة (loadRequestVersion) كـ cancellation token.
+ *  ٢. نحمّل دائماً بـ `shouldPlay: false`، ثم نـ poll للـ duration بـ getStatusAsync
+ *     (حتى 10 محاولات × 100ms)، ثم نـ seek، ثم نـ playAsync **متزامناً**.
+ *     ده بيمنع الـ race condition القديم حيث الـ seek+play كان بيحصل في listener
+ *     async IIFE والـ store كان بيـ set isPlaying:true قبل ما الصوت يبدأ فعلاً.
+ *  ٣. الـ listener بيشتغل بعد ما نبدأ نشغّل، عشان status بيتبعت لـ caller صحيح.
  */
 export async function loadAndPlay(
   uri: string,
@@ -64,35 +65,27 @@ export async function loadAndPlay(
   /** اختياري: دالة تحسب موضع البداية من مدّة الـ MP3 - تُستخدم للبدء من آية محدّدة. */
   computeStartMs?: (durationMs: number) => number,
 ): Promise<void> {
-  // 🎫 احصل على رقم نسخة لهذا الطلب
   const myVersion = ++loadRequestVersion;
 
   await ensureAudioMode();
-  // لو حصل طلب أحدث أثناء انتظار audio mode، توقف
   if (myVersion !== loadRequestVersion) return;
 
   await unload();
   if (myVersion !== loadRequestVersion) return;
 
-  // 🎯 لو محدّد seek target، نبدأ بدون play لمنع سماع البداية
-  const shouldPlayInitially = !computeStartMs;
-  let initialSeekDone = false;
-
+  // 🎯 نبدأ دائماً paused — هنشغّل بنفسنا بعد ما نـ seek
   let sound: Audio.Sound;
-  let status: AVPlaybackStatus;
   try {
     const result = await Audio.Sound.createAsync(
       { uri },
-      { shouldPlay: shouldPlayInitially, volume: 1 },
+      { shouldPlay: false, volume: 1 },
     );
     sound = result.sound;
-    status = result.status;
   } catch (e) {
     if (myVersion !== loadRequestVersion) return;
     throw e;
   }
 
-  // ⛔ لو طلب جديد جاء أثناء التحميل، حرّر الـ sound اللي بدأ تحميله وانصرف
   if (myVersion !== loadRequestVersion) {
     try { await sound.unloadAsync(); } catch {}
     return;
@@ -100,42 +93,34 @@ export async function loadAndPlay(
 
   currentSound = sound;
 
-  // محاولة seek فورية لو الـ duration معروف بعد createAsync مباشرة
-  if (status.isLoaded && computeStartMs) {
-    const s = status as AVPlaybackStatusSuccess;
-    const durationMs = s.durationMillis ?? 0;
-    if (durationMs > 0) {
-      initialSeekDone = true;
-      const targetMs = computeStartMs(durationMs);
-      try {
-        if (targetMs > 0) await sound.setPositionAsync(targetMs);
-        await sound.playAsync();
-      } catch {}
+  // 🕐 لو محتاجين seek، نـ poll للـ duration الأول
+  if (computeStartMs) {
+    let duration = 0;
+    for (let i = 0; i < 10; i++) {
+      const st = await sound.getStatusAsync();
+      if (myVersion !== loadRequestVersion) {
+        try { await sound.unloadAsync(); } catch {}
+        return;
+      }
+      if (st.isLoaded && (st.durationMillis ?? 0) > 0) {
+        duration = st.durationMillis ?? 0;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (duration > 0) {
+      const targetMs = computeStartMs(duration);
+      if (targetMs > 0 && targetMs < duration) {
+        try { await sound.setPositionAsync(targetMs); } catch {}
+      }
     }
   }
 
-  // 🔄 Listener: لو الـ duration ما عُرفش فوراً، يُعمل الـ seek أول ما يُعرف
+  // 📡 listener قبل playAsync عشان أول status update يوصل للـ caller
   sound.setOnPlaybackStatusUpdate((st: AVPlaybackStatus) => {
-    // ✋ تجاهل الـ updates لو هذا الـ sound أصبح "قديماً"
     if (myVersion !== loadRequestVersion) return;
     if (!st.isLoaded) return;
     const s = st as AVPlaybackStatusSuccess;
-    const durationMs = s.durationMillis ?? 0;
-
-    // 🎯 محاولة seek مؤجَّلة لما الـ duration يُعرف
-    if (computeStartMs && !initialSeekDone && durationMs > 0) {
-      initialSeekDone = true;
-      const targetMs = computeStartMs(durationMs);
-      (async () => {
-        try {
-          if (targetMs > 0) await sound.setPositionAsync(targetMs);
-          await sound.playAsync();
-        } catch {}
-      })();
-      // لا نُرسل status للـ caller في هذه الحالة - لسه ما بدأناش
-      return;
-    }
-
     onStatus?.({
       isPlaying: s.isPlaying,
       positionMs: s.positionMillis ?? 0,
@@ -143,6 +128,9 @@ export async function loadAndPlay(
       didJustFinish: s.didJustFinish === true,
     });
   });
+
+  // ▶️ شغّل الآن — متزامن، عشان loadAndPlay ما يـ returnش غير بعد بداية فعلية
+  try { await sound.playAsync(); } catch {}
 }
 
 export async function setPlaying(playing: boolean): Promise<void> {

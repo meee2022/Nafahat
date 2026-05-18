@@ -12,6 +12,8 @@ import { arabicNumber } from '@data/surahs';
 
 interface Props {
   pageNumber: number;
+  /** 🆕 نص اختياري للحزب/الربع — يظهر بجانب رقم الصفحة (مثلاً "الحزب ٣ · النصف") */
+  hizbLabel?: string;
   goldColor?: string;
   goldDeep?: string;
   textColor?: string;
@@ -22,6 +24,7 @@ interface Props {
 
 export const MushafFooter: React.FC<Props> = ({
   pageNumber,
+  hizbLabel,
   goldColor = MUSHAF_GOLD,
   pageColor = MUSHAF_BG,
   textColor = MUSHAF_INK,
@@ -30,8 +33,13 @@ export const MushafFooter: React.FC<Props> = ({
 }) => {
   return (
     <View style={[styles.wrap, { backgroundColor: pageColor }]}>
-      {/* page badge مركزية - بدون ornament strip (الإطار نفسه فيه شريط زخرفي) */}
+      {/* page badge مركزية + Hizb label اختياري */}
       <View style={styles.row}>
+        {hizbLabel ? (
+          <Text style={[styles.hizbLabel, { color: textColor + 'BB' }]} numberOfLines={1}>
+            {hizbLabel}
+          </Text>
+        ) : null}
         <Pressable
           onPress={onPagePress}
           hitSlop={10}
@@ -56,8 +64,18 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   row: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
     paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  hizbLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    flex: 0,
   },
   pageBadge: {
     width: 64,

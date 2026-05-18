@@ -152,8 +152,11 @@ export default function HomeScreen() {
   const renderGrid = (items: any[]) => (
     <View style={styles.gridContainer}>
       {items.map((f) => (
-        <Pressable 
-          key={f.id} 
+        <Pressable
+          key={f.id}
+          accessibilityRole="button"
+          accessibilityLabel={f.title}
+          accessibilityHint={`افتح ${f.title}`}
           style={({ pressed }) => [
             styles.featureCard,
             pressed && { opacity: 0.7 }
@@ -196,7 +199,12 @@ export default function HomeScreen() {
           {/* Header Icons */}
           <View style={styles.heroHeader}>
             <View style={styles.heroHeaderLeft}>
-              <Pressable style={styles.iconBtn} onPress={() => router.push('/notifications')}>
+              <Pressable
+                style={styles.iconBtn}
+                onPress={() => router.push('/notifications')}
+                accessibilityRole="button"
+                accessibilityLabel="الإشعارات"
+              >
                 <Bell size={20} color="#FFF" />
               </Pressable>
             </View>
@@ -229,7 +237,12 @@ export default function HomeScreen() {
               )}
             </View>
             <View style={styles.heroHeaderRight}>
-              <Pressable style={styles.iconBtn} onPress={() => router.push('/search')}>
+              <Pressable
+                style={styles.iconBtn}
+                onPress={() => router.push('/search')}
+                accessibilityRole="button"
+                accessibilityLabel="بحث"
+              >
                 <Search size={20} color="#FFF" />
               </Pressable>
             </View>
@@ -252,15 +265,32 @@ export default function HomeScreen() {
         {/* 2. Prayer Times Strip */}
         <View style={[styles.prayerStrip, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
           <View style={styles.dateRow}>
-            <Pressable onPress={() => shiftDay(-1)} hitSlop={15} style={styles.dateNavBtn}>
+            <Pressable
+              onPress={() => shiftDay(-1)}
+              hitSlop={15}
+              style={styles.dateNavBtn}
+              accessibilityRole="button"
+              accessibilityLabel="اليوم السابق"
+            >
               <ChevronRight size={20} color={t.colors.textSecondary} />
             </Pressable>
-            <Pressable onPress={() => setSelectedDate(new Date())} style={{ flex: 1, alignItems: 'center' }}>
+            <Pressable
+              onPress={() => setSelectedDate(new Date())}
+              style={{ flex: 1, alignItems: 'center' }}
+              accessibilityRole="button"
+              accessibilityLabel="عُد لليوم الحالي"
+            >
               <Text style={{ color: t.colors.textPrimary, fontWeight: '700', fontSize: 13 }}>
                 {dateString}
               </Text>
             </Pressable>
-            <Pressable onPress={() => shiftDay(1)} hitSlop={15} style={styles.dateNavBtn}>
+            <Pressable
+              onPress={() => shiftDay(1)}
+              hitSlop={15}
+              style={styles.dateNavBtn}
+              accessibilityRole="button"
+              accessibilityLabel="اليوم التالي"
+            >
               <ChevronLeft size={20} color={t.colors.textSecondary} />
             </Pressable>
           </View>

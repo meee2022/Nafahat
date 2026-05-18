@@ -26,6 +26,7 @@ import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
 import { useAppInfo } from '@store/appConfigStore';
 import { ToastProvider, useToast } from '@components/common/Toast';
+import { ErrorBoundary } from '@components/common/ErrorBoundary';
 import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
@@ -59,11 +60,13 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <ToastProvider>
-            <Root>
-              <AppGate />
-            </Root>
-          </ToastProvider>
+          <ErrorBoundary>
+            <ToastProvider>
+              <Root>
+                <AppGate />
+              </Root>
+            </ToastProvider>
+          </ErrorBoundary>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

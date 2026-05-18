@@ -5,7 +5,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle, Defs, Pattern, Rect, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
-import { ArrowRight, Heart, Share2, Copy, Feather, Headphones, Sparkles, Check } from 'lucide-react-native';
+import { ArrowRight, Heart, Share2, Copy, Feather, Headphones, Sparkles, Check, Brain } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card } from '@components/ui';
@@ -13,7 +13,7 @@ import { OrnamentalRule } from '@components/ornaments';
 import { getAyahOfTheDay } from '@data/featuredAyahs';
 import { arabicNumber } from '@data/surahs';
 import { useT } from '@store/languageStore';
-import { useReadingStore, useAudioStore } from '@store/index';
+import { useReadingStore, useAudioStore, useMemoStore } from '@store/index';
 import { RECITERS, getReciterById } from '@data/reciters';
 import { copyToClipboard, shareText } from '@utils/clipboard';
 
@@ -28,9 +28,30 @@ export default function AyahOfDayScreen() {
 
   const { favorites, toggleFavorite } = useReadingStore();
   const { play } = useAudioStore();
+  const memoTasks = useMemoStore((s) => s.tasks);
+  const addMemoTask = useMemoStore((s) => s.addTask);
   const [copied, setCopied] = useState(false);
+  const [memoAdded, setMemoAdded] = useState(false);
 
   const isFav = favorites.includes(`${FEATURED_AYAH.surahId}:${FEATURED_AYAH.number}`);
+  const isInMemo = memoTasks.some(
+    (tk) =>
+      tk.surahId === FEATURED_AYAH.surahId &&
+      tk.ayahFrom <= FEATURED_AYAH.number &&
+      tk.ayahTo >= FEATURED_AYAH.number,
+  );
+
+  const handleMemorize = () => {
+    if (isInMemo) return;
+    addMemoTask({
+      surahId: FEATURED_AYAH.surahId,
+      ayahFrom: FEATURED_AYAH.number,
+      ayahTo: FEATURED_AYAH.number,
+      status: 'new',
+    });
+    setMemoAdded(true);
+    setTimeout(() => setMemoAdded(false), 2000);
+  };
   const fullText = `${FEATURED_AYAH.text}\n\n— سورة ${FEATURED_AYAH.surahName}، الآية ${arabicNumber(FEATURED_AYAH.number)}\n\nمن تطبيق نَفَحات`;
 
   const handleFavorite = () => {
@@ -172,6 +193,12 @@ export default function AyahOfDayScreen() {
             icon={<Share2 size={18} color={t.colors.accent} />}
             label={tr('ayahOfDay.actionShare')}
             onPress={handleShare}
+          />
+          <ActionBtn
+            icon={<Brain size={18} color={isInMemo || memoAdded ? t.colors.accent : t.colors.accent} fill={isInMemo || memoAdded ? t.colors.accent + '30' : 'none'} />}
+            label={memoAdded ? 'تمت ✓' : isInMemo ? 'في الحفظ' : 'احفظ'}
+            onPress={handleMemorize}
+            active={isInMemo || memoAdded}
           />
         </View>
 

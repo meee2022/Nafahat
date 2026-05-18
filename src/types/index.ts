@@ -46,6 +46,19 @@ export interface Bookmark {
   ayahNumber: number;
   page: number;
   note?: string;
+  /** 🆕 folder id لتجميع المرجعيات (مثلاً: "للحفظ"، "آيات تأمّل"، "آيات الرحمة"). undefined = افتراضي */
+  folder?: string;
+  createdAt: number;
+}
+
+/** 🆕 Bookmark folder للتنظيم */
+export interface BookmarkFolder {
+  id: string;
+  nameAr: string;
+  /** أيقونة من lucide-react-native */
+  iconName?: string;
+  /** لون hex للأيقونة */
+  color?: string;
   createdAt: number;
 }
 

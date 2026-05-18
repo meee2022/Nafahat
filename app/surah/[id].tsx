@@ -19,6 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { getSurahById, arabicNumber, SURAHS, JUZ_LIST, JUZ_PAGE_STARTS } from '@data/surahs';
+import { describeHizbProgress } from '@data/hizb';
 import { getAyahs as getAyahsFallback } from '@data/ayahs';
 import { getSurahAyahs, prefetchSurahs } from '@services/quranApi';
 import { useReadingStore, useAudioStore, useSettingsStore, useStatsStore } from '@store/index';
@@ -565,6 +566,7 @@ export default function SurahDetail() {
           {/* رقم الصفحة */}
           <MushafFooter
             pageNumber={currentPage?.page ?? surah.pageStart}
+            hizbLabel={describeHizbProgress(currentPage?.page ?? surah.pageStart)}
             onPagePress={() => setShowPageJump(true)}
             goldColor={MUSHAF.gold}
             goldDeep={MUSHAF.goldDeep}

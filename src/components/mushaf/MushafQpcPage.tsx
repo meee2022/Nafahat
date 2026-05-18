@@ -138,44 +138,59 @@ const MushafQpcPageImpl: React.FC<Props> = ({
       }}
     >
       {pageData.lines.map((line, idx) => {
-        // Detect if this is the last line of a Surah (should be centered instead of justified)
+        // Detect if this is the last line of a Surah (followed by a surah header or bismillah)
         const nextLine = pageData.lines[idx + 1];
-        let isLastOfSurah = false;
-        
-        if (nextLine && nextLine.words.some(w => w.type === 'surah_header' || w.type === 'bismillah')) {
-          isLastOfSurah = true;
-        } else {
-          // If it's the last line on the page, check if it ends the surah
-          const lastWord = line.words[line.words.length - 1];
-          if (lastWord && lastWord.type === 'end' && lastWord.verse_key) {
-            const [sura, aya] = lastWord.verse_key.split(':');
-            const surahData = pageData.surahs.find(s => s.id === Number(sura));
-            // Assuming we can check if it's the absolute end by looking at a known list, 
-            // but for QCF, if it's the last line on a page and doesn't fill the width, space-between might look odd.
-            // Let's use a heuristic: if the line has fewer words than average, it might be short.
-            // But relying on nextLine is 99% accurate for within-page boundaries.
-          }
-        }
+        const isLastOfSurah = !!(nextLine && nextLine.words.some(w => w.type === 'surah_header' || w.type === 'bismillah'));
 
         return (
-          <MushafLine
-            key={line.line}
-            line={line}
-            fontSize={fontSize}
-            inkColor={ink}
-            goldColor={gold}
-            pageColor={pageBg}
-            selectedVerseKey={selectedVerseKey ?? null}
-            playingVerseKey={playingVerseKey ?? null}
-            currentWordLocation={currentWordLocation ?? null}
-            onWordPress={onWordPress}
-            onWordLongPress={onWordLongPress}
-          />
+          <React.Fragment key={line.line}>
+            <MushafLine
+              line={line}
+              fontSize={fontSize}
+              inkColor={ink}
+              goldColor={gold}
+              pageColor={pageBg}
+              selectedVerseKey={selectedVerseKey ?? null}
+              playingVerseKey={playingVerseKey ?? null}
+              currentWordLocation={currentWordLocation ?? null}
+              onWordPress={onWordPress}
+              onWordLongPress={onWordLongPress}
+            />
+            {/* 🌿 End-of-Surah ornament — يظهر بعد آخر سطر في السورة قبل
+                الـ surah header للسورة اللي بعدها. زخرفة عثمانية أنيقة. */}
+            {isLastOfSurah ? <SurahEndOrnament goldColor={gold} fontSize={fontSize} /> : null}
+          </React.Fragment>
         );
       })}
     </View>
   );
 };
+
+// ─────────────── End-of-Surah ornament ───────────────
+const SurahEndOrnament: React.FC<{ goldColor: string; fontSize: number }> = ({ goldColor, fontSize }) => (
+  <View style={styles.surahEndRow}>
+    <View style={[styles.surahEndLine, { backgroundColor: goldColor, opacity: 0.5 }]} />
+    <View style={[styles.surahEndDot, { borderColor: goldColor }]}>
+      <View style={[styles.surahEndDotInner, { backgroundColor: goldColor }]} />
+    </View>
+    <RNText
+      allowFontScaling={false}
+      style={{
+        color: goldColor,
+        fontSize: Math.max(10, fontSize * 0.55),
+        fontWeight: '700',
+        letterSpacing: 1.5,
+        marginHorizontal: 8,
+      }}
+    >
+      ❋ تمّت السورة ❋
+    </RNText>
+    <View style={[styles.surahEndDot, { borderColor: goldColor }]}>
+      <View style={[styles.surahEndDotInner, { backgroundColor: goldColor }]} />
+    </View>
+    <View style={[styles.surahEndLine, { backgroundColor: goldColor, opacity: 0.5 }]} />
+  </View>
+);
 
 // 🚀 memo: ما يعملش re-render إلا لو props اتغيّرت فعلاً
 //   (selectedVerseKey, playingVerseKey, pageNumber, ...). يوقف flicker على
@@ -335,6 +350,29 @@ const styles = StyleSheet.create({
     flexWrap: 'nowrap',
     paddingVertical: 0,
     overflow: 'hidden',
+  },
+  surahEndRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  surahEndLine: {
+    flex: 1,
+    height: 0.7,
+  },
+  surahEndDot: {
+    width: 8, height: 8,
+    borderRadius: 4,
+    borderWidth: 0.7,
+    alignItems: 'center', justifyContent: 'center',
+    marginHorizontal: 3,
+  },
+  surahEndDotInner: {
+    width: 3, height: 3,
+    borderRadius: 1.5,
   },
   surahHeaderLine: {
     width: '100%',

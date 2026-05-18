@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Bookmark, Note } from '@/types/index';
+import { Bookmark, BookmarkFolder, Note } from '@/types/index';
 
 interface LastRead {
   surahId: number;
@@ -13,10 +13,18 @@ interface LastRead {
 interface ReadingState {
   lastRead: LastRead | null;
   bookmarks: Bookmark[];
+  /** 🆕 مجلّدات تنظيمية للمرجعيات */
+  bookmarkFolders: BookmarkFolder[];
   notes: Note[];
   favorites: string[];          // مفاتيح "surahId:ayah"
   setLastRead: (lr: LastRead) => void;
   toggleBookmark: (surahId: number, ayahNumber: number, page: number) => void;
+  /** 🆕 ينقل bookmark موجود إلى مجلّد. folderId=undefined → خارج المجلّدات. */
+  moveBookmarkToFolder: (bookmarkId: string, folderId?: string) => void;
+  /** 🆕 ينشئ folder جديد. */
+  createBookmarkFolder: (nameAr: string, iconName?: string, color?: string) => BookmarkFolder;
+  /** 🆕 يحذف folder (الـ bookmarks جواه ترجع للـ default). */
+  removeBookmarkFolder: (id: string) => void;
   toggleFavorite: (surahId: number, ayahNumber: number) => void;
   addNote: (note: Omit<Note, 'id' | 'createdAt' | 'updatedAt'>) => void;
   removeNote: (id: string) => void;
@@ -29,15 +37,23 @@ const persist = (state: Partial<ReadingState>) => {
   const data = {
     lastRead: state.lastRead,
     bookmarks: state.bookmarks,
+    bookmarkFolders: state.bookmarkFolders,
     notes: state.notes,
     favorites: state.favorites,
   };
   AsyncStorage.setItem(KEY, JSON.stringify(data)).catch(() => {});
 };
 
+const DEFAULT_FOLDERS: BookmarkFolder[] = [
+  { id: 'memorize',  nameAr: 'للحفظ',       iconName: 'Brain',     color: '#B8923B', createdAt: 0 },
+  { id: 'reflect',   nameAr: 'تأمّلات',     iconName: 'Sparkles',  color: '#0A3D38', createdAt: 0 },
+  { id: 'duaa',      nameAr: 'دعاء',        iconName: 'Heart',     color: '#9C7A2D', createdAt: 0 },
+];
+
 export const useReadingStore = create<ReadingState>((set, get) => ({
   lastRead: null,
   bookmarks: [],
+  bookmarkFolders: DEFAULT_FOLDERS,
   notes: [],
   favorites: [],
 
@@ -52,6 +68,33 @@ export const useReadingStore = create<ReadingState>((set, get) => ({
       : [...get().bookmarks, { id: `b-${Date.now()}`, surahId, ayahNumber, page, createdAt: Date.now() }];
     set({ bookmarks });
     persist({ ...get(), bookmarks });
+  },
+  moveBookmarkToFolder(bookmarkId, folderId) {
+    const bookmarks = get().bookmarks.map((b) =>
+      b.id === bookmarkId ? { ...b, folder: folderId } : b
+    );
+    set({ bookmarks });
+    persist({ ...get(), bookmarks });
+  },
+  createBookmarkFolder(nameAr, iconName, color) {
+    const folder: BookmarkFolder = {
+      id: `f-${Date.now()}`,
+      nameAr,
+      iconName,
+      color,
+      createdAt: Date.now(),
+    };
+    const bookmarkFolders = [...get().bookmarkFolders, folder];
+    set({ bookmarkFolders });
+    persist({ ...get(), bookmarkFolders });
+    return folder;
+  },
+  removeBookmarkFolder(id) {
+    const bookmarkFolders = get().bookmarkFolders.filter((f) => f.id !== id);
+    // الـ bookmarks اللي كانت في المجلّد تروح للـ default (undefined)
+    const bookmarks = get().bookmarks.map((b) => b.folder === id ? { ...b, folder: undefined } : b);
+    set({ bookmarkFolders, bookmarks });
+    persist({ ...get(), bookmarkFolders, bookmarks });
   },
   toggleFavorite(surahId, ayahNumber) {
     const key = `${surahId}:${ayahNumber}`;
@@ -80,6 +123,7 @@ export const useReadingStore = create<ReadingState>((set, get) => ({
         set({
           lastRead: data.lastRead ?? null,
           bookmarks: data.bookmarks ?? [],
+          bookmarkFolders: data.bookmarkFolders ?? DEFAULT_FOLDERS,
           notes: data.notes ?? [],
           favorites: data.favorites ?? [],
         });

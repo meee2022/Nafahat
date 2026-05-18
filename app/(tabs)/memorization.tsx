@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SceneMemo } from '@components/illustrations/scenes';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card, ProgressBar, Chip, SectionHeader, AppHeader, Button, EmptyState } from '@components/ui';
+import { MemorizationHeatmap } from '@components/common';
 import { useMemoStore } from '@store/index';
 import { computePlanProgress, getTodaysTasks } from '@services/memorization';
 import { scheduleDaily, requestPermission, isNotificationsSupported } from '@services/notifications';
@@ -78,6 +79,11 @@ export default function MemorizationScreen() {
   return (
     <Screen>
       <AppHeader title={tr('memo.title')} subtitle={tr('memo.subtitle')} />
+
+      {/* 🔥 Heat-map النشاط آخر 14 يوم */}
+      <View style={{ marginBottom: t.spacing.md }}>
+        <MemorizationHeatmap />
+      </View>
 
       {/* بطاقة الخطة أو حالة فارغة */}
       {plan ? (

@@ -10,10 +10,19 @@ import {
 } from '@components/tabs/TabIcons';
 
 /**
- * شريط التبويبات السفلي - يستخدم ألوان theme الحالية:
- * - فاتح في الـ light mode، داكن في الـ dark mode
- * - مؤشر active: أيقونة أكبر + نقطة ذهبية فوقها + خلفية pill خفيفة
- * - spring animation لطيف عند تبديل التبويب
+ * 🟢 شريط التبويبات السفلي — Nafahat green + gold identity.
+ *
+ * البنية الجديدة (V2): 4 tabs فقط. القديمة كانت 5.
+ *   - index        → المصحف (الـ landing الخضراء + Continue reading)
+ *   - memorization → الحفظ
+ *   - daily        → اليومي (الصلاة + الأذكار + آية اليوم)
+ *   - account      → أنا (الملف + الإحصائيات + الأدوات + الإعدادات)
+ *
+ * الـ tabs المخفية (تبقى accessible عبر روابط لكن مش في الـ bar):
+ *   - mushaf       → الفهرس القديم (يدخل دلوقتي من /library)
+ *   - reciters     → catalog القراء (يدخل دلوقتي من المصحف)
+ *
+ * مؤشر active: أيقونة بـ background ذهبي خفيف + bar ذهبي تحت — يربط هوية الذهب.
  */
 export default function TabsLayout() {
   const t = useTheme();
@@ -42,11 +51,15 @@ export default function TabsLayout() {
         },
       }}
     >
-      <Tabs.Screen name="index"        options={{ tabBarIcon: ({ focused }) => <TabItem icon="home" labelKey="tabs.home" focused={focused} /> }} />
-      <Tabs.Screen name="mushaf"       options={{ tabBarIcon: ({ focused }) => <TabItem icon="book" labelKey="tabs.mushaf" focused={focused} /> }} />
+      {/* الـ 4 tabs المرئية */}
+      <Tabs.Screen name="index"        options={{ tabBarIcon: ({ focused }) => <TabItem icon="book"  labelKey="tabs.mushaf"       focused={focused} /> }} />
       <Tabs.Screen name="memorization" options={{ tabBarIcon: ({ focused }) => <TabItem icon="brain" labelKey="tabs.memorization" focused={focused} /> }} />
-      <Tabs.Screen name="reciters"     options={{ tabBarIcon: ({ focused }) => <TabItem icon="headphones" labelKey="tabs.listen" focused={focused} /> }} />
-      <Tabs.Screen name="account"      options={{ tabBarIcon: ({ focused }) => <TabItem icon="user" labelKey="tabs.account" focused={focused} /> }} />
+      <Tabs.Screen name="daily"        options={{ tabBarIcon: ({ focused }) => <TabItem icon="home"  labelKey="tabs.daily"        focused={focused} /> }} />
+      <Tabs.Screen name="account"      options={{ tabBarIcon: ({ focused }) => <TabItem icon="user"  labelKey="tabs.account"      focused={focused} /> }} />
+
+      {/* الـ tabs المخفية — موجودة كـ routes لكن مش في الـ tab bar */}
+      <Tabs.Screen name="mushaf"   options={{ href: null }} />
+      <Tabs.Screen name="reciters" options={{ href: null }} />
     </Tabs>
   );
 }

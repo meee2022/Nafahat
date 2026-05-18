@@ -68,6 +68,7 @@ export const en: Partial<Record<TranslationKey, string>> = {
   'tabs.mushaf':       'Mushaf',
   'tabs.memorization': 'Memorize',
   'tabs.listen':       'Listen',
+  'tabs.daily':        'Daily',
   'tabs.account':      'Profile',
 
   // Home

@@ -1,181 +1,102 @@
 /**
- * الصفحة الرئيسية - تصميم مستوحى من "المصلي"
- * Hero (مسجد + وقت الصلاة) -> شريط أوقات الصلاة -> شبكة الميزات الأساسية
+ * 📖 الـ Home الجديد - Mushaf-first landing.
+ *
+ * هوية Nafahat الرسمية: أخضر زمردي primary + ذهبي accent.
+ *  - Hero أخضر premium بـ "كمّل قراءتك" (مش dashboard generic)
+ *  - بطاقة مهمة اليوم (DailyActionCard - يعاد استخدامها)
+ *  - اختصارات المكتبة (Bookmarks/Favorites/Notes)
+ *  - تصفّح المصحف (الفهرس/الأجزاء/القرّاء)
+ *  - آية اليوم card صغيرة
+ *
+ * الفلسفة:
+ *  - التطبيق يفتح على المصحف كهوية، مش على dashboard إسلامي عام
+ *  - Continue Reading هو الـ #1 action
+ *  - الـ Daily ritual (الصلاة/الأذكار) في tab منفصل اسمه "اليومي"
+ *  - الـ Tools (قبلة/تسبيح/حساب) في tab الـ Account تحت "أدوات"
  */
-
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Dimensions, Image } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
+import Svg, { Path, Defs, Pattern, Rect, Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Bell, Search, MapPin, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Search, Bookmark, Heart, FileText, BookOpen, Layers, Mic2, ChevronLeft, Play } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
-import { IllMushaf, IllAdhkar, IllTasbeeh, IllQibla, IllMosques, IllCalendar, IllDuas, IllTajweed, IllKhatma, IllZakat, IllStats, IllMemo, IllAudio, IllHadith, IllNotes, IllAchievements } from '@components/illustrations';
-import { useSettingsStore } from '@store/index';
 import { useT, useLanguage } from '@store/languageStore';
-import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@services/prayerTimes';
-import { SectionHeading, DailyActionCard, computeDailyAction } from '@components/home';
-import { useWirdStore, useMemoStore } from '@store/index';
-import { useAuthStore } from '@store/authStore';
+import { useReadingStore, useWirdStore, useMemoStore } from '@store/index';
+import { getSurahById, arabicNumber } from '@data/surahs';
+import { DailyActionCard, computeDailyAction, SectionHeading } from '@components/home';
 import { getDueTasks } from '@services/memorization';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LogIn, Cloud } from 'lucide-react-native';
+import { FEATURED_AYAHS } from '@data/featuredAyahs';
 
-const isSameDay = (a: Date, b: Date) =>
-  a.getFullYear() === b.getFullYear() &&
-  a.getMonth() === b.getMonth() &&
-  a.getDate() === b.getDate();
-
-const HeroCountdown = ({ nextP, todayPrayers, cityName }: { nextP: any, todayPrayers: any, cityName: string }) => {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const router = useRouter();
-  const tr = useT();
-
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  const countdownText = useMemo(() => {
-    const [h, m] = nextP.time.split(':').map(Number);
-    const target = new Date(currentTime);
-    target.setHours(h, m, 0, 0);
-    if (target.getTime() < currentTime.getTime()) {
-      target.setDate(target.getDate() + 1);
-    }
-    const diff = Math.floor((target.getTime() - currentTime.getTime()) / 1000);
-    if (diff <= 0) return '00:00:00';
-    const hrs = Math.floor(diff / 3600);
-    const mins = Math.floor((diff % 3600) / 60);
-    const secs = diff % 60;
-    return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  }, [nextP, currentTime]);
-
-  return (
-    <View style={styles.countdownContainer}>
-      <Text style={styles.nextPrayerText}>{PRAYER_NAMES_AR[nextP.name as PrayerName]} {tr('home.heroNextSuffix')}</Text>
-      <Text style={styles.countdownTime}>{countdownText}</Text>
-      <Pressable style={styles.locationBadge} onPress={() => router.push('/prayer-times')}>
-        <MapPin size={14} color="#FFF" />
-        <Text style={styles.locationText}>{cityName}</Text>
-      </Pressable>
-    </View>
-  );
-};
-
-export default function HomeScreen() {
+export default function MushafHomeScreen() {
   const t = useTheme();
   const tr = useT();
   const { lang } = useLanguage();
   const router = useRouter();
-  const location = useSettingsStore((s) => s.location);
-  const isPremium = useSettingsStore((s) => s.isPremium);
-  const authStatus = useAuthStore((s) => s.status);
-  const isGuest = authStatus === 'guest' || authStatus === 'unknown';
   const insets = useSafeAreaInsets();
 
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  
-  // No more 1-second interval here!
-  // We use a fixed 'now' for the initial calculations for the current day.
-  // The ticking countdown is handled inside HeroCountdown.
-  const now = new Date();
+  const lastRead = useReadingStore((s) => s.lastRead);
+  const bookmarks = useReadingStore((s) => s.bookmarks);
+  const favorites = useReadingStore((s) => s.favorites);
+  const { pagesReadToday, dailyTarget } = useWirdStore();
+  const tasks = useMemoStore((s) => s.tasks);
 
-  const isToday = useMemo(() => isSameDay(selectedDate, now), [selectedDate, now]);
+  // 🟢 آخر قراءة — الـ hero الأساسي
+  const lastSurah = useMemo(() => lastRead ? getSurahById(lastRead.surahId) : null, [lastRead]);
 
-  const todayPrayers = useMemo(() => {
-    return calculatePrayerTimes({
-      date: selectedDate,
-      latitude: location.latitude,
-      longitude: location.longitude,
-      timezone: location.timezone,
-      method: 'Makkah'
+  // 📿 آية اليوم
+  const todayAyah = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((now.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return FEATURED_AYAHS[dayOfYear % FEATURED_AYAHS.length];
+  }, []);
+
+  // 🎯 المهمة اليومية (موجود من قبل)
+  const dailyAction = useMemo(() => {
+    const reviewsDue = getDueTasks(tasks).length;
+    return computeDailyAction({
+      pagesReadToday,
+      pageGoal: dailyTarget,
+      reviewsDue,
     });
-  }, [selectedDate, location]);
+  }, [pagesReadToday, dailyTarget, tasks]);
 
-  const nextP = useMemo(() => nextPrayer(todayPrayers, now), [todayPrayers, now]);
-
-  const dateLocale = lang === 'ar' ? 'ar-EG' : `${lang}-u-ca-gregory`;
-  const hijriLocale = lang === 'ar' ? 'ar-SA-u-ca-islamic' : `${lang}-u-ca-islamic`;
-
-  const dateString = useMemo(() => {
-    try {
-      const hijri = new Intl.DateTimeFormat(hijriLocale, {
-        day: 'numeric', month: 'long', year: 'numeric'
-      }).format(selectedDate);
-      const greg = new Intl.DateTimeFormat(dateLocale, {
-        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-      }).format(selectedDate);
-      return `${greg}  |  ${hijri}`;
-    } catch {
-      return selectedDate.toLocaleDateString(dateLocale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const handleDailyAction = () => {
+    switch (dailyAction.id) {
+      case 'morning-adhkar':  router.push('/adhkar/morning'); break;
+      case 'evening-adhkar':  router.push('/adhkar/evening'); break;
+      case 'night-reflect':   router.push('/ayah-of-day'); break;
+      case 'review':          router.push('/review'); break;
+      case 'wird':            router.push('/wird'); break;
+      default:                router.push('/daily');
     }
-  }, [selectedDate, dateLocale, hijriLocale]);
-
-  const shiftDay = (delta: number) => {
-    const next = new Date(selectedDate);
-    next.setDate(next.getDate() + delta);
-    setSelectedDate(next);
   };
 
-  const cityName = lang === 'ar' ? location.cityAr : location.cityEn;
-
-  const mainFeatures = [
-    { id: 'mushaf',   title: tr('feature.mushaf'),   icon: <IllMushaf  size={68} />, path: '/mushaf' },
-    { id: 'adhkar',   title: tr('dhikr.adhkar'),     icon: <IllAdhkar  size={68} />, path: '/adhkar' },
-    { id: 'qibla',    title: tr('tool.qibla'),       icon: <IllQibla   size={68} />, path: '/qibla' },
-    { id: 'tasbeeh',  title: tr('dhikr.tasbeeh'),    icon: <IllTasbeeh size={68} />, path: '/tasbeeh' },
-    { id: 'duas',     title: tr('dhikr.duas'),       icon: <IllDuas    size={68} />, path: '/duas' },
-    { id: 'calendar', title: tr('tool.calendar'),    icon: <IllCalendar size={68} />, path: '/calendar' },
-  ];
-
-  const quranFeatures = [
-    { id: 'memo',    title: tr('feature.memo'),   icon: <IllMemo    size={68} />, path: '/memorization' },
-    { id: 'audio',   title: tr('feature.audio'),  icon: <IllAudio   size={68} />, path: '/reciters' },
-    { id: 'khatma',  title: tr('tool.khatma'),    icon: <IllKhatma  size={68} />, path: '/khatma' },
-    { id: 'tajweed', title: tr('learn.tajweed'),  icon: <IllTajweed size={68} />, path: '/tajweed' },
-    { id: 'hadith',  title: 'الأحاديث',           icon: <IllHadith  size={68} />, path: '/hadith' },
-  ];
-
-  const extraFeatures = [
-    { id: 'mosques', title: tr('tool.mosques'),       icon: <IllMosques size={68} />, path: '/mosques' },
-    { id: 'zakat',   title: tr('tool.zakatShort'),    icon: <IllZakat   size={68} />, path: '/zakat' },
-    { id: 'quiz',    title: tr('home.featureQuiz'),   icon: <IllAchievements size={68} />, path: '/quiz' },
-    { id: 'notes',   title: tr('home.featureNotes'),  icon: <IllNotes        size={68} />, path: '/notes' },
-  ];
-
-  const renderGrid = (items: any[]) => (
-    <View style={styles.gridContainer}>
-      {items.map((f) => (
-        <Pressable 
-          key={f.id} 
-          style={({ pressed }) => [
-            styles.featureCard,
-            pressed && { opacity: 0.7 }
-          ]}
-          onPress={() => router.push(f.path as any)}
-        >
-          {f.icon}
-          <Text style={[styles.featureText, { color: t.colors.textPrimary }]}>{f.title}</Text>
-        </Pressable>
-      ))}
-    </View>
-  );
+  const handleContinue = () => {
+    if (lastRead && lastSurah) {
+      router.push(`/surah/${lastRead.surahId}?page=${lastRead.page}` as any);
+    } else {
+      router.push('/surah/1' as any);
+    }
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        
-        {/* 1. Hero Section - مستوحى من المصلي */}
+
+        {/* ═════════════ HERO: Continue Reading — أخضر premium ═════════════ */}
         <View style={[styles.hero, { paddingTop: Math.max(insets.top, 20) }]}>
-          {/* خلفية متدرّجة + نقش هندسي ذهبي */}
+          {/* gradient أخضر زمردي (هوية Nafahat الرسمية) */}
           <LinearGradient
             colors={[t.colors.primary, '#0F4A41', '#062825']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
-          <Svg width="100%" height="100%" style={[StyleSheet.absoluteFill, { opacity: 0.18 }]} pointerEvents="none">
+          {/* نقش هندسي ذهبي خفيف (signature Nafahat) */}
+          <Svg width="100%" height="100%" style={[StyleSheet.absoluteFill, { opacity: 0.14 }]} pointerEvents="none">
             <Defs>
               <Pattern id="home-hero-bg" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
                 <Path
@@ -186,346 +107,362 @@ export default function HomeScreen() {
             </Defs>
             <Rect width="100%" height="100%" fill="url(#home-hero-bg)" />
           </Svg>
-          {/* إطار ذهبي رفيع داخلي */}
+          {/* إطار ذهبي رفيع */}
           <View pointerEvents="none" style={styles.heroFrame} />
 
-          {/* Header Icons */}
+          {/* Top bar: branding + search */}
           <View style={styles.heroHeader}>
-            <View style={styles.heroHeaderLeft}>
-              <Pressable style={styles.iconBtn} onPress={() => router.push('/notifications')}>
-                <Bell size={20} color="#FFF" />
-              </Pressable>
+            <View style={styles.heroBranding}>
+              <Text style={styles.brandingText}>نَفَحات</Text>
+              <View style={styles.brandingRule} />
+              <Text style={styles.brandingSubtext}>المصحف الذي يستحقّه القرآن</Text>
             </View>
-            <View style={styles.heroHeaderCenter}>
-              {isGuest ? (
-                <Pressable
-                  onPress={() => router.push('/login')}
-                  style={({ pressed }) => [
-                    styles.signInPill,
-                    { opacity: pressed ? 0.85 : 1 },
-                  ]}
-                >
-                  <LogIn size={13} color="#D4B570" strokeWidth={2.2} />
-                  <Text style={styles.signInPillText}>تسجيل دخول</Text>
-                </Pressable>
-              ) : isPremium ? (
-                <Text style={styles.premiumBadge}>{tr('home.premiumBadge')}</Text>
-              ) : (
-                <Pressable
-                  onPress={() => router.push('/cloud-sync')}
-                  style={({ pressed }) => [
-                    styles.syncedPill,
-                    { opacity: pressed ? 0.85 : 1 },
-                  ]}
-                  hitSlop={8}
-                >
-                  <Cloud size={12} color="#7FE3B4" strokeWidth={2.4} />
-                  <Text style={styles.syncedPillText}>متزامن</Text>
-                </Pressable>
-              )}
-            </View>
-            <View style={styles.heroHeaderRight}>
-              <Pressable style={styles.iconBtn} onPress={() => router.push('/search')}>
-                <Search size={20} color="#FFF" />
-              </Pressable>
-            </View>
+            <Pressable style={styles.iconBtn} onPress={() => router.push('/search')} accessibilityLabel="بحث">
+              <Search size={20} color="#FFF" />
+            </Pressable>
           </View>
 
-          {/* Countdown Component */}
-          <HeroCountdown nextP={nextP} todayPrayers={todayPrayers} cityName={cityName} />
+          {/* Continue Reading card */}
+          <View style={styles.continueWrap}>
+            <Text style={styles.continueEyebrow}>
+              {lastRead ? 'كمّل قراءتك' : 'ابدأ القراءة'}
+            </Text>
+            <Text style={styles.continueTitle}>
+              {lastSurah ? `سورة ${lastSurah.nameAr}` : 'سورة الفاتحة'}
+            </Text>
+            {lastRead ? (
+              <Text style={styles.continueSubtitle}>
+                الصفحة {arabicNumber(lastRead.page)} · الآية {arabicNumber(lastRead.ayahNumber)}
+              </Text>
+            ) : (
+              <Text style={styles.continueSubtitle}>افتح المصحف لأول مرة</Text>
+            )}
+            <Pressable
+              onPress={handleContinue}
+              style={({ pressed }) => [styles.continueBtn, { opacity: pressed ? 0.88 : 1 }]}
+              accessibilityLabel="تابع القراءة"
+            >
+              <Play size={16} color="#0A1815" fill="#0A1815" />
+              <Text style={styles.continueBtnText}>تابع القراءة</Text>
+            </Pressable>
+          </View>
+        </View>
 
-          {/* Mosque Illustration */}
-          <View style={styles.mosqueIllustrationContainer}>
-            <IllMosques size={160} />
-            <LinearGradient
-              colors={['transparent', 'rgba(6, 40, 37, 0.9)']}
-              style={StyleSheet.absoluteFill}
-              pointerEvents="none"
+        {/* ═════════════ مهمة اليوم ═════════════ */}
+        <View style={{ marginTop: 16, paddingHorizontal: 16 }}>
+          <DailyActionCard action={dailyAction} onPress={handleDailyAction} />
+        </View>
+
+        {/* ═════════════ المكتبة — اختصارات سريعة ═════════════ */}
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <SectionHeading eyebrow="مكتبتك" title="ما حفظته من المصحف" />
+          <View style={styles.libraryRow}>
+            <LibraryChip
+              icon={<Bookmark size={20} color={t.colors.accent} />}
+              label="المرجعيات"
+              count={bookmarks.length}
+              onPress={() => router.push('/favorites')}
+              t={t}
+            />
+            <LibraryChip
+              icon={<Heart size={20} color={t.colors.accent} />}
+              label="المفضّلة"
+              count={favorites.length}
+              onPress={() => router.push('/favorites')}
+              t={t}
+            />
+            <LibraryChip
+              icon={<FileText size={20} color={t.colors.accent} />}
+              label="ملاحظاتي"
+              count={undefined}
+              onPress={() => router.push('/notes')}
+              t={t}
             />
           </View>
         </View>
 
-        {/* 2. Prayer Times Strip */}
-        <View style={[styles.prayerStrip, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
-          <View style={styles.dateRow}>
-            <Pressable onPress={() => shiftDay(-1)} hitSlop={15} style={styles.dateNavBtn}>
-              <ChevronRight size={20} color={t.colors.textSecondary} />
-            </Pressable>
-            <Pressable onPress={() => setSelectedDate(new Date())} style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={{ color: t.colors.textPrimary, fontWeight: '700', fontSize: 13 }}>
-                {dateString}
+        {/* ═════════════ تصفّح المصحف ═════════════ */}
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <SectionHeading eyebrow="المصحف" title="تصفّح القرآن" />
+          <View style={styles.navGrid}>
+            <NavCard
+              icon={<BookOpen size={26} color={t.colors.primary} />}
+              title="الفهرس"
+              subtitle="١١٤ سورة"
+              onPress={() => router.push('/mushaf')}
+              t={t}
+            />
+            <NavCard
+              icon={<Layers size={26} color={t.colors.primary} />}
+              title="الأجزاء"
+              subtitle="٣٠ جزء"
+              onPress={() => router.push('/mushaf' as any)}
+              t={t}
+            />
+            <NavCard
+              icon={<Mic2 size={26} color={t.colors.primary} />}
+              title="القرّاء"
+              subtitle="٢٤ قارئ"
+              onPress={() => router.push('/reciters' as any)}
+              t={t}
+            />
+          </View>
+        </View>
+
+        {/* ═════════════ آية اليوم ═════════════ */}
+        {todayAyah ? (
+          <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+            <SectionHeading eyebrow="تأمّل" title="آية اليوم" />
+            <Pressable
+              onPress={() => router.push(`/surah/${todayAyah.surahId}?ayah=${todayAyah.number}` as any)}
+              style={({ pressed }) => [
+                styles.ayahCard,
+                {
+                  backgroundColor: t.colors.surface,
+                  borderColor: t.colors.borderGold,
+                  opacity: pressed ? 0.92 : 1,
+                  shadowColor: t.colors.shadowColor,
+                },
+              ]}
+            >
+              <Text style={[styles.ayahText, { color: t.colors.textPrimary, fontFamily: t.fontFamilies.arabicQuran }]} numberOfLines={3}>
+                {todayAyah.text}
               </Text>
-            </Pressable>
-            <Pressable onPress={() => shiftDay(1)} hitSlop={15} style={styles.dateNavBtn}>
-              <ChevronLeft size={20} color={t.colors.textSecondary} />
+              <View style={[styles.ayahRule, { backgroundColor: t.colors.borderGold }]} />
+              <View style={styles.ayahFooter}>
+                <Text style={[styles.ayahRef, { color: t.colors.accent }]}>
+                  سورة {todayAyah.surahName} · الآية {arabicNumber(todayAyah.number)}
+                </Text>
+                <ChevronLeft size={16} color={t.colors.accent} />
+              </View>
             </Pressable>
           </View>
-
-          <View style={styles.timesRow}>
-            {(['fajr', 'sunrise', 'dhuhr', 'asr', 'maghrib', 'isha'] as PrayerName[]).map((pKey) => {
-              const isActive = isToday && nextP.name === pKey;
-              return (
-                <View key={pKey} style={[styles.timeItem, isActive && { backgroundColor: t.colors.primary }]}>
-                  <Text style={[styles.timeName, isActive && { color: '#FFF' }]}>{PRAYER_NAMES_AR[pKey]}</Text>
-                  <Text style={[styles.timeValue, isActive && { color: '#FFF' }]}>
-                    {todayPrayers[pKey]}
-                  </Text>
-                </View>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* بطاقة "مهمة اليوم" - ديناميكية حسب الوقت + حالة المستخدم */}
-        <View style={{ marginTop: 8 }}>
-          <DailyAction />
-        </View>
-
-        {/* 3. Main Features */}
-        <View style={{ marginTop: 16 }}>
-          <SectionHeading eyebrow={tr('home.sectionEssentialsEyebrow')} title={tr('home.sectionEssentialsTitle')} />
-          {renderGrid(mainFeatures)}
-        </View>
-
-        {/* 4. Quran Sciences */}
-        <View style={{ marginTop: 24 }}>
-          <SectionHeading eyebrow={tr('home.sectionQuranEyebrow')} title={tr('home.sectionQuranTitle')} />
-          {renderGrid(quranFeatures)}
-        </View>
-
-        {/* 5. Extra Services */}
-        <View style={{ marginTop: 24 }}>
-          <SectionHeading eyebrow={tr('home.sectionExtraEyebrow')} title={tr('home.sectionExtraTitle')} />
-          {renderGrid(extraFeatures)}
-        </View>
+        ) : null}
 
       </ScrollView>
     </View>
   );
 }
 
-// ─────────────── بطاقة "مهمة اليوم" ───────────────
-const DailyAction: React.FC = () => {
-  const router = useRouter();
-  const { pagesReadToday, dailyTarget } = useWirdStore();
-  const tasks = useMemoStore((s) => s.tasks);
+// ─────────────── المكوّنات الفرعية ───────────────
 
-  const reviewsDue = getDueTasks(tasks).length;
-  const action = computeDailyAction({
-    pagesReadToday,
-    pageGoal: dailyTarget,
-    reviewsDue,
-  });
+const LibraryChip: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  count: number | undefined;
+  onPress: () => void;
+  t: any;
+}> = ({ icon, label, count, onPress, t }) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => [
+      styles.libraryChip,
+      {
+        backgroundColor: t.colors.surface,
+        borderColor: t.colors.borderGold,
+        opacity: pressed ? 0.85 : 1,
+      },
+    ]}
+  >
+    {icon}
+    <Text style={{ color: t.colors.textPrimary, fontWeight: '700', fontSize: 12, marginTop: 6 }}>{label}</Text>
+    {count !== undefined ? (
+      <Text style={{ color: t.colors.textTertiary, fontSize: 10, marginTop: 2 }}>{arabicNumber(count)}</Text>
+    ) : null}
+  </Pressable>
+);
 
-  const handlePress = () => {
-    switch (action.id) {
-      case 'morning-adhkar':
-        router.push('/adhkar/morning'); break;
-      case 'evening-adhkar':
-        router.push('/adhkar/evening'); break;
-      case 'night-reflect':
-        router.push('/ayah-of-day'); break;
-      case 'review':
-        router.push('/review'); break;
-      case 'wird':
-        router.push('/wird'); break;
-      default:
-        router.push('/reciters');
-    }
-  };
-
-  return <DailyActionCard action={action} onPress={handlePress} />;
-};
+const NavCard: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  t: any;
+}> = ({ icon, title, subtitle, onPress, t }) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => [
+      styles.navCard,
+      {
+        backgroundColor: t.colors.surface,
+        borderColor: t.colors.borderGold,
+        opacity: pressed ? 0.88 : 1,
+        shadowColor: t.colors.shadowColor,
+      },
+    ]}
+  >
+    <View style={[styles.navCardIconBox, { backgroundColor: t.colors.primarySoft, borderColor: t.colors.borderGold }]}>
+      {icon}
+    </View>
+    <Text style={{ color: t.colors.textPrimary, fontWeight: '800', fontSize: 14, marginTop: 10 }}>{title}</Text>
+    <Text style={{ color: t.colors.textTertiary, fontSize: 11, marginTop: 2 }}>{subtitle}</Text>
+  </Pressable>
+);
 
 const styles = StyleSheet.create({
+  // ════ HERO ════
   hero: {
     borderBottomLeftRadius: 32,
     borderBottomRightRadius: 32,
     overflow: 'hidden',
     position: 'relative',
-    height: 380,
+    paddingBottom: 28,
   },
   heroFrame: {
     position: 'absolute',
     top: 12, bottom: 12, left: 12, right: 12,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(212, 181, 112, 0.25)',
+    borderColor: 'rgba(212, 181, 112, 0.28)',
   },
   heroHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginTop: 10,
+    marginTop: 8,
     zIndex: 10,
   },
-  heroHeaderLeft: { flex: 1, alignItems: 'flex-start' },
-  heroHeaderCenter: { flex: 2, alignItems: 'center' },
-  heroHeaderRight: { flex: 1, alignItems: 'flex-end' },
+  heroBranding: {
+    flex: 1,
+  },
+  brandingText: {
+    color: '#D4B570',
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  brandingRule: {
+    width: 28,
+    height: 1,
+    backgroundColor: 'rgba(212, 181, 112, 0.6)',
+    marginVertical: 4,
+  },
+  brandingSubtext: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
   iconBtn: {
     width: 40, height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
-  },
-  premiumBadge: {
-    color: '#F5C76A',
-    fontSize: 12,
-    fontWeight: '700',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  signInPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 999,
-    backgroundColor: 'rgba(212, 181, 112, 0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(212, 181, 112, 0.5)',
+    borderColor: 'rgba(212, 181, 112, 0.35)',
   },
-  signInPillText: {
+  // ════ Continue Reading inside hero ════
+  continueWrap: {
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    marginTop: 32,
+  },
+  continueEyebrow: {
     color: '#D4B570',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  syncedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: 999,
-    backgroundColor: 'rgba(127, 227, 180, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(127, 227, 180, 0.4)',
-  },
-  syncedPillText: {
-    color: '#7FE3B4',
     fontSize: 11,
     fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  continueTitle: {
+    color: '#FFF',
+    fontSize: 32,
+    fontWeight: '800',
+    marginTop: 8,
+    letterSpacing: 0.5,
+  },
+  continueSubtitle: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 6,
     letterSpacing: 0.3,
   },
-  countdownContainer: {
-    alignItems: 'center',
-    marginTop: 20,
-    zIndex: 10,
-  },
-  nextPrayerText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '600',
-    lineHeight: 22,
-    marginBottom: 6,
-    textAlign: 'center',
-  },
-  countdownTime: {
-    color: '#F5C76A',
-    fontSize: 44,
-    lineHeight: 52,
-    fontWeight: '800',
-    letterSpacing: 2,
-    textAlign: 'center',
-    fontVariant: ['tabular-nums'],
-  },
-  locationBadge: {
+  continueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 8,
-    gap: 4,
-  },
-  locationText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  heroLogoWrap: {
-    alignItems: 'center',
-    marginTop: 6,
-    zIndex: 10,
-  },
-  heroLogo: {
-    width: 140,
-    height: 140,
-  },
-  mosqueIllustrationContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    opacity: 0.7,
-  },
-  prayerStrip: {
-    marginHorizontal: 16,
-    marginTop: -30,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
+    gap: 8,
+    marginTop: 18,
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    backgroundColor: '#D4B570',
+    borderRadius: 999,
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  continueBtnText: {
+    color: '#0A1815',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  // ════ Library row ════
+  libraryRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  libraryChip: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  // ════ Navigation grid ════
+  navGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  navCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  navCardIconBox: {
+    width: 52, height: 52,
+    borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  // ════ Ayah of day ════
+  ayahCard: {
+    padding: 18,
+    borderRadius: 16,
+    borderWidth: 1,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 10,
-    elevation: 3,
-    zIndex: 20,
+    elevation: 2,
   },
-  dateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  dateNavBtn: {
-    padding: 6,
-    borderRadius: 999,
-  },
-  timesRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 2,
-  },
-  timeItem: {
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 6,
-    borderRadius: 10,
-    flex: 1,
-  },
-  timeName: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  timeValue: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 8,
-    gap: 0, 
-  },
-  featureCard: {
-    width: '33.33%',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingVertical: 12,
-  },
-  featureText: {
-    marginTop: 10,
-    fontSize: 14,
-    fontWeight: '700',
+  ayahText: {
+    fontSize: 20,
+    lineHeight: 36,
     textAlign: 'center',
+  },
+  ayahRule: {
+    height: 1,
+    marginVertical: 12,
+    opacity: 0.5,
+  },
+  ayahFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  ayahRef: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
 });

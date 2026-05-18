@@ -68,6 +68,7 @@ export const ar = {
   'tabs.mushaf':       'المصحف',
   'tabs.memorization': 'الحفظ',
   'tabs.listen':       'الاستماع',
+  'tabs.daily':        'اليومي',
   'tabs.account':      'حسابي',
 
   // ============== Home sections ==============

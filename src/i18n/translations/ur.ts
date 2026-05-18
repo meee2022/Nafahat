@@ -68,6 +68,7 @@ export const ur: Partial<Record<TranslationKey, string>> = {
   'tabs.mushaf':       'مصحف',
   'tabs.memorization': 'حفظ',
   'tabs.listen':       'سماعت',
+  'tabs.daily':        'روزانہ',
   'tabs.account':      'پروفائل',
 
   // Home

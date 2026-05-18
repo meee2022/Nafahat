@@ -1,19 +1,25 @@
 /**
- * شاشة القبلة - بوصلة بصرية باتجاه القبلة محسوب فعلياً.
+ * 🧭 شاشة القبلة — بوصلة دولية باتجاه القبلة.
  *
- * - الحساب: great-circle bearing من موقع المستخدم إلى الكعبة.
- * - الموقع: مدينة يختارها المستخدم من قائمة (افتراضي: مكة).
- *   (لاحقاً: استبدالها بـ expo-location لكشف الـ GPS تلقائياً).
+ * - الحساب: great-circle bearing من موقع المستخدم إلى الكعبة (يشتغل لأي مكان في العالم).
+ * - الموقع: يقرأ من settingsStore.location الموحّد. لتغيير المدينة:
+ *     1. زر "تغيير" في بطاقة المدينة → يفتح شاشة /location (60+ مدينة)
+ *     2. أو زر اختيار سريع (Globe) من 30 مدينة الـ preset (في qibla service)
+ *
+ * - عرض المسافة + الجهة + الدرجة، مع رسالة خاصة لو المستخدم في مكة.
+ *
+ * Identity: أخضر + ذهبي. السهم ذهبي، البوصلة بحدود ذهبية، الكعبة في رأس السهم.
  */
 import React, { useState, useMemo } from 'react';
 import { View, StyleSheet, Pressable, Dimensions, ScrollView, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle, G, Line, Rect, Defs, RadialGradient, Stop } from 'react-native-svg';
-import { ArrowRight, MapPin, Navigation, Search, X, Globe } from 'lucide-react-native';
+import { ArrowRight, MapPin, Navigation, Search, X, Globe, ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card } from '@components/ui';
 import { OrnamentalRule } from '@components/ornaments';
 import { useT } from '@store/languageStore';
+import { useSettingsStore } from '@store/index';
 import {
   calculateQiblaBearing, distanceToKaaba, describeBearingAr,
   PRESET_CITIES, City,
@@ -25,13 +31,23 @@ export default function QiblaScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
-  const [city, setCity] = useState<City>(PRESET_CITIES.find((c) => c.id === 'makkah') ?? PRESET_CITIES[0]);
+  // 🌍 الموقع الموحّد من settingsStore — يتغيّر من شاشة /location ويتزامن مع
+  //   مواقيت الصلاة والأذان. نوفّر picker سريع داخلي كـ shortcut.
+  const userLocation = useSettingsStore((s) => s.location);
+  const setUserLocation = useSettingsStore((s) => s.setLocation);
+
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
 
-  // الحسابات الحقيقية
-  const bearing = useMemo(() => calculateQiblaBearing(city.latitude, city.longitude), [city]);
-  const distance = useMemo(() => distanceToKaaba(city.latitude, city.longitude), [city]);
+  // 🧮 الحسابات تشتغل لأي مكان في العالم (great-circle bearing)
+  const bearing = useMemo(
+    () => calculateQiblaBearing(userLocation.latitude, userLocation.longitude),
+    [userLocation],
+  );
+  const distance = useMemo(
+    () => distanceToKaaba(userLocation.latitude, userLocation.longitude),
+    [userLocation],
+  );
   const direction = useMemo(() => describeBearingAr(bearing), [bearing]);
 
   const filteredCities = useMemo(() => {
@@ -44,8 +60,8 @@ export default function QiblaScreen() {
     );
   }, [query]);
 
-  // إذا كان المستخدم في مكة بالضبط، نعرض رسالة خاصة
-  const isInMakkah = city.id === 'makkah';
+  // إذا كان المستخدم في مكة (ضمن ~5 كم) نعرض رسالة خاصة
+  const isInMakkah = distance < 5;
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
@@ -77,22 +93,10 @@ export default function QiblaScreen() {
       </View>
 
       <Screen scrollable={false} contentStyle={{ paddingHorizontal: 16 }}>
-        {/* بطاقة المدينة الحالية */}
-        <Pressable
-          onPress={() => setPickerOpen(true)}
-          style={({ pressed }) => [
-            styles.cityCard,
-            {
-              backgroundColor: t.colors.surface,
-              borderColor: t.colors.borderGold,
-              opacity: pressed ? 0.85 : 1,
-            },
-          ]}
-          accessible
-          accessibilityRole="button"
-          accessibilityLabel={`الموقع الحالي: ${city.nameAr}، ${city.countryAr}`}
-          accessibilityHint="اضغط لتغيير الموقع"
-        >
+        {/* بطاقة المدينة الحالية — مع زرَّين:
+            "تغيير سريع" يفتح modal صغير بـ 30 مدينة preset (qibla service)
+            "كل المدن" يفتح شاشة /location الكاملة بـ 60+ مدينة */}
+        <View style={[styles.cityCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold }]}>
           <View style={[styles.cityIcon, { backgroundColor: t.colors.accent + '14' }]}>
             <MapPin size={18} color={t.colors.accent} />
           </View>
@@ -101,13 +105,39 @@ export default function QiblaScreen() {
               موقعك
             </Text>
             <Text variant="subtitle" style={{ marginTop: 2 }}>
-              {city.nameAr} · {city.countryAr}
+              {userLocation.cityAr}
+            </Text>
+            <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 2 }}>
+              {userLocation.cityEn} · UTC{userLocation.timezone >= 0 ? '+' : ''}{userLocation.timezone}
             </Text>
           </View>
-          <View style={{ alignItems: 'flex-end' }}>
-            <Text variant="caption" color={t.colors.accent} style={{ fontWeight: '700' }}>تغيير</Text>
+          <View style={{ gap: 6, alignItems: 'flex-end' }}>
+            <Pressable
+              onPress={() => setPickerOpen(true)}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="تغيير سريع"
+              style={({ pressed }) => [
+                styles.quickBtn,
+                { backgroundColor: t.colors.accent + '14', borderColor: t.colors.accent + '40', opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              <Text variant="caption" color={t.colors.accent} style={{ fontWeight: '700' }}>سريع</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => router.push('/location')}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="كل المدن من شاشة الموقع"
+              style={({ pressed }) => [
+                styles.quickBtn,
+                { backgroundColor: t.colors.primary, borderColor: t.colors.accent, opacity: pressed ? 0.85 : 1 },
+              ]}
+            >
+              <Text variant="caption" color="#FFF" style={{ fontWeight: '700' }}>كل المدن</Text>
+            </Pressable>
           </View>
-        </Pressable>
+        </View>
 
         {/* البوصلة */}
         <View style={{ alignItems: 'center', marginTop: 18 }}>
@@ -292,11 +322,25 @@ export default function QiblaScreen() {
 
           <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 40 }}>
             {filteredCities.map((c) => {
-              const isActive = c.id === city.id;
+              const isActive =
+                Math.abs(userLocation.latitude - c.latitude) < 0.01 &&
+                Math.abs(userLocation.longitude - c.longitude) < 0.01;
               return (
                 <Pressable
                   key={c.id}
-                  onPress={() => { setCity(c); setPickerOpen(false); setQuery(''); }}
+                  onPress={() => {
+                    // 🌍 يحدّث الموقع الموحّد — يؤثر على كل التطبيق (الصلاة + الأذان)
+                    setUserLocation({
+                      cityAr: c.nameAr,
+                      cityEn: c.nameEn,
+                      latitude: c.latitude,
+                      longitude: c.longitude,
+                      // PRESET_CITIES بدون timezone — نخلّيه يحافظ على القديم
+                      timezone: userLocation.timezone,
+                    });
+                    setPickerOpen(false);
+                    setQuery('');
+                  }}
                   style={({ pressed }) => [
                     styles.cityRow,
                     {
@@ -368,6 +412,12 @@ const styles = StyleSheet.create({
   cityIcon: {
     width: 42, height: 42, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
+  },
+  quickBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 999,
+    borderWidth: 1,
   },
 
   centerLabel: { position: 'absolute', top: 0, alignItems: 'center', justifyContent: 'center' },

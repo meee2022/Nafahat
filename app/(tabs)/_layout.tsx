@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from 'react';
-import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, View, Animated } from 'react-native';
+import { Tabs, useRouter, usePathname } from 'expo-router';
+import { Platform, StyleSheet, View, Animated, Pressable } from 'react-native';
+import { Play, Pause, X } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { useT } from '@store/languageStore';
 import { TranslationKey } from '@/i18n/index';
+import { useAudioStore } from '@store/index';
 import {
   TabHomeIcon, TabMushafIcon, TabMemoIcon, TabListenIcon, TabAccountIcon,
 } from '@components/tabs/TabIcons';
@@ -28,6 +30,7 @@ export default function TabsLayout() {
   const t = useTheme();
 
   return (
+    <View style={{ flex: 1 }}>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -61,8 +64,126 @@ export default function TabsLayout() {
       {/* الـ daily tab المخفي — accessible عبر روابط لكن مش في الـ tab bar */}
       <Tabs.Screen name="daily" options={{ href: null }} />
     </Tabs>
+
+    {/* 🎧 Floating Now Playing bar — يظهر فوق الـ tab bar في كل التطبيق
+        لما الصوت شغّال. يخفي نفسه لو مفيش audio current. */}
+    <FloatingNowPlaying />
+    </View>
   );
 }
+
+// ─────────────── Floating Now Playing ───────────────
+const TAB_BAR_HEIGHT_IOS = 88;
+const TAB_BAR_HEIGHT_ANDROID = 70;
+
+const FloatingNowPlaying: React.FC = () => {
+  const t = useTheme();
+  const router = useRouter();
+  const current = useAudioStore((s) => s.current);
+  const isPlaying = useAudioStore((s) => s.isPlaying);
+  const toggle = useAudioStore((s) => s.toggle);
+  const stop = useAudioStore((s) => s.stop);
+
+  if (!current) return null;
+
+  const tabH = Platform.OS === 'ios' ? TAB_BAR_HEIGHT_IOS : TAB_BAR_HEIGHT_ANDROID;
+
+  return (
+    <View
+      pointerEvents="box-none"
+      style={{ position: 'absolute', bottom: tabH, left: 0, right: 0, paddingHorizontal: 10 }}
+    >
+      <View
+        style={[
+          floatStyles.bar,
+          {
+            backgroundColor: t.colors.surface,
+            borderColor: t.colors.borderGold,
+            shadowColor: t.colors.shadowColor,
+          },
+        ]}
+      >
+        <Pressable
+          onPress={() => router.push('/player')}
+          accessibilityRole="button"
+          accessibilityLabel="فتح المشغّل الكامل"
+          style={floatStyles.left}
+        >
+          <View style={[floatStyles.avatar, { backgroundColor: t.colors.primary, borderColor: t.colors.accent }]}>
+            <Text style={{ color: t.colors.accent, fontSize: 12, fontWeight: '800' }}>
+              {current.surahName.slice(0, 2)}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: t.colors.textPrimary, fontSize: 13, fontWeight: '800' }} numberOfLines={1}>
+              {current.surahName}
+            </Text>
+            <Text style={{ color: t.colors.textTertiary, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
+              {current.reciter.nameAr}
+            </Text>
+          </View>
+        </Pressable>
+        <Pressable
+          onPress={toggle}
+          accessibilityRole="button"
+          accessibilityLabel={isPlaying ? 'إيقاف' : 'تشغيل'}
+          style={[floatStyles.playBtn, { backgroundColor: t.colors.primary, borderColor: t.colors.accent }]}
+        >
+          {isPlaying
+            ? <Pause size={16} color={t.colors.accent} fill={t.colors.accent} />
+            : <Play size={16} color={t.colors.accent} fill={t.colors.accent} style={{ marginLeft: 2 }} />}
+        </Pressable>
+        <Pressable
+          onPress={stop}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="إغلاق"
+          style={floatStyles.closeBtn}
+        >
+          <X size={16} color={t.colors.textTertiary} />
+        </Pressable>
+      </View>
+    </View>
+  );
+};
+
+const floatStyles = StyleSheet.create({
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  left: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  avatar: {
+    width: 36, height: 36,
+    borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  playBtn: {
+    width: 36, height: 36,
+    borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  closeBtn: {
+    width: 28, height: 28,
+    alignItems: 'center', justifyContent: 'center',
+  },
+});
 
 type IconName = 'home' | 'book' | 'brain' | 'headphones' | 'user';
 

@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import {
   X, BookOpen, Globe, Sparkles, Bookmark, Heart, Copy, Share2, Play,
-  Check, AlertCircle, RotateCcw, ArrowLeft,
+  Check, AlertCircle, RotateCcw, ArrowLeft, Brain,
 } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { OrnamentalRule } from '@components/ornaments';
@@ -31,6 +31,7 @@ import { copyToClipboard, shareText } from '@utils/clipboard';
 import { getWordsByVerse, QuranWord } from '@services/wordByWord';
 import { getWordAudioUrl } from '@services/quranComApi';
 import { playOneShot } from '@services/audioPlayer';
+import { useMemoStore } from '@store/index';
 
 type Tab = 'tafsir' | 'translation' | 'words' | 'actions';
 
@@ -68,6 +69,22 @@ export const AyahDetailSheet: React.FC<Props> = ({
   const [errorTranslation, setErrorTranslation] = useState<string | null>(null);
 
   const [copied, setCopied] = useState(false);
+
+  // 🧠 Memorization: تحقّق لو الآية مضافة بالفعل لخطة الحفظ
+  const memoTasks = useMemoStore((s) => s.tasks);
+  const addMemoTask = useMemoStore((s) => s.addTask);
+  const isInMemoPlan = useMemo(
+    () => memoTasks.some((tk) => tk.surahId === surahId && tk.ayahFrom <= ayahNumber && tk.ayahTo >= ayahNumber),
+    [memoTasks, surahId, ayahNumber],
+  );
+  const [memoJustAdded, setMemoJustAdded] = useState(false);
+
+  const handleMarkMemorize = () => {
+    if (isInMemoPlan) return;
+    addMemoTask({ surahId, ayahFrom: ayahNumber, ayahTo: ayahNumber, status: 'new' });
+    setMemoJustAdded(true);
+    setTimeout(() => setMemoJustAdded(false), 2000);
+  };
 
   // كلمة كلمة
   const [words, setWords] = useState<QuranWord[]>([]);
@@ -524,6 +541,13 @@ export const AyahDetailSheet: React.FC<Props> = ({
                     icon={<Play size={22} color={t.colors.textSecondary} fill={t.colors.textSecondary} />}
                     label="استماع"
                     onPress={onPlay}
+                  />
+                  {/* 🧠 ربط المصحف بنظام الحفظ — احفظ هذه الآية يضيفها لـ memorization plan */}
+                  <ActionBig
+                    icon={<Brain size={22} color={isInMemoPlan || memoJustAdded ? t.colors.accent : t.colors.textSecondary} fill={isInMemoPlan || memoJustAdded ? t.colors.accent + '30' : 'none'} />}
+                    label={memoJustAdded ? 'تمت الإضافة' : isInMemoPlan ? 'في خطة الحفظ' : 'احفظ هذه الآية'}
+                    active={isInMemoPlan || memoJustAdded}
+                    onPress={handleMarkMemorize}
                   />
                 </View>
 

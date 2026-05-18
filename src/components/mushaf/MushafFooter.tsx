@@ -6,8 +6,8 @@
  *  - badge مدوّرة قليلاً برقم الصفحة بحدود ذهبية ناعمة.
  */
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
-import { OrnamentStrip, MUSHAF_GOLD, MUSHAF_BG, MUSHAF_INK } from './MushafBorder';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { MUSHAF_GOLD, MUSHAF_BG, MUSHAF_INK } from './MushafBorder';
 import { arabicNumber } from '@data/surahs';
 
 interface Props {
@@ -28,17 +28,9 @@ export const MushafFooter: React.FC<Props> = ({
   amiriFont,
   onPagePress,
 }) => {
-  const { width: screenW } = useWindowDimensions();
-  const stripW = Math.min(screenW, 900) - 24;
-
   return (
     <View style={[styles.wrap, { backgroundColor: pageColor }]}>
-      {/* شريط زخرفة موجية رفيعة - مرآة للهيدر، يستخدم ألوان theme */}
-      <View style={styles.stripWrap}>
-        <OrnamentStrip length={stripW} isVertical={false} goldColor={goldColor} bgColor={pageColor} />
-      </View>
-
-      {/* page badge مركزية */}
+      {/* page badge مركزية - بدون ornament strip (الإطار نفسه فيه شريط زخرفي) */}
       <View style={styles.row}>
         <Pressable
           onPress={onPagePress}
@@ -61,26 +53,22 @@ export const MushafFooter: React.FC<Props> = ({
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingBottom: 4,
-  },
-  stripWrap: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingBottom: 2,
   },
   row: {
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   pageBadge: {
-    width: 80,
-    height: 36,
-    borderRadius: 12,
+    width: 64,
+    height: 26,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },
   pageNumber: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '800',
   },
 });

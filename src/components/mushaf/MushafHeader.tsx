@@ -7,8 +7,8 @@
  *  - الكل بخلفية عاجية دافئة.
  */
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Platform, useWindowDimensions } from 'react-native';
-import { OrnamentStrip, MUSHAF_GOLD, MUSHAF_GOLD_LIGHT, MUSHAF_BG, MUSHAF_INK } from './MushafBorder';
+import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { MUSHAF_GOLD, MUSHAF_BG, MUSHAF_INK } from './MushafBorder';
 
 interface Props {
   juzLabel: string;
@@ -35,17 +35,9 @@ export const MushafHeader: React.FC<Props> = ({
   onSurahPress,
   onJuzPress,
 }) => {
-  const { width: screenW } = useWindowDimensions();
-  const stripW = Math.min(screenW, 900) - 24;
-
   return (
     <View style={[styles.wrap, { backgroundColor: pageColor }]}>
-      {/* شريط زخرفة موجية رفيعة - يستخدم ألوان theme */}
-      <View style={styles.stripWrap}>
-        <OrnamentStrip length={stripW} isVertical={false} goldColor={goldColor} bgColor={pageColor} />
-      </View>
-
-      {/* Cartouches */}
+      {/* Cartouches - بدون ornament strip (الإطار نفسه فيه شريط زخرفي) */}
       <View style={styles.row}>
         <Cartouche text={juzLabel} font={quranFont} goldColor={goldColor} pageColor={pageColor} textColor={textColor} onPress={onJuzPress} />
         <View style={{ width: 12 }} />
@@ -81,29 +73,25 @@ const Cartouche: React.FC<{
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingTop: 4,
-  },
-  stripWrap: {
-    alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingTop: 2,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   cartouche: {
     flex: 1,
-    height: 36,
-    borderRadius: 12,
+    height: 30,
+    borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
   },
   cartoucheText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     marginTop: Platform.OS === 'ios' ? 1 : 0,
   },

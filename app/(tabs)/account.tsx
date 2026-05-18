@@ -7,8 +7,8 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Award, BookOpen, Brain, Headphones, Heart, Flame, Calendar,
-  Moon, Sun, Type, Bell, Globe, Download, Info, ChevronLeft,
-  LogIn, FileText, Mic, Sparkles, Edit3, Shield,
+  Moon, Sun, Type, Bell, Globe, Download, Cloud, Info, ChevronLeft,
+  LogIn, FileText, Mic, Sparkles, Edit3, Shield, Wrench,
 } from 'lucide-react-native';
 import { useIsAdmin } from '@store/appConfigStore';
 import { computeUserLevel } from '@utils/userLevel';
@@ -37,7 +37,7 @@ export default function AccountScreen() {
 
   // إعدادات التطبيق
   const {
-    notificationsEnabled, autoSaveTasmee,
+    notificationsEnabled, autoSaveTasmee, cloudSyncEnabled,
     estimatedDownloadsMB,
     setNotifications, setAutoSaveTasmee,
   } = useSettingsStore();
@@ -163,6 +163,8 @@ export default function AccountScreen() {
         <Row icon={<FileText size={18} color={t.colors.info} />}    label={tr('account.notes')} onPress={() => router.push('/notes')} />
         <Row icon={<Mic size={18} color={t.colors.featureCarmine} />} label={tr('account.tasmeeSessions')} onPress={() => router.push('/tasmee')} />
         <Row icon={<Calendar size={18} color={t.colors.featureLapis} />} label={tr('account.khatmas')} onPress={() => router.push('/khatma')} />
+        {/* 🛠️ صفحة الأدوات الكاملة — تجمع كل الميزات الثانوية في مكان منظّم */}
+        <Row icon={<Wrench size={18} color={t.colors.featureSepia} />} label="الأدوات والمزيد" trailing="القبلة · التسبيح · الزكاة · ..." onPress={() => router.push('/tools')} />
       </View>
 
       {/* الإعدادات */}
@@ -202,7 +204,7 @@ export default function AccountScreen() {
           icon={<Bell size={18} color={t.colors.primary} />}
           label={tr('settings.notifications')}
           value={notificationsEnabled}
-          onChange={setNotifications}
+          onChange={(v) => { setNotifications(v); router.push('/notifications'); }}
         />
         <SettingToggle
           icon={<Mic size={18} color={t.colors.featureCarmine} />}
@@ -223,17 +225,23 @@ export default function AccountScreen() {
           onPress={() => router.push('/downloads')}
         />
         <Row
+          icon={<Cloud size={18} color={cloudSyncEnabled ? t.colors.success : t.colors.featureLapis} />}
+          label={tr('settings.cloudSync')}
+          trailing={cloudSyncEnabled ? tr('settings.cloudConnected') : tr('settings.cloudOffline')}
+          onPress={() => router.push('/cloud-sync')}
+        />
+        <Row
           icon={<Info size={18} color={t.colors.textSecondary} />}
           label={tr('settings.about')}
           onPress={() => router.push('/about')}
         />
       </View>
 
-      {/* لوحة تحكم الأدمن — نُقلت لـ web admin، مش موجودة في الـ client بعد V2 */}
-      {false && isAdmin ? (
+      {/* لوحة تحكم الأدمن - تظهر فقط لإيميلات الأدمن المعرّفة في appInfo.ts */}
+      {isAdmin ? (
         <View style={{ marginTop: t.spacing.lg }}>
           <Pressable
-            onPress={() => router.push('/about')}
+            onPress={() => router.push('/admin')}
             style={({ pressed }) => [
               styles.adminBtn,
               {

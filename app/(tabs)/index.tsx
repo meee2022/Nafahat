@@ -19,7 +19,7 @@ import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect, Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Search, Bookmark, Heart, FileText, BookOpen, Layers, Mic2, ChevronLeft, Play } from 'lucide-react-native';
+import { Search, Bookmark, Heart, FileText, BookOpen, Layers, Mic2, ChevronLeft, Play, Wrench } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
@@ -207,6 +207,34 @@ export default function MushafHomeScreen() {
               t={t}
             />
           </View>
+        </View>
+
+        {/* ═════════════ اكتشف الأدوات ═════════════ */}
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <Pressable
+            onPress={() => router.push('/tools')}
+            style={({ pressed }) => [
+              styles.toolsBanner,
+              {
+                backgroundColor: t.colors.surface,
+                borderColor: t.colors.borderGold,
+                opacity: pressed ? 0.9 : 1,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="افتح صفحة الأدوات"
+          >
+            <View style={[styles.toolsIconBox, { backgroundColor: t.colors.primarySoft, borderColor: t.colors.borderGold }]}>
+              <Wrench size={20} color={t.colors.primary} />
+            </View>
+            <View style={{ flex: 1, marginHorizontal: 12 }}>
+              <Text style={{ color: t.colors.textPrimary, fontWeight: '800', fontSize: 14 }}>الأدوات والمزيد</Text>
+              <Text style={{ color: t.colors.textTertiary, fontSize: 12, marginTop: 2 }}>
+                القبلة · التسبيح · الزكاة · المساجد · التحديات
+              </Text>
+            </View>
+            <ChevronLeft size={18} color={t.colors.accent} />
+          </Pressable>
         </View>
 
         {/* ═════════════ آية اليوم ═════════════ */}
@@ -432,6 +460,21 @@ const styles = StyleSheet.create({
   navCardIconBox: {
     width: 52, height: 52,
     borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  // ════ Tools banner ════
+  toolsBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  toolsIconBox: {
+    width: 40, height: 40,
+    borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,
   },

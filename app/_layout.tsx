@@ -20,7 +20,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { ThemeProvider, useTheme } from '@theme/index';
 import { Text } from '@components/ui';
-import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore, useAudioStore } from '@store/index';
+import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore, useAudioStore } from '@store/index';
 import { useLanguageStore } from '@store/languageStore';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
@@ -100,6 +100,7 @@ function AppGate() {
   const hydrateTasbeeh = useTasbeehStore((s) => s.hydrate);
   const hydrateLang = useLanguageStore((s) => s.hydrate);
   const hydrateAuth = useAuthStore((s) => s.hydrate);
+  const hydrateQuiz = useQuizStore((s) => s.hydrate);
   const hydrateSettings = useSettingsStore((s) => s.hydrate);
   const hydrateKhatma = useKhatmaStore((s) => s.hydrate);
   const hydrateTajweed = useTajweedStore((s) => s.hydrate);
@@ -115,7 +116,7 @@ function AppGate() {
       await Promise.all([
         hydrateUser(), hydrateReading(), hydrateMemo(),
         hydrateStats(), hydrateTasbeeh(), hydrateLang(),
-        hydrateAuth(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(), hydrateAudio(),
+        hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(), hydrateAudio(),
       ]);
       setTimeout(() => setHydrated(true), 1500);
     })();
@@ -177,7 +178,19 @@ function AppGate() {
       <Stack.Screen name="notes" />
       <Stack.Screen name="review" />
       <Stack.Screen name="ayah-of-day" />
-      {/* V2 cleanup: removed mosques, zakat, quiz, journey, in-app notifications, cloud-sync, admin */}
+      {/* أدوات إضافية — تظهر تحت "أدوات" في tab "أنا" */}
+      <Stack.Screen name="zakat" />
+      <Stack.Screen name="mosques" />
+      <Stack.Screen name="journey" />
+      <Stack.Screen name="notifications" />
+      <Stack.Screen name="cloud-sync" />
+      <Stack.Screen name="quiz/index" />
+      <Stack.Screen name="quiz/session" />
+      {/* admin tools — accessible فقط لـ admin emails */}
+      <Stack.Screen name="admin/index" />
+      <Stack.Screen name="admin/users" />
+      {/* Tools landing — يجمع كل الأدوات في صفحة واحدة */}
+      <Stack.Screen name="tools" />
       <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       <Stack.Screen name="player" options={{ presentation: 'modal' }} />
     </Stack>

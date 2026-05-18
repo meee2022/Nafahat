@@ -31,6 +31,13 @@ export interface Reciter {
   bitrate: number;
   cdnBase: string;       // قاعدة مسار التحميل
   popular?: boolean;
+  /**
+   * 🎯 ID القارئ في Quran Foundation API.
+   *   يُستخدم لجلب التوقيتات الدقيقة الخاصة بهذا القارئ تحديداً.
+   *   لو غير محدّد، نستخدم العفاسي (ID 7) كمرجع - بيـ drift مع الوقت
+   *   لو القارئ ذو إيقاع مختلف.
+   */
+  qcfRecitationId?: number;
 }
 
 export interface Bookmark {

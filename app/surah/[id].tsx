@@ -67,6 +67,11 @@ function buildMushafPalette(t: ReturnType<typeof useTheme>) {
       //    ذهبي (مش زمردي) يطابق الهوية ويلمع جميلاً على الفحمي
       accentText: '#C9A961',
       emerald:  '#3F8F7A',
+      // 🎯 زر CTA الأساسي (التشغيل): ذهبي ممتلئ + أيقونة داكنة في dark
+      //    عشان الأخضر الفاتح كان مزعج على الفحمي - الذهبي يطابق الهوية ويبرز كـ CTA
+      ctaBg:    '#C9A961',
+      ctaFg:    '#0A1815',
+      ctaShadow:'#000000',
     };
   }
 
@@ -87,6 +92,10 @@ function buildMushafPalette(t: ReturnType<typeof useTheme>) {
     // 🪙 لون نصوص الـ cartouches + رقم الصفحة في light mode = زمردي (يبرز على الكريمي)
     accentText: '#0A3D38',
     emerald:  '#0A3D38',                            // الزمردي الأساسي
+    // 🎯 زر CTA الأساسي (التشغيل) في light: زمردي ممتلئ + أيقونة ذهبية
+    ctaBg:    '#0A3D38',
+    ctaFg:    '#BFA178',
+    ctaShadow:'#0A3D38',
   };
 }
 
@@ -259,13 +268,14 @@ export default function SurahDetail() {
         setLoadError(tr('mushaf.loadError'));
       });
 
-    // 🎯 حمّل توقيتات الآيات بالتوازي - لا يحجب رسم الصفحة لو فشل
-    getSurahTimings(surah.id)
+    // 🎯 حمّل توقيتات الآيات بالتوازي لقارئ المستخدم الحالي - لا يحجب الرسم لو فشل
+    //    لو القارئ ليس له qcfRecitationId، الـ service بيـ fallback للعفاسي.
+    getSurahTimings(surah.id, activeReciter.qcfRecitationId)
       .then((t) => { if (mounted && t) setTimings(t); })
       .catch(() => {});
 
     return () => { mounted = false; };
-  }, [surah?.id, retryKey]);
+  }, [surah?.id, retryKey, activeReciter.qcfRecitationId]);
 
   if (!surah) {
     return (
@@ -574,17 +584,18 @@ export default function SurahDetail() {
               style={({ pressed }) => [
                 styles.audioBarPlayBtn,
                 {
-                  backgroundColor: MUSHAF.emerald,
+                  backgroundColor: MUSHAF.ctaBg,
                   borderColor: MUSHAF.gold,
                   borderWidth: 1.5,
+                  shadowColor: MUSHAF.ctaShadow,
                   opacity: pressed ? 0.88 : 1,
                   transform: [{ scale: pressed ? 0.96 : 1 }],
                 },
               ]}
             >
               {isCurrentlyPlaying
-                ? <Pause size={18} color={MUSHAF.gold} fill={MUSHAF.gold} />
-                : <Play size={18} color={MUSHAF.gold} fill={MUSHAF.gold} style={{ marginLeft: 2 }} />}
+                ? <Pause size={18} color={MUSHAF.ctaFg} fill={MUSHAF.ctaFg} />
+                : <Play size={18} color={MUSHAF.ctaFg} fill={MUSHAF.ctaFg} style={{ marginLeft: 2 }} />}
             </Pressable>
 
             <Pressable

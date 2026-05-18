@@ -17,10 +17,9 @@ import { LruCache } from '@/utils/lruCache';
 const API_BASE = 'https://api.qurancdn.com/api/qdc';
 const CACHE_PREFIX = '@nafahat/timings/';
 /**
- * مُعرّف Mishary Alafasy على Quran.com - يُستخدم كمرجع عالمي للتوقيتات
- * (مدة قراءته ~متوسطة، فالـ scaling لباقي القرّاء يعطي تقدير معقول).
+ * مُعرّف العفاسي على Quran.com - fallback لو القارئ مش معروف.
  */
-const REFERENCE_RECITATION_ID = 7;
+const DEFAULT_RECITATION_ID = 7;
 
 // ─────────────────────────────────────────────
 // 🔤 الأنواع
@@ -57,11 +56,16 @@ export interface SurahTimings {
 // 💾 كاش (ذاكرة + AsyncStorage)
 // ─────────────────────────────────────────────
 
-const memCache = new LruCache<number, SurahTimings>(20);
-const inflight = new Map<number, Promise<SurahTimings | null>>();
+// كاش بمفتاح مركّب (recitationId + surahId) لتجنّب الخلط بين قرّاء مختلفين
+const memCache = new LruCache<string, SurahTimings>(40);
+const inflight = new Map<string, Promise<SurahTimings | null>>();
 
-function storageKey(surahId: number): string {
-  return `${CACHE_PREFIX}${REFERENCE_RECITATION_ID}:${surahId}`;
+function cacheKey(recitationId: number, surahId: number): string {
+  return `${recitationId}:${surahId}`;
+}
+
+function storageKey(recitationId: number, surahId: number): string {
+  return `${CACHE_PREFIX}${recitationId}:${surahId}`;
 }
 
 // ─────────────────────────────────────────────
@@ -69,32 +73,38 @@ function storageKey(surahId: number): string {
 // ─────────────────────────────────────────────
 
 /**
- * يجلب توقيتات سورة كاملة. يحاول الذاكرة، ثم AsyncStorage، ثم API.
- * يُرجع null لو فشلت كل المحاولات (لـ caller يقع على fallback).
+ * يجلب توقيتات سورة كاملة لقارئ محدّد. يحاول الذاكرة، ثم AsyncStorage، ثم API.
+ * لو فشل، يجرّب fallback لتوقيتات العفاسي (مع scaling) لتفادي العودة لـ char-count.
+ * يُرجع null لو فشلت كل المحاولات.
  */
-export async function getSurahTimings(surahId: number): Promise<SurahTimings | null> {
+export async function getSurahTimings(
+  surahId: number,
+  recitationId: number = DEFAULT_RECITATION_ID,
+): Promise<SurahTimings | null> {
+  const key = cacheKey(recitationId, surahId);
   // 1) ذاكرة
-  const hit = memCache.get(surahId);
+  const hit = memCache.get(key);
   if (hit) return hit;
 
   // منع التحميل المكرّر إن كان الطلب جارياً
-  const ip = inflight.get(surahId);
+  const ip = inflight.get(key);
   if (ip) return ip;
 
-  const promise = loadInternal(surahId);
-  inflight.set(surahId, promise);
-  promise.finally(() => inflight.delete(surahId));
+  const promise = loadInternal(surahId, recitationId);
+  inflight.set(key, promise);
+  promise.finally(() => inflight.delete(key));
   return promise;
 }
 
-async function loadInternal(surahId: number): Promise<SurahTimings | null> {
+async function loadInternal(surahId: number, recitationId: number): Promise<SurahTimings | null> {
+  const key = cacheKey(recitationId, surahId);
   // 2) AsyncStorage
   try {
-    const raw = await AsyncStorage.getItem(storageKey(surahId));
+    const raw = await AsyncStorage.getItem(storageKey(recitationId, surahId));
     if (raw) {
       const stored = JSON.parse(raw) as SurahTimings;
       if (stored && Array.isArray(stored.verses) && stored.verses.length > 0) {
-        memCache.set(surahId, stored);
+        memCache.set(key, stored);
         return stored;
       }
     }
@@ -102,12 +112,24 @@ async function loadInternal(surahId: number): Promise<SurahTimings | null> {
 
   // 3) API
   try {
-    const url = `${API_BASE}/audio/reciters/${REFERENCE_RECITATION_ID}/audio_files?chapter=${surahId}&segments=true`;
+    const url = `${API_BASE}/audio/reciters/${recitationId}/audio_files?chapter=${surahId}&segments=true`;
     const res = await fetch(url);
-    if (!res.ok) return null;
+    if (!res.ok) {
+      // 🛟 fallback: لو القارئ مش موجود في Quran.com، جرّب توقيتات العفاسي
+      //    أحسن من char-count على الأقل (مع scaling خطّي).
+      if (recitationId !== DEFAULT_RECITATION_ID) {
+        return getSurahTimings(surahId, DEFAULT_RECITATION_ID);
+      }
+      return null;
+    }
     const json = await res.json();
     const file = json?.audio_files?.[0];
-    if (!file) return null;
+    if (!file) {
+      if (recitationId !== DEFAULT_RECITATION_ID) {
+        return getSurahTimings(surahId, DEFAULT_RECITATION_ID);
+      }
+      return null;
+    }
 
     const verses: VerseTiming[] = (file.verse_timings ?? []).map((v: any) => ({
       verseKey: String(v.verse_key),
@@ -124,7 +146,12 @@ async function loadInternal(surahId: number): Promise<SurahTimings | null> {
         : [],
     }));
 
-    if (verses.length === 0) return null;
+    if (verses.length === 0) {
+      if (recitationId !== DEFAULT_RECITATION_ID) {
+        return getSurahTimings(surahId, DEFAULT_RECITATION_ID);
+      }
+      return null;
+    }
 
     const result: SurahTimings = {
       surahId,
@@ -132,11 +159,13 @@ async function loadInternal(surahId: number): Promise<SurahTimings | null> {
       verses,
     };
 
-    memCache.set(surahId, result);
-    // حفظ غير محظور
-    AsyncStorage.setItem(storageKey(surahId), JSON.stringify(result)).catch(() => {});
+    memCache.set(key, result);
+    AsyncStorage.setItem(storageKey(recitationId, surahId), JSON.stringify(result)).catch(() => {});
     return result;
   } catch {
+    if (recitationId !== DEFAULT_RECITATION_ID) {
+      return getSurahTimings(surahId, DEFAULT_RECITATION_ID);
+    }
     return null;
   }
 }

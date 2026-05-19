@@ -757,3 +757,56 @@ export const IllNotes: React.FC<IProps> = ({ size = 64 }) => (
     <Path d="M18,68 L19,71 L22,72 L19,73 L18,76 L17,73 L14,72 L17,71 Z" fill="#FBF7EA" opacity="0.8" />
   </Svg>
 );
+
+// =================== المقالات (كتاب مفتوح + علامة ذهبية + نجمة) ===================
+// تمييز عن الأحاديث: الأحاديث = طومار / مخطوط. المقالات = كتاب مفتوح + إشارة قراءة
+export const IllArticles: React.FC<IProps> = ({ size = 64 }) => (
+  <Svg width={size} height={size} viewBox="0 0 100 100">
+    <Defs>
+      <LinearGradient id="bg-articles" x1="0%" y1="0%" x2="100%" y2="100%">
+        <Stop offset="0%" stopColor="#0F4A41" />
+        <Stop offset="100%" stopColor="#062825" />
+      </LinearGradient>
+      <LinearGradient id="page-articles" x1="0%" y1="0%" x2="0%" y2="100%">
+        <Stop offset="0%" stopColor="#FBF7EA" />
+        <Stop offset="100%" stopColor="#E8D8B0" />
+      </LinearGradient>
+    </Defs>
+    <Circle cx="50" cy="50" r="48" fill="url(#bg-articles)" />
+    <Circle cx="50" cy="50" r="48" fill="none" stroke="#D4B570" strokeWidth="0.8" opacity="0.5" />
+
+    {/* الكتاب المفتوح - صفحة يسرى */}
+    <Path d="M 22 36 L 50 32 L 50 70 L 22 70 Z" fill="url(#page-articles)" stroke="#9C7A2D" strokeWidth="0.6" />
+    {/* الكتاب المفتوح - صفحة يمنى */}
+    <Path d="M 78 36 L 50 32 L 50 70 L 78 70 Z" fill="url(#page-articles)" stroke="#9C7A2D" strokeWidth="0.6" />
+    {/* خط الانثناء في الوسط */}
+    <Path d="M 50 32 L 50 70" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.6" />
+
+    {/* أسطر نص على الصفحة اليسرى */}
+    <Path d="M 27 44 L 46 43" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.55" />
+    <Path d="M 27 49 L 44 48" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.45" />
+    <Path d="M 27 54 L 46 53" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.45" />
+    <Path d="M 27 59 L 42 58" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.4" />
+    <Path d="M 27 64 L 45 63" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.4" />
+
+    {/* أسطر نص على الصفحة اليمنى */}
+    <Path d="M 54 43 L 73 44" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.55" />
+    <Path d="M 54 48 L 71 49" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.45" />
+    <Path d="M 54 53 L 73 54" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.45" />
+    <Path d="M 54 58 L 69 59" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.4" />
+    <Path d="M 54 63 L 72 64" stroke="#9C7A2D" strokeWidth="0.5" opacity="0.4" />
+
+    {/* علامة (bookmark) ذهبية تنزل من أعلى الكتاب */}
+    <Path d="M 60 32 L 60 48 L 64 44 L 68 48 L 68 32 Z" fill="#D4B570" stroke="#8C7430" strokeWidth="0.6" />
+
+    {/* نجمة ذهبية صغيرة كزخرفة في الزاوية - تدل على "محتوى مميّز" */}
+    <Path
+      d="M 76 24 L 77.5 27 L 81 27.5 L 78.5 30 L 79 33.5 L 76 32 L 73 33.5 L 73.5 30 L 71 27.5 L 74.5 27 Z"
+      fill="#D4B570"
+      opacity="0.9"
+    />
+    {/* نقاط زخرفية */}
+    <Circle cx="22" cy="22" r="1.2" fill="#D4B570" opacity="0.7" />
+    <Circle cx="22" cy="78" r="1.0" fill="#D4B570" opacity="0.55" />
+  </Svg>
+);

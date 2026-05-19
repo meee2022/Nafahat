@@ -17,4 +17,5 @@ export {
   IllAchievements,
   IllHadith,
   IllNotes,
+  IllArticles,
 } from './Illustration';

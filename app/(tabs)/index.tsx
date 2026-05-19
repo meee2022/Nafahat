@@ -11,7 +11,7 @@ import { useRouter } from 'expo-router';
 import { Bell, Search, MapPin, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
-import { IllMushaf, IllAdhkar, IllTasbeeh, IllQibla, IllMosques, IllCalendar, IllDuas, IllTajweed, IllKhatma, IllZakat, IllStats, IllMemo, IllAudio, IllHadith, IllNotes, IllAchievements } from '@components/illustrations';
+import { IllMushaf, IllAdhkar, IllTasbeeh, IllQibla, IllMosques, IllCalendar, IllDuas, IllTajweed, IllKhatma, IllZakat, IllStats, IllMemo, IllAudio, IllHadith, IllNotes, IllAchievements, IllArticles } from '@components/illustrations';
 import { useSettingsStore } from '@store/index';
 import { useT, useLanguage } from '@store/languageStore';
 import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@services/prayerTimes';
@@ -135,11 +135,12 @@ export default function HomeScreen() {
   ];
 
   const quranFeatures = [
-    { id: 'memo',    title: tr('feature.memo'),   icon: <IllMemo    size={68} />, path: '/memorization' },
-    { id: 'audio',   title: tr('feature.audio'),  icon: <IllAudio   size={68} />, path: '/reciters' },
-    { id: 'khatma',  title: tr('tool.khatma'),    icon: <IllKhatma  size={68} />, path: '/khatma' },
-    { id: 'tajweed', title: tr('learn.tajweed'),  icon: <IllTajweed size={68} />, path: '/tajweed' },
-    { id: 'hadith',  title: 'الأحاديث',           icon: <IllHadith  size={68} />, path: '/hadith' },
+    { id: 'memo',     title: tr('feature.memo'),   icon: <IllMemo     size={68} />, path: '/memorization' },
+    { id: 'audio',    title: tr('feature.audio'),  icon: <IllAudio    size={68} />, path: '/reciters' },
+    { id: 'khatma',   title: tr('tool.khatma'),    icon: <IllKhatma   size={68} />, path: '/khatma' },
+    { id: 'tajweed',  title: tr('learn.tajweed'),  icon: <IllTajweed  size={68} />, path: '/tajweed' },
+    { id: 'hadith',   title: 'الأحاديث',           icon: <IllHadith   size={68} />, path: '/hadith' },
+    { id: 'articles', title: 'المقالات',           icon: <IllArticles size={68} />, path: '/articles' },
   ];
 
   const extraFeatures = [

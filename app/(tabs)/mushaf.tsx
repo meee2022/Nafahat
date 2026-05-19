@@ -19,7 +19,7 @@ import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect, Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Search, Bookmark, Heart, FileText, BookOpen, Layers, Mic2, ChevronLeft, Play, Wrench, Library, ScrollText } from 'lucide-react-native';
+import { Search, Bookmark, Heart, FileText, BookOpen, Layers, Mic2, ChevronLeft, Play, Wrench } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
@@ -209,60 +209,8 @@ export default function MushafHomeScreen() {
           </View>
         </View>
 
-        {/* ═════════════ مكتبة المحتوى — صفّ من بطاقتين premium ═════════════ */}
-        <View style={{ marginTop: 24, paddingHorizontal: 16 }}>
-          <SectionHeading eyebrow="مكتبتك الإسلامية" title="استكشف المحتوى" />
-          <View style={styles.libraryGrid}>
-            {/* المقالات */}
-            <Pressable
-              onPress={() => router.push('/articles' as any)}
-              style={({ pressed }) => [styles.libraryCardWrap, { opacity: pressed ? 0.94 : 1 }]}
-              accessibilityRole="button"
-              accessibilityLabel="افتح مكتبة المقالات"
-            >
-              <View style={[styles.libraryCard, { backgroundColor: t.colors.primary, borderColor: t.colors.accent + '70' }]}>
-                <View style={[styles.libraryIconBox, { backgroundColor: t.colors.accent + '20', borderColor: t.colors.accent }]}>
-                  <Library size={22} color={t.colors.accent} />
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
-                  <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>المقالات</Text>
-                  <View style={{ backgroundColor: t.colors.accent, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 }}>
-                    <Text style={{ color: '#0A1815', fontSize: 8, fontWeight: '800' }}>جديد</Text>
-                  </View>
-                </View>
-                <Text style={{ color: 'rgba(255,255,255,0.72)', fontSize: 10, marginTop: 3, lineHeight: 15 }} numberOfLines={2}>
-                  قصص الأنبياء · تدبّرات · تاريخ
-                </Text>
-              </View>
-            </Pressable>
-
-            {/* الأحاديث النبوية */}
-            <Pressable
-              onPress={() => router.push('/hadith' as any)}
-              style={({ pressed }) => [styles.libraryCardWrap, { opacity: pressed ? 0.94 : 1 }]}
-              accessibilityRole="button"
-              accessibilityLabel="افتح الأحاديث النبوية"
-            >
-              <View style={[styles.libraryCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold, borderWidth: 1.5 }]}>
-                <View style={[styles.libraryIconBox, { backgroundColor: t.colors.primarySoft, borderColor: t.colors.accent }]}>
-                  <ScrollText size={22} color={t.colors.primary} />
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
-                  <Text style={{ color: t.colors.textPrimary, fontWeight: '800', fontSize: 14 }}>الأحاديث</Text>
-                  <View style={{ backgroundColor: t.colors.accent + '22', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3, borderWidth: 0.5, borderColor: t.colors.accent }}>
-                    <Text style={{ color: t.colors.accent, fontSize: 8, fontWeight: '800' }}>٨٦</Text>
-                  </View>
-                </View>
-                <Text style={{ color: t.colors.textTertiary, fontSize: 10, marginTop: 3, lineHeight: 15 }} numberOfLines={2}>
-                  النووية · البخاري · مسلم
-                </Text>
-              </View>
-            </Pressable>
-          </View>
-        </View>
-
-        {/* ═════════════ اكتشف الأدوات ═════════════ */}
-        <View style={{ marginTop: 14, paddingHorizontal: 20 }}>
+        {/* ═════════════ اكتشف الأدوات والمكتبة ═════════════ */}
+        <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
           <Pressable
             onPress={() => router.push('/tools')}
             style={({ pressed }) => [
@@ -280,9 +228,9 @@ export default function MushafHomeScreen() {
               <Wrench size={20} color={t.colors.primary} />
             </View>
             <View style={{ flex: 1, marginHorizontal: 12 }}>
-              <Text style={{ color: t.colors.textPrimary, fontWeight: '800', fontSize: 14 }}>الأدوات والمزيد</Text>
+              <Text style={{ color: t.colors.textPrimary, fontWeight: '800', fontSize: 14 }}>الأدوات والمكتبة</Text>
               <Text style={{ color: t.colors.textTertiary, fontSize: 12, marginTop: 2 }}>
-                القبلة · التسبيح · الزكاة · المساجد · التحديات
+                المقالات · الأحاديث · القبلة · التسبيح · المزيد
               </Text>
             </View>
             <ChevronLeft size={18} color={t.colors.accent} />
@@ -515,27 +463,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,
   },
-  // ════ Library grid (premium 2-column) ════
-  libraryGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 4,
-  },
-  libraryCardWrap: {
-    flex: 1,
-  },
-  libraryCard: {
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    minHeight: 130,
-  },
-  libraryIconBox: {
-    width: 44, height: 44,
-    borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
-  },
+  // (Library cards moved to /tools — Mushaf tab is now Quran-only)
   // ════ Tools banner ════
   toolsBanner: {
     flexDirection: 'row',

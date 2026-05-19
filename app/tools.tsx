@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 import {
   Compass, Hand, Calendar as CalendarIcon, ScrollText, BookHeart,
   Calculator, MapPin, Trophy, Award, Map, ChevronLeft, Palette, BookMarked,
-  Library,
+  Library, BookOpen,
 } from 'lucide-react-native';
 import { TajweedLegendSheet } from '@components/mushaf';
 import { useTheme } from '@theme/index';
@@ -73,22 +73,6 @@ export default function ToolsScreen() {
   ];
 
   const contentTools: ToolItem[] = [
-    {
-      id: 'articles',
-      icon: <Library size={22} color={t.colors.primary} />,
-      titleAr: 'المقالات',
-      descAr: 'قصص الأنبياء، تاريخ، تدبّرات والمزيد',
-      path: '/articles',
-      accent: t.colors.featureEmerald,
-    },
-    {
-      id: 'hadith',
-      icon: <ScrollText size={22} color={t.colors.primary} />,
-      titleAr: 'الأحاديث',
-      descAr: 'مجموعة مختارة',
-      path: '/hadith',
-      accent: t.colors.featureCarmine,
-    },
     {
       id: 'duas',
       icon: <BookHeart size={22} color={t.colors.primary} />,
@@ -199,7 +183,59 @@ export default function ToolsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false}>
+        {/* ════ المكتبة الإسلامية — featured في القمة (premium 2-card grid) ════ */}
         <View style={{ paddingHorizontal: 20 }}>
+          <SectionHeading eyebrow="مكتبتك الإسلامية" title="استكشف المحتوى" />
+        </View>
+        <View style={styles.featuredGrid}>
+          {/* المقالات */}
+          <Pressable
+            onPress={() => router.push('/articles' as any)}
+            style={({ pressed }) => [styles.featuredCardWrap, { opacity: pressed ? 0.94 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel="افتح مكتبة المقالات"
+          >
+            <View style={[styles.featuredCard, { backgroundColor: t.colors.primary, borderColor: t.colors.accent + '70' }]}>
+              <View style={[styles.featuredIconBox, { backgroundColor: t.colors.accent + '20', borderColor: t.colors.accent }]}>
+                <Library size={22} color={t.colors.accent} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
+                <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>المقالات</Text>
+                <View style={{ backgroundColor: t.colors.accent, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3 }}>
+                  <Text style={{ color: '#0A1815', fontSize: 8, fontWeight: '800' }}>جديد</Text>
+                </View>
+              </View>
+              <Text style={{ color: 'rgba(255,255,255,0.72)', fontSize: 10, marginTop: 3, lineHeight: 15 }} numberOfLines={2}>
+                قصص الأنبياء · تدبّرات · تاريخ
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* الأحاديث النبوية */}
+          <Pressable
+            onPress={() => router.push('/hadith' as any)}
+            style={({ pressed }) => [styles.featuredCardWrap, { opacity: pressed ? 0.94 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel="افتح الأحاديث النبوية"
+          >
+            <View style={[styles.featuredCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold, borderWidth: 1.5 }]}>
+              <View style={[styles.featuredIconBox, { backgroundColor: t.colors.primarySoft, borderColor: t.colors.accent }]}>
+                <ScrollText size={22} color={t.colors.primary} />
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 }}>
+                <Text style={{ color: t.colors.textPrimary, fontWeight: '800', fontSize: 14 }}>الأحاديث</Text>
+                <View style={{ backgroundColor: t.colors.accent + '22', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 3, borderWidth: 0.5, borderColor: t.colors.accent }}>
+                  <Text style={{ color: t.colors.accent, fontSize: 8, fontWeight: '800' }}>٨٦</Text>
+                </View>
+              </View>
+              <Text style={{ color: t.colors.textTertiary, fontSize: 10, marginTop: 3, lineHeight: 15 }} numberOfLines={2}>
+                النووية · البخاري · مسلم
+              </Text>
+            </View>
+          </Pressable>
+        </View>
+
+        <View style={{ paddingHorizontal: 20, marginTop: 24 }}>
           <SectionHeading eyebrow="عبادة يومية" title="أدوات اليوم" />
         </View>
         {renderGroup(dailyTools)}
@@ -243,6 +279,27 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+  },
+  // ════ Featured library grid (premium 2-column) ════
+  featuredGrid: {
+    flexDirection: 'row',
+    gap: 10,
+    paddingHorizontal: 20,
+  },
+  featuredCardWrap: {
+    flex: 1,
+  },
+  featuredCard: {
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    minHeight: 130,
+  },
+  featuredIconBox: {
+    width: 44, height: 44,
+    borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,
   },
 });

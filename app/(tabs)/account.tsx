@@ -29,7 +29,7 @@ export default function AccountScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
-  const { mode, setMode, fontScale, setFontScale } = useThemeMode();
+  const { mode, setMode, fontScale, setFontScale, highContrast, setHighContrast } = useThemeMode();
   const profile = useUserStore((s) => s.profile);
   const stats = useStatsStore((s) => s.stats);
   const sync = useCloudSync();
@@ -185,6 +185,16 @@ export default function AccountScreen() {
           {(['sm', 'md', 'lg', 'xl'] as const).map((s) => (
             <Chip key={s} label={tr(`settings.font${s.charAt(0).toUpperCase()}${s.slice(1)}` as any)} active={fontScale === s} onPress={() => setFontScale(s)} />
           ))}
+        </View>
+
+        {/* 🆕 وضع التباين العالي - لتحسين الـ accessibility */}
+        <Text variant="label" color={t.colors.textSecondary} style={{ marginTop: 16, marginBottom: 8 }}>إمكانية الوصول</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <Chip
+            label={highContrast ? '✓ تباين عالٍ' : 'تباين عالٍ'}
+            active={highContrast}
+            onPress={() => setHighContrast(!highContrast)}
+          />
         </View>
 
         {/* اختيار اللغة */}

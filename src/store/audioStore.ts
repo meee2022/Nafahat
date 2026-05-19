@@ -88,6 +88,11 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       set({ error: 'لم يُعثر على رابط الصوت' });
       return;
     }
+    // 🆕 Track recent reciters (lazy import - avoid circular dep risk)
+    try {
+      const { useSettingsStore } = require('./settingsStore');
+      useSettingsStore.getState().pushRecentReciter(n.reciter.id);
+    } catch {}
     set({ current: n, isLoading: true, error: null, positionMs: 0, durationMs: 0 });
 
     const startAyah = n.startAtAyah ?? n.ayahNumber;

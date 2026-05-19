@@ -17,7 +17,8 @@ import { useTheme } from '@theme/index';
 import { Screen, Text, Card, AppHeader } from '@components/ui';
 import { RECITERS } from '@data/reciters';
 import { useT } from '@store/languageStore';
-import { useAudioStore } from '@store/index';
+import { useAudioStore, useSettingsStore } from '@store/index';
+import { Clock } from 'lucide-react-native';
 import { ReciterAvatar } from '@components/reciter/ReciterAvatar';
 
 type StyleFilter = 'all' | 'مرتل' | 'مجود' | 'معلم';
@@ -56,6 +57,13 @@ export default function RecitersScreen() {
 
   const popular = useMemo(() => RECITERS.filter((r) => r.popular).slice(0, 6), []);
   const currentReciterId = current?.reciter.id;
+  // 🆕 آخر القرّاء اللي استمع لهم المستخدم
+  const recentIds = useSettingsStore((s) => s.recentReciterIds);
+  const recent = useMemo(() => {
+    return recentIds
+      .map((id) => RECITERS.find((r) => r.id === id))
+      .filter((r): r is typeof RECITERS[number] => !!r);
+  }, [recentIds]);
 
   return (
     <Screen>
@@ -200,6 +208,50 @@ export default function RecitersScreen() {
           );
         })}
       </ScrollView>
+
+      {/* 🆕 آخر القرّاء اللي استمعت لهم - يظهر فقط لو فيه history */}
+      {recent.length > 0 ? (
+        <>
+          <View style={[styles.sectionHead, { marginTop: 18 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Clock size={14} color={t.colors.accent} />
+              <Text style={[styles.eyebrow, { color: t.colors.accent }]}>آخر استماعك</Text>
+            </View>
+            <Text variant="h3" style={{ marginTop: 6 }}>قرّاء مؤخّراً</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.popularRow}>
+            {recent.map((r) => {
+              const styleColor = STYLE_COLORS[r.style] ?? t.colors.primary;
+              const isCurrent = currentReciterId === r.id;
+              return (
+                <Pressable
+                  key={r.id}
+                  onPress={() => router.push(`/reciter/${r.id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={r.nameAr}
+                  style={({ pressed }) => [
+                    styles.popularCard,
+                    pressed && { transform: [{ scale: 0.98 }] },
+                  ]}
+                >
+                  <ReciterAvatar
+                    letter={r.nameAr.charAt(0)}
+                    size={72}
+                    isPlaying={isCurrent && isPlaying}
+                    accentColor={styleColor}
+                  />
+                  <Text
+                    style={{ fontSize: 11, fontWeight: '700', color: t.colors.textPrimary, textAlign: 'center', marginTop: 8, maxWidth: 80 }}
+                    numberOfLines={2}
+                  >
+                    {r.nameAr}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </>
+      ) : null}
 
       {/* فلاتر بأيقونات */}
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>

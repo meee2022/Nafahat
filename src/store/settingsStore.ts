@@ -27,6 +27,8 @@ interface SettingsState {
 
   /** المُقرئ المفضل للمستخدم. */
   preferredReciterId: string;
+  /** 🆕 آخر القرّاء اللي استمع لهم المستخدم (LRU، أحدث 5). للـ Quick Access في تبويب الاستماع. */
+  recentReciterIds: string[];
 
   /** الموقع الجغرافي المختار (لمواقيت الصلاة + القبلة + المساجد). */
   location: UserLocation;
@@ -47,6 +49,8 @@ interface SettingsState {
   setAutoSaveTasmee: (v: boolean) => void;
   setCloudSync: (v: boolean) => void;
   setPreferredReciterId: (id: string) => void;
+  /** 🆕 يدفع reciterId إلى recentReciterIds (max 5، أحدث في الأول، مفيش duplicates) */
+  pushRecentReciter: (id: string) => void;
   setLocation: (loc: UserLocation) => void;
   setPremium: (v: boolean) => void;
   setMushafMode: (m: 'image' | 'text' | 'qpc') => void;
@@ -71,6 +75,7 @@ const DEFAULT = {
   autoSaveTasmee: false,
   cloudSyncEnabled: false,
   preferredReciterId: 'ajamy',
+  recentReciterIds: [] as string[],
   lastCloudSyncAt: null as number | null,
   estimatedDownloadsMB: 0,
   location: DEFAULT_LOCATION,
@@ -87,6 +92,7 @@ const persist = (s: Partial<SettingsState>) => {
     autoSaveTasmee: s.autoSaveTasmee,
     cloudSyncEnabled: s.cloudSyncEnabled,
     preferredReciterId: s.preferredReciterId,
+    recentReciterIds: s.recentReciterIds,
     lastCloudSyncAt: s.lastCloudSyncAt,
     location: s.location,
     isPremium: s.isPremium,
@@ -114,6 +120,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setPreferredReciterId(id) {
     set({ preferredReciterId: id });
+    persist(get());
+  },
+  pushRecentReciter(id) {
+    const cur = get().recentReciterIds.filter((x) => x !== id);
+    const next = [id, ...cur].slice(0, 5);
+    set({ recentReciterIds: next });
     persist(get());
   },
   setLocation(loc) {

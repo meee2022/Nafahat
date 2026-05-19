@@ -16,6 +16,7 @@ import { AlertTriangle, RotateCcw, Copy } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { copyToClipboard } from '@utils/clipboard';
+import { log } from '@utils/logger';
 
 interface State { error: Error | null; }
 
@@ -27,8 +28,8 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
-    // 📝 يطبع للمطوّر — مستقبلاً ابعت لـ Sentry هنا
-    console.error('[Nafahat ErrorBoundary]', error, info?.componentStack);
+    // 📝 logger يـ route للـ Sentry تلقائياً لو متفعّل، وللـ console في الـ dev
+    log.error(error, { componentStack: info?.componentStack ?? 'unknown' });
   }
 
   reset = () => this.setState({ error: null });

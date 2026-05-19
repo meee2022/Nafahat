@@ -75,6 +75,32 @@ const sentry = {
 /** Public flag — لتعرف لو Sentry فعّال أو لا (للـ UI debug screens) */
 export const isSentryActive = () => sentryReady;
 
+/**
+ * 🎁 يلفّ مكوّن root بـ Sentry للـ performance monitoring + Error Boundary native.
+ *   لو Sentry غير فعّال، يرجع نفس المكوّن بدون تغيير (no-op).
+ *   استخدم في app/_layout.tsx: `export default sentryWrap(RootLayout);`
+ */
+export function sentryWrap<T>(component: T): T {
+  if (sentryReady && SentryLib?.wrap) {
+    try {
+      return SentryLib.wrap(component as any) as T;
+    } catch {
+      return component;
+    }
+  }
+  return component;
+}
+
+/**
+ * 🏷️ يسجّل user context للـ Sentry — يساعد في tracking errors per-user.
+ *   مرّر null للـ logout.
+ */
+export function setSentryUser(user: { id?: string; email?: string; username?: string } | null) {
+  if (sentryReady && SentryLib?.setUser) {
+    try { SentryLib.setUser(user as any); } catch {}
+  }
+}
+
 function fmt(msg: string, ctx?: LogContext): string {
   if (!ctx || Object.keys(ctx).length === 0) return msg;
   try {

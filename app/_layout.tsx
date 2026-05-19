@@ -29,6 +29,8 @@ import { ToastProvider, useToast } from '@components/common/Toast';
 import { ErrorBoundary } from '@components/common/ErrorBoundary';
 import { initPremium, checkActiveSubscription } from '@services/premium';
 import { registerForPushNotifications } from '@services/pushNotifications';
+// 🛰️ يستورد logger أولاً عشان Sentry.init() يحصل قبل أي خطأ محتمل في الـ tree
+import { sentryWrap, log, setSentryUser } from '@utils/logger';
 import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
@@ -57,7 +59,7 @@ const Root: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return <>{children}</>;
 };
 
-export default function RootLayout() {
+function RootLayoutInner() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -74,6 +76,10 @@ export default function RootLayout() {
     </GestureHandlerRootView>
   );
 }
+
+// 🛰️ Sentry.wrap للـ performance monitoring + native error capture.
+//   لو Sentry غير فعّال (مفيش DSN)، الـ sentryWrap بيرجع المكوّن كما هو.
+export default sentryWrap(RootLayoutInner);
 
 function AppGate() {
   const router = useRouter();
@@ -126,6 +132,13 @@ function AppGate() {
       // 💎 Premium + 🔔 Push (graceful - no-op لو الـ packages مش متركّبة)
       initPremium().then(() => checkActiveSubscription()).catch(() => {});
       registerForPushNotifications().catch(() => {});
+      // 🛰️ Sentry user context — يساعد في ربط الأخطاء بمستخدم
+      const authState = useAuthStore.getState();
+      if (authState.user) {
+        setSentryUser({ id: authState.user.id, email: authState.user.email, username: authState.user.name });
+      } else {
+        setSentryUser({ id: 'guest', username: 'guest' });
+      }
       setTimeout(() => setHydrated(true), 1500);
     })();
   }, []);

@@ -811,21 +811,36 @@ async function loadAyahsForScope(juzs: number[]): Promise<Map<number, Ayah[]>> {
 export async function generateQuiz(options: QuizGenerationOptions): Promise<QuizQuestion[]> {
   const { level, totalQuestions, mode = 'algorithmic' } = options;
 
-  // 🎯 وضع curated فقط: ارجع N أسئلة منسَّقة عشوائية
+  // 🎯 احسب الأجزاء أولاً عشان نستخدمها في الـ curated filtering كمان
+  const juzs = options.juzs.length > 0 ? options.juzs : defaultJuzsForLevel(level);
+
+  // 🎯 وضع curated فقط: ارجع N أسئلة منسَّقة من الأجزاء المختارة
   if (mode === 'curated') {
-    return pickRandomCurated(totalQuestions);
+    const filtered = pickRandomCurated(totalQuestions, juzs);
+    // لو النتائج أقل من المطلوب (الأجزاء فيها أسئلة قليلة)، أكمل بالعامة
+    if (filtered.length < totalQuestions) {
+      const extra = pickRandomCurated(totalQuestions - filtered.length).filter(
+        (q) => !filtered.some((f) => f.id === q.id),
+      );
+      // ⚠️ مع تنبيه: لو الأجزاء المختارة فيها أسئلة قليلة، ممكن نسمح بأسئلة "عامة"
+      // (بدون سورة محدّدة في explanation) لكن لا نضيف أسئلة من سور خارج الأجزاء
+      return [...filtered, ...extra.filter((q) => {
+        const exp = q.explanation ?? '';
+        // العامة فقط - مفيش surah:ayah في explanation
+        return !/[ء-ي]+:\s*\d/.test(exp);
+      })].slice(0, totalQuestions);
+    }
+    return filtered;
   }
 
-  // 🎯 وضع mixed: نصف منسَّق + نصف خوارزمي
+  // 🎯 وضع mixed: نصف منسَّق (من الأجزاء) + نصف خوارزمي
   let curatedQuestions: QuizQuestion[] = [];
   let remainingForAlgo = totalQuestions;
   if (mode === 'mixed') {
     const curatedCount = Math.min(Math.floor(totalQuestions / 2), CURATED_COUNT);
-    curatedQuestions = pickRandomCurated(curatedCount);
+    curatedQuestions = pickRandomCurated(curatedCount, juzs);
     remainingForAlgo = totalQuestions - curatedQuestions.length;
   }
-
-  const juzs = options.juzs.length > 0 ? options.juzs : defaultJuzsForLevel(level);
   const allowed = allowedKindsForLevel(level);
   const scopeSurahs = surahsInJuzs(juzs);
   if (scopeSurahs.length === 0) return curatedQuestions;

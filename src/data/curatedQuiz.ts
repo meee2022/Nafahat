@@ -9,6 +9,31 @@
  * تُستخدم في وضع "Curated" أو "Mixed" في الكويز.
  */
 import { QuizQuestion } from '@/types/index';
+import { SURAHS } from './surahs';
+
+// 🔍 خريطة اسم السورة → id للاستخدام في فلترة الأسئلة بالأجزاء.
+//   كل اسم سورة عربي (مثل "هود") يربط بـ surahId الرسمي.
+const SURAH_NAME_TO_ID = new Map<string, number>(SURAHS.map((s) => [s.nameAr, s.id]));
+// أضف variants شائعة
+SURAH_NAME_TO_ID.set('فاطر', SURAH_NAME_TO_ID.get('فاطر') ?? 35);
+SURAH_NAME_TO_ID.set('الإسراء', SURAH_NAME_TO_ID.get('الإسراء') ?? 17);
+
+/**
+ * يستخرج surahId من نص التفسير/المرجع لو موجود.
+ * مثلاً: "هود: 119" → 11، "النمل: 81" → 27.
+ */
+function extractSurahIdFromExplanation(explanation?: string): number | null {
+  if (!explanation) return null;
+  // ابحث عن أول كلمة عربية قبل نقطتين أو قبل رقم آية
+  for (const [name, id] of SURAH_NAME_TO_ID) {
+    if (explanation.startsWith(`${name}:`) || explanation.startsWith(`${name} :`) ||
+        explanation.startsWith(`سورة ${name}`) || explanation.startsWith(`${name}،`) ||
+        explanation.includes(`${name}: `)) {
+      return id;
+    }
+  }
+  return null;
+}
 
 export const CURATED_QUIZ: QuizQuestion[] = [
   {
@@ -533,11 +558,44 @@ export const CURATED_QUIZ: QuizQuestion[] = [
   },
 ];
 
+// 🗺️ map: questionId → surahId (يُحسَب مرة عند الـ module load)
+const QUESTION_SURAH_MAP = new Map<string, number>();
+for (const q of CURATED_QUIZ) {
+  const sid = extractSurahIdFromExplanation(q.explanation);
+  if (sid != null) QUESTION_SURAH_MAP.set(q.id, sid);
+}
+
+/**
+ * يرجّع surahId لسؤال معيّن من الـ map.
+ * يرجع null لو السؤال "عام" (مفيش سورة محدّدة في explanation).
+ */
+export function getSurahIdForCuratedQuestion(questionId: string): number | null {
+  return QUESTION_SURAH_MAP.get(questionId) ?? null;
+}
+
 /**
  * يرجع عدداً عشوائياً من الأسئلة المنسَّقة (بدون تكرار).
+ *
+ * @param count عدد الأسئلة المطلوب
+ * @param juzs (اختياري) أجزاء المستخدم المختارة — لو موجودة، يفلتر الأسئلة
+ *  بحيث ترجع فقط الأسئلة المتعلقة بسور موجودة في تلك الأجزاء.
+ *  السؤال "العام" (بدون surah محدّدة في explanation) يُسمح به دائماً.
  */
-export function pickRandomCurated(count: number): QuizQuestion[] {
-  const shuffled = [...CURATED_QUIZ].sort(() => Math.random() - 0.5);
+export function pickRandomCurated(count: number, juzs?: number[]): QuizQuestion[] {
+  let pool = CURATED_QUIZ;
+  if (juzs && juzs.length > 0) {
+    const juzSet = new Set(juzs);
+    pool = CURATED_QUIZ.filter((q) => {
+      const surahId = QUESTION_SURAH_MAP.get(q.id);
+      if (surahId == null) return true; // أسئلة عامة بدون سورة محدّدة → مسموحة
+      const surah = SURAHS.find((s) => s.id === surahId);
+      if (!surah) return true;
+      // اسمح بالسؤال لو السورة تبدأ في الجزء المختار
+      // (سور كبيرة مثل البقرة الـ juzStart=1 ستظهر فقط لو الـ juz 1 ضمن المختار)
+      return juzSet.has(surah.juzStart);
+    });
+  }
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, Math.min(count, shuffled.length));
 }
 

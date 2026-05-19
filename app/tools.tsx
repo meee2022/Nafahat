@@ -22,6 +22,7 @@ import { useRouter } from 'expo-router';
 import {
   Compass, Hand, Calendar as CalendarIcon, ScrollText, BookHeart,
   Calculator, MapPin, Trophy, Award, Map, ChevronLeft, Palette, BookMarked,
+  Library,
 } from 'lucide-react-native';
 import { TajweedLegendSheet } from '@components/mushaf';
 import { useTheme } from '@theme/index';
@@ -72,6 +73,14 @@ export default function ToolsScreen() {
   ];
 
   const contentTools: ToolItem[] = [
+    {
+      id: 'articles',
+      icon: <Library size={22} color={t.colors.primary} />,
+      titleAr: 'المقالات',
+      descAr: 'قصص الأنبياء، تاريخ، تدبّرات والمزيد',
+      path: '/articles',
+      accent: t.colors.featureEmerald,
+    },
     {
       id: 'hadith',
       icon: <ScrollText size={22} color={t.colors.primary} />,

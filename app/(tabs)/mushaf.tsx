@@ -19,7 +19,7 @@ import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect, Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Search, Bookmark, Heart, FileText, BookOpen, Layers, Mic2, ChevronLeft, Play, Wrench } from 'lucide-react-native';
+import { Search, Bookmark, Heart, FileText, BookOpen, Layers, Mic2, ChevronLeft, Play, Wrench, Library } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
@@ -209,8 +209,36 @@ export default function MushafHomeScreen() {
           </View>
         </View>
 
-        {/* ═════════════ اكتشف الأدوات ═════════════ */}
+        {/* ═════════════ مكتبة المقالات — banner مميّز ═════════════ */}
         <View style={{ marginTop: 24, paddingHorizontal: 20 }}>
+          <Pressable
+            onPress={() => router.push('/articles' as any)}
+            style={({ pressed }) => [styles.articlesBanner, { opacity: pressed ? 0.94 : 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel="افتح مكتبة المقالات"
+          >
+            <View style={[styles.articlesBannerInner, { borderColor: t.colors.accent + '60' }]}>
+              <View style={[styles.articlesIconBox, { backgroundColor: t.colors.accent + '20', borderColor: t.colors.accent }]}>
+                <Library size={22} color={t.colors.accent} />
+              </View>
+              <View style={{ flex: 1, marginHorizontal: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: '#FFF', fontWeight: '800', fontSize: 14 }}>مكتبة المقالات</Text>
+                  <View style={{ backgroundColor: t.colors.accent, paddingHorizontal: 6, paddingVertical: 1, borderRadius: 4 }}>
+                    <Text style={{ color: '#0A1815', fontSize: 9, fontWeight: '800' }}>جديد</Text>
+                  </View>
+                </View>
+                <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 3 }}>
+                  قصص الأنبياء · تدبّرات · تاريخ · إيمانيات
+                </Text>
+              </View>
+              <ChevronLeft size={18} color={t.colors.accent} />
+            </View>
+          </Pressable>
+        </View>
+
+        {/* ═════════════ اكتشف الأدوات ═════════════ */}
+        <View style={{ marginTop: 14, paddingHorizontal: 20 }}>
           <Pressable
             onPress={() => router.push('/tools')}
             style={({ pressed }) => [
@@ -459,6 +487,26 @@ const styles = StyleSheet.create({
   },
   navCardIconBox: {
     width: 52, height: 52,
+    borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+  // ════ Articles banner (premium green) ════
+  articlesBanner: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  articlesBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    backgroundColor: '#0A3D38',
+  },
+  articlesIconBox: {
+    width: 44, height: 44,
     borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,

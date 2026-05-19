@@ -20,7 +20,7 @@ import {
 } from '@expo-google-fonts/inter';
 import { ThemeProvider, useTheme } from '@theme/index';
 import { Text } from '@components/ui';
-import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore, useAudioStore } from '@store/index';
+import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore, useAudioStore, useArticlesStore } from '@store/index';
 import { useLanguageStore } from '@store/languageStore';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
@@ -119,6 +119,7 @@ function AppGate() {
   const hydratePrefs = useUserPrefsStore((s) => s.hydrate);
   const hydrateAppConfig = useAppConfigStore((s) => s.hydrate);
   const hydrateAudio = useAudioStore((s) => s.hydrate);
+  const hydrateArticles = useArticlesStore((s) => s.hydrate);
   const hasOnboarded = useUserStore((s) => s.hasOnboarded);
   const authStatus = useAuthStore((s) => s.status);
 
@@ -127,7 +128,7 @@ function AppGate() {
       await Promise.all([
         hydrateUser(), hydrateReading(), hydrateMemo(),
         hydrateStats(), hydrateTasbeeh(), hydrateLang(),
-        hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(), hydrateAudio(),
+        hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(), hydrateAudio(), hydrateArticles(),
       ]);
       // 💎 Premium + 🔔 Push (graceful - no-op لو الـ packages مش متركّبة)
       initPremium().then(() => checkActiveSubscription()).catch(() => {});
@@ -220,6 +221,9 @@ function AppGate() {
       <Stack.Screen name="memo-create" />
       {/* Premium subscription paywall + status */}
       <Stack.Screen name="premium" options={{ presentation: 'modal' }} />
+      {/* مكتبة المقالات الإسلامية */}
+      <Stack.Screen name="articles/index" />
+      <Stack.Screen name="articles/[id]" />
       <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       <Stack.Screen name="player" options={{ presentation: 'modal' }} />
     </Stack>

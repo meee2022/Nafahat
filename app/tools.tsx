@@ -21,8 +21,9 @@ import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Compass, Hand, Calendar as CalendarIcon, ScrollText, BookHeart,
-  Calculator, MapPin, Trophy, Award, Map, ChevronLeft,
+  Calculator, MapPin, Trophy, Award, Map, ChevronLeft, Palette, BookMarked,
 } from 'lucide-react-native';
+import { TajweedLegendSheet } from '@components/mushaf';
 import { useTheme } from '@theme/index';
 import { Screen, AppHeader, Text } from '@components/ui';
 import { SectionHeading } from '@components/home';
@@ -41,6 +42,7 @@ export default function ToolsScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
+  const [tajweedOpen, setTajweedOpen] = React.useState(false);
 
   const dailyTools: ToolItem[] = [
     {
@@ -85,6 +87,14 @@ export default function ToolsScreen() {
       descAr: 'أدعية من الكتاب والسنّة',
       path: '/duas',
       accent: t.colors.featureMoss,
+    },
+    {
+      id: 'tajweed-legend',
+      icon: <Palette size={22} color={t.colors.primary} />,
+      titleAr: 'أحكام التجويد',
+      descAr: 'دليل ألوان قواعد التجويد',
+      path: '__tajweed_legend',
+      accent: t.colors.featureSepia,
     },
   ];
 
@@ -134,12 +144,20 @@ export default function ToolsScreen() {
     },
   ];
 
+  const handleToolPress = (item: ToolItem) => {
+    if (item.path === '__tajweed_legend') {
+      setTajweedOpen(true);
+    } else {
+      router.push(item.path as any);
+    }
+  };
+
   const renderGroup = (items: ToolItem[]) => (
     <View style={styles.group}>
       {items.map((item, idx) => (
         <Pressable
           key={item.id}
-          onPress={() => router.push(item.path as any)}
+          onPress={() => handleToolPress(item)}
           accessibilityRole="button"
           accessibilityLabel={item.titleAr}
           style={({ pressed }) => [
@@ -192,6 +210,9 @@ export default function ToolsScreen() {
         </View>
         {renderGroup(progressTools)}
       </ScrollView>
+
+      {/* 🎨 Tajweed legend sheet */}
+      <TajweedLegendSheet visible={tajweedOpen} onClose={() => setTajweedOpen(false)} />
     </Screen>
   );
 }

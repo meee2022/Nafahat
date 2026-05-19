@@ -8,3 +8,4 @@ export { MushafQpcPage } from './MushafQpcPage';
 export { MushafWord }    from './MushafWord';
 export { MushafBottomBar } from './MushafBottomBar';
 export { AyahListSheet }   from './AyahListSheet';
+export { TajweedLegendSheet } from './TajweedLegendSheet';

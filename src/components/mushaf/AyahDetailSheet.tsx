@@ -32,6 +32,7 @@ import { getWordsByVerse, QuranWord } from '@services/wordByWord';
 import { getWordAudioUrl } from '@services/quranComApi';
 import { playOneShot } from '@services/audioPlayer';
 import { useMemoStore } from '@store/index';
+import { Skeleton } from '@components/common';
 
 type Tab = 'tafsir' | 'translation' | 'words' | 'actions';
 
@@ -291,9 +292,12 @@ export const AyahDetailSheet: React.FC<Props> = ({
                 {/* النص */}
                 <View style={[styles.contentBox, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
                   {loadingTafsir ? (
-                    <View style={styles.center}>
-                      <ActivityIndicator color={t.colors.accent} size="large" />
-                      <Text style={{ color: t.colors.textSecondary, marginTop: 14, fontSize: 13 }}>
+                    <View style={{ padding: 6, gap: 8 }}>
+                      <Skeleton width="100%" height={16} />
+                      <Skeleton width="92%" height={16} />
+                      <Skeleton width="78%" height={16} />
+                      <Skeleton width="60%" height={16} />
+                      <Text style={{ color: t.colors.textTertiary, marginTop: 10, fontSize: 11, textAlign: 'center' }}>
                         {tr('tafsir.loading')}
                       </Text>
                     </View>
@@ -371,9 +375,12 @@ export const AyahDetailSheet: React.FC<Props> = ({
 
                 <View style={[styles.contentBox, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
                   {loadingTranslation ? (
-                    <View style={styles.center}>
-                      <ActivityIndicator color={t.colors.accent} size="large" />
-                      <Text style={{ color: t.colors.textSecondary, marginTop: 14, fontSize: 13 }}>
+                    <View style={{ padding: 6, gap: 8 }}>
+                      <Skeleton width="100%" height={16} />
+                      <Skeleton width="92%" height={16} />
+                      <Skeleton width="78%" height={16} />
+                      <Skeleton width="60%" height={16} />
+                      <Text style={{ color: t.colors.textTertiary, marginTop: 10, fontSize: 11, textAlign: 'center' }}>
                         {tr('tafsir.loading')}
                       </Text>
                     </View>

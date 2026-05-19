@@ -430,15 +430,30 @@ const TaskCard: React.FC<TaskCardProps> = ({ surahId, range, status, strength, h
 
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
         {onStartSession ? (
-          <Pressable onPress={onStartSession} style={[styles.strengthBtn, { borderColor: t.colors.primary, backgroundColor: t.colors.primary + '12' }]}>
+          <Pressable
+            onPress={onStartSession}
+            accessibilityRole="button"
+            accessibilityLabel="ابدأ جلسة الحفظ"
+            style={[styles.strengthBtn, { borderColor: t.colors.primary, backgroundColor: t.colors.primary + '12' }]}
+          >
             <Brain size={14} color={t.colors.primary} />
             <Text variant="caption" color={t.colors.primary}>ابدأ الجلسة</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={() => onDone?.('weak')} style={[styles.strengthBtn, { borderColor: t.colors.error }]}>
+        <Pressable
+          onPress={() => onDone?.('weak')}
+          accessibilityRole="button"
+          accessibilityLabel="علّم هذه المهمة كصعبة"
+          style={[styles.strengthBtn, { borderColor: t.colors.error }]}
+        >
           <Text variant="caption" color={t.colors.error}>صعب</Text>
         </Pressable>
-        <Pressable onPress={() => onDone?.('strong')} style={[styles.strengthBtn, { borderColor: t.colors.success, backgroundColor: t.colors.successSurface }]}>
+        <Pressable
+          onPress={() => onDone?.('strong')}
+          accessibilityRole="button"
+          accessibilityLabel="علّم هذه المهمة كمتقنة"
+          style={[styles.strengthBtn, { borderColor: t.colors.success, backgroundColor: t.colors.successSurface }]}
+        >
           <CheckCircle2 size={14} color={t.colors.success} />
           <Text variant="caption" color={t.colors.success}>أتقنت</Text>
         </Pressable>

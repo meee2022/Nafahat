@@ -69,7 +69,21 @@
       "Bash(curl -s \"https://api.quran.com/api/v4/chapter_recitations/7/2\" --max-time 15)",
       "Bash(curl -s \"https://api.quran.com/api/v4/recitations\" --max-time 15)",
       "Bash(curl -s \"https://api.quran.com/api/v4/quran/recitations/7?chapter_number=2\" --max-time 15)",
-      "WebFetch(domain:docs.google.com)"
+      "WebFetch(domain:docs.google.com)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\M\\\\Desktop\\\\github for local\\\\Quran\" -Recurse -Name)",
+      "Bash(Select-String -Pattern \"audioStore|audio.*store\")",
+      "PowerShell(git push)",
+      "Bash(xargs grep -l \"translation\")",
+      "Bash(xargs grep -l \"settings\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\M\\\\Desktop\\\\github for local\\\\Quran\" -Recurse -Directory)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Bash(git checkout *)",
+      "Bash(git show *)",
+      "Read(//tmp/**)",
+      "Bash(cp /tmp/surah_list.tsx app/library.tsx)",
+      "Bash(cp /tmp/new_mushaf_landing.tsx \"app/\\(tabs\\)/mushaf.tsx\")",
+      "Bash(cp /tmp/old_home.tsx \"app/\\(tabs\\)/index.tsx\")",
+      "Bash(timeout 180 npx @sentry/wizard@latest -i reactNative --saas --org afkar-raqmyia --project react-native --uninstalledPackage true)"
     ]
   }
 }

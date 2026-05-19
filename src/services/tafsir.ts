@@ -31,15 +31,44 @@ const API_BASE = 'https://api.alquran.cloud/v1';
 const CACHE_PREFIX = '@nafahat/tafsir/';
 
 /**
- * 🌐 على web: AlQuran.cloud ما عندوش CORS headers ثابتة، فبنلفّ الـ URL
- *   بـ public CORS proxy. على native ما فيش حاجة - بنستخدم الـ URL مباشرة.
- *   corsproxy.io مجاني وموثوق للاستخدام client-side.
+ * 🌐 جلب JSON من AlQuran.cloud مع fallback متعدد المسارات:
+ *   - web: عبر CORS proxy مباشرة (AlQuran.cloud ما عندوش CORS headers)
+ *   - native: حاول مباشرة أولاً، ولو فشل (timeout/network/5xx) جرّب عبر CORS proxy
+ *     كـ relay (AlQuran.cloud أحياناً بيكون unreachable من شبكات معيّنة).
+ *
+ *   كل محاولة عليها timeout ١٠ ثواني عشان مايعلّقش الـ UI لو الـ server صامت.
  */
-function withCorsProxy(url: string): string {
-  if (Platform.OS === 'web') {
-    return `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+function proxyUrl(url: string): string {
+  return `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+}
+
+async function fetchJsonWithTimeout(url: string, timeoutMs = 10000): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  return url;
+}
+
+async function fetchAlQuranCloudJson(directUrl: string): Promise<any> {
+  // على web: عبر proxy مباشرة - الـ direct بيفشل بسبب CORS
+  if (Platform.OS === 'web') {
+    return fetchJsonWithTimeout(proxyUrl(directUrl));
+  }
+  // على native: direct أولاً، ولو فشل proxy fallback
+  try {
+    return await fetchJsonWithTimeout(directUrl);
+  } catch (primaryErr) {
+    try {
+      return await fetchJsonWithTimeout(proxyUrl(directUrl));
+    } catch {
+      throw primaryErr;
+    }
+  }
 }
 
 export type TafsirEdition  =
@@ -175,11 +204,9 @@ export async function getAyahText(
     }
   } else {
     // المسار: AlQuran.cloud (للميسّر، الجلالين، القرطبي، والترجمات)
-    // على web نلفّ بـ CORS proxy عشان الـ origin مينحجبش
-    const url = withCorsProxy(`${API_BASE}/ayah/${surahId}:${ayahNumber}/${edition}`);
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`Tafsir fetch failed: HTTP ${res.status}`);
-    const json = await res.json();
+    // مع fallback تلقائي عبر CORS proxy لو الـ direct فشل (يحدث على بعض الشبكات)
+    const directUrl = `${API_BASE}/ayah/${surahId}:${ayahNumber}/${edition}`;
+    const json = await fetchAlQuranCloudJson(directUrl);
     text = json?.data?.text ?? '';
   }
 

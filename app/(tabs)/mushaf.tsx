@@ -189,14 +189,14 @@ export default function MushafHomeScreen() {
               icon={<BookOpen size={26} color={t.colors.primary} />}
               title="الفهرس"
               subtitle="١١٤ سورة"
-              onPress={() => router.push('/library' as any)}
+              onPress={() => router.push('/quran-index' as any)}
               t={t}
             />
             <NavCard
               icon={<Layers size={26} color={t.colors.primary} />}
               title="الأجزاء"
               subtitle="٣٠ جزء"
-              onPress={() => router.push('/library' as any)}
+              onPress={() => router.push('/quran-index' as any)}
               t={t}
             />
             <NavCard

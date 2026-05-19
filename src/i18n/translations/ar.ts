@@ -69,6 +69,7 @@ export const ar = {
   'tabs.memorization': 'الحفظ',
   'tabs.listen':       'الاستماع',
   'tabs.daily':        'اليومي',
+  'tabs.library':      'المكتبة',
   'tabs.account':      'حسابي',
 
   // ============== Home sections ==============

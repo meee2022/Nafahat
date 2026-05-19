@@ -214,7 +214,7 @@ function AppGate() {
       {/* Tools landing — يجمع كل الأدوات في صفحة واحدة */}
       <Stack.Screen name="tools" />
       {/* Library — قائمة السور/الأجزاء/الأحزاب (كانت في tab المصحف القديم) */}
-      <Stack.Screen name="library" />
+      <Stack.Screen name="quran-index" />
       {/* Location picker — يغيّر مواقيت الصلاة + الأذان + القبلة */}
       <Stack.Screen name="location" />
       {/* Memorization custom plan wizard */}

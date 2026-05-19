@@ -69,6 +69,7 @@ export const sw: Partial<Record<TranslationKey, string>> = {
   'tabs.memorization': 'Hifadhi',
   'tabs.listen':       'Sikiliza',
   'tabs.daily':        'Kila siku',
+  'tabs.library':      'Maktaba',
   'tabs.account':      'Wasifu',
 
   // Home

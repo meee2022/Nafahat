@@ -69,6 +69,7 @@ export const id: Partial<Record<TranslationKey, string>> = {
   'tabs.memorization': 'Hafalan',
   'tabs.listen':       'Dengar',
   'tabs.daily':        'Harian',
+  'tabs.library':      'Perpustakaan',
   'tabs.account':      'Profil',
 
   // Home

@@ -23,11 +23,24 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { getAyah as getQuranEncAyah } from './quranEncApi';
 import { LruCache } from '@/utils/lruCache';
 
 const API_BASE = 'https://api.alquran.cloud/v1';
 const CACHE_PREFIX = '@nafahat/tafsir/';
+
+/**
+ * 🌐 على web: AlQuran.cloud ما عندوش CORS headers ثابتة، فبنلفّ الـ URL
+ *   بـ public CORS proxy. على native ما فيش حاجة - بنستخدم الـ URL مباشرة.
+ *   corsproxy.io مجاني وموثوق للاستخدام client-side.
+ */
+function withCorsProxy(url: string): string {
+  if (Platform.OS === 'web') {
+    return `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
+  }
+  return url;
+}
 
 export type TafsirEdition  =
   | 'ar.muyassar'
@@ -162,7 +175,8 @@ export async function getAyahText(
     }
   } else {
     // المسار: AlQuran.cloud (للميسّر، الجلالين، القرطبي، والترجمات)
-    const url = `${API_BASE}/ayah/${surahId}:${ayahNumber}/${edition}`;
+    // على web نلفّ بـ CORS proxy عشان الـ origin مينحجبش
+    const url = withCorsProxy(`${API_BASE}/ayah/${surahId}:${ayahNumber}/${edition}`);
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Tafsir fetch failed: HTTP ${res.status}`);
     const json = await res.json();

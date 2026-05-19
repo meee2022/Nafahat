@@ -9,6 +9,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { Ayah } from '@/types/index';
 
 const API_BASE = 'https://api.alquran.cloud/v1';
@@ -79,22 +80,112 @@ function saveToDisk(surahId: number, data: CachedSurah): void {
   AsyncStorage.setItem(CACHE_PREFIX + surahId, JSON.stringify(data)).catch(() => {});
 }
 
-async function fetchFromApi(surahId: number): Promise<CachedSurah> {
+async function fetchFromAlQuranCloud(surahId: number): Promise<CachedSurah> {
   const url = `${API_BASE}/surah/${surahId}/${EDITION}`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`API HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`AlQuran.cloud HTTP ${res.status}`);
   const json = (await res.json()) as ApiResponse;
-  if (json.code !== 200) throw new Error('API response not OK');
+  if (json.code !== 200) throw new Error('AlQuran.cloud response not OK');
 
   const ayahs = json.data.ayahs.map((a, idx) => ({
     number: a.numberInSurah,
-    // أزل البسملة من أول آية باستثناء الفاتحة (1) والتوبة (9) - الفاتحة بها البسملة كآية 1، والتوبة بلا بسملة
+    // أزل البسملة من أول آية باستثناء الفاتحة (1) والتوبة (9)
     text: idx === 0 && surahId !== 1 && surahId !== 9 ? stripBismillah(a.text) : a.text,
     juz: a.juz,
     page: a.page,
   }));
 
   return { version: CACHE_VERSION, surahId, ayahs, cachedAt: Date.now() };
+}
+
+/**
+ * 🆕 Fallback ثاني: Quran.com API.
+ *   يدعم CORS من المتصفح، فبيشتغل على الـ web بدون مشاكل.
+ *   لو AlQuran.cloud فشل (CORS أو network)، نجرّب ده تلقائياً.
+ *
+ *   مرجع: https://api-docs.quran.com/docs/api/quranic-info/verses
+ *   Endpoint: GET https://api.quran.com/api/v4/quran/verses/uthmani?chapter_number=N
+ */
+const QURAN_COM_BASE = 'https://api.quran.com/api/v4';
+
+interface QuranComVerse {
+  id: number;
+  verse_key: string; // "1:1"
+  verse_number: number;
+  juz_number?: number;
+  page_number?: number;
+  text_uthmani: string;
+}
+
+async function fetchFromQuranCom(surahId: number): Promise<CachedSurah> {
+  // النصّ العثماني + بيانات الـ verses (juz_number + page_number)
+  const textUrl   = `${QURAN_COM_BASE}/quran/verses/uthmani?chapter_number=${surahId}`;
+  const metaUrl   = `${QURAN_COM_BASE}/verses/by_chapter/${surahId}?fields=juz_number,page_number&per_page=300`;
+
+  const [textRes, metaRes] = await Promise.all([fetch(textUrl), fetch(metaUrl)]);
+  if (!textRes.ok) throw new Error(`Quran.com text HTTP ${textRes.status}`);
+  const textJson = await textRes.json();
+  const verses: QuranComVerse[] = textJson?.verses ?? [];
+  if (verses.length === 0) throw new Error('Quran.com: empty verses');
+
+  // ادمج meta لو متاحة، وإلا نستخدم 0 (آيات بدون juz/page صحيحة - السورة هتشتغل
+  // في الكويز بس مش هتكون فلترة دقيقة بالـ juz من جانب الـ ayah - والـ surah.juzStart
+  // كافي للأغراض العامة)
+  let metaMap = new Map<number, { juz: number; page: number }>();
+  if (metaRes.ok) {
+    const metaJson = await metaRes.json();
+    const metaVerses: QuranComVerse[] = metaJson?.verses ?? [];
+    for (const v of metaVerses) {
+      metaMap.set(v.verse_number, {
+        juz: v.juz_number ?? 0,
+        page: v.page_number ?? 0,
+      });
+    }
+  }
+
+  const ayahs = verses.map((v, idx) => {
+    const meta = metaMap.get(v.verse_number);
+    const text = v.text_uthmani || '';
+    return {
+      number: v.verse_number,
+      text: idx === 0 && surahId !== 1 && surahId !== 9 ? stripBismillah(text) : text,
+      juz: meta?.juz ?? 0,
+      page: meta?.page ?? 0,
+    };
+  });
+
+  return { version: CACHE_VERSION, surahId, ayahs, cachedAt: Date.now() };
+}
+
+/**
+ * يختار الـ API الصحيح حسب الـ platform:
+ *  - على web: Quran.com مباشرة (AlQuran.cloud ما عندوش CORS فبيفشل وبيلوّث الـ console)
+ *  - على native (iOS/Android): AlQuran.cloud أولاً، ثم Quran.com كـ fallback
+ *
+ * ده بيمنع spam الـ CORS errors في browser console أثناء dev، ويحافظ على
+ * نفس الـ behavior على native (الـ AlQuran.cloud عادة أسرع وفيه edition تاني).
+ */
+async function fetchFromApi(surahId: number): Promise<CachedSurah> {
+  // 🌐 على web: ابدأ بـ Quran.com مباشرة (CORS-friendly)
+  if (Platform.OS === 'web') {
+    try {
+      return await fetchFromQuranCom(surahId);
+    } catch (webErr) {
+      // لو حتى Quran.com فشل، خلاص ارمِ الخطأ
+      throw webErr;
+    }
+  }
+
+  // 📱 على native: AlQuran.cloud أولاً، ثم Quran.com fallback
+  try {
+    return await fetchFromAlQuranCloud(surahId);
+  } catch (primaryErr) {
+    try {
+      return await fetchFromQuranCom(surahId);
+    } catch (fallbackErr) {
+      throw primaryErr;
+    }
+  }
 }
 
 /**

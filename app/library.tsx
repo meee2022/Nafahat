@@ -36,7 +36,15 @@ export default function MushafScreen() {
   return (
     <Screen scrollable={false} contentStyle={{ paddingHorizontal: 0 }}>
       <View style={{ paddingHorizontal: 20 }}>
-        <AppHeader title={tr('mushaf.title')} subtitle={tr('mushaf.subtitle')} />
+        <AppHeader
+          title={tr('mushaf.title')}
+          subtitle={tr('mushaf.subtitle')}
+          onBack={() => {
+            // رجوع لتبويب المصحف لو فيه history، وإلا فتحه مباشرة
+            if (router.canGoBack?.()) router.back();
+            else router.replace('/');
+          }}
+        />
 
         {/* شريط بحث ناعم — حدّ رفيع بدون أيقونة بارزة */}
         <View style={[styles.search, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>

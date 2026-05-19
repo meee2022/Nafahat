@@ -1,14 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { Tabs, useRouter, usePathname } from 'expo-router';
 import { Platform, StyleSheet, View, Animated, Pressable } from 'react-native';
-import { Play, Pause, X, Library } from 'lucide-react-native';
+import { Play, Pause, X } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { useT } from '@store/languageStore';
 import { TranslationKey } from '@/i18n/index';
 import { useAudioStore } from '@store/index';
 import {
-  TabHomeIcon, TabMushafIcon, TabMemoIcon, TabListenIcon, TabAccountIcon,
+  TabHomeIcon, TabMushafIcon, TabMemoIcon, TabListenIcon, TabAccountIcon, TabMoreIcon,
 } from '@components/tabs/TabIcons';
 
 /**
@@ -58,10 +58,11 @@ export default function TabsLayout() {
       <Tabs.Screen name="index"        options={{ tabBarIcon: ({ focused }) => <TabItem icon="home"       labelKey="tabs.home"         focused={focused} /> }} />
       <Tabs.Screen name="mushaf"       options={{ tabBarIcon: ({ focused }) => <TabItem icon="book"       labelKey="tabs.mushaf"       focused={focused} /> }} />
       <Tabs.Screen name="memorization" options={{ tabBarIcon: ({ focused }) => <TabItem icon="brain"      labelKey="tabs.memorization" focused={focused} /> }} />
-      <Tabs.Screen name="library"      options={{ tabBarIcon: ({ focused }) => <TabItem icon="library"   labelKey="tabs.library"      focused={focused} /> }} />
+      <Tabs.Screen name="more"         options={{ tabBarIcon: ({ focused }) => <TabItem icon="more"       labelKey="tabs.more"         focused={focused} /> }} />
       <Tabs.Screen name="account"      options={{ tabBarIcon: ({ focused }) => <TabItem icon="user"       labelKey="tabs.account"      focused={focused} /> }} />
 
       {/* tabs مخفية — accessible عبر روابط لكن مش في الـ tab bar */}
+      <Tabs.Screen name="library"  options={{ href: null }} />
       <Tabs.Screen name="daily"    options={{ href: null }} />
       <Tabs.Screen name="reciters" options={{ href: null }} />
     </Tabs>
@@ -186,7 +187,7 @@ const floatStyles = StyleSheet.create({
   },
 });
 
-type IconName = 'home' | 'book' | 'brain' | 'headphones' | 'user' | 'library';
+type IconName = 'home' | 'book' | 'brain' | 'headphones' | 'user' | 'more';
 
 const TabItem: React.FC<{ icon: IconName; labelKey: TranslationKey; focused: boolean }> = ({
   icon, labelKey, focused,
@@ -227,7 +228,7 @@ const TabItem: React.FC<{ icon: IconName; labelKey: TranslationKey; focused: boo
       case 'brain':      return <TabMemoIcon    size={size} color={iconColor} focused={focused} />;
       case 'headphones': return <TabListenIcon  size={size} color={iconColor} focused={focused} />;
       case 'user':       return <TabAccountIcon size={size} color={iconColor} focused={focused} />;
-      case 'library':    return <Library        size={size} color={iconColor} strokeWidth={focused ? 2.2 : 1.6} />;
+      case 'more':       return <TabMoreIcon    size={size} color={iconColor} focused={focused} />;
     }
   })();
 

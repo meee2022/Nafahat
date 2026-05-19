@@ -73,6 +73,7 @@ export const fr: Partial<Record<TranslationKey, string>> = {
   'tabs.listen':       'Écouter',
   'tabs.daily':        'Quotidien',
   'tabs.library':      'Bibliothèque',
+  'tabs.more':         'Plus',
   'tabs.account':      'Profil',
 
   // Home / Sections

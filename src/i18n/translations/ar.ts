@@ -70,6 +70,7 @@ export const ar = {
   'tabs.listen':       'الاستماع',
   'tabs.daily':        'اليومي',
   'tabs.library':      'المكتبة',
+  'tabs.more':         'المزيد',
   'tabs.account':      'حسابي',
 
   // ============== Home sections ==============

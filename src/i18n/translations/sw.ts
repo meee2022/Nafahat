@@ -70,6 +70,7 @@ export const sw: Partial<Record<TranslationKey, string>> = {
   'tabs.listen':       'Sikiliza',
   'tabs.daily':        'Kila siku',
   'tabs.library':      'Maktaba',
+  'tabs.more':         'Zaidi',
   'tabs.account':      'Wasifu',
 
   // Home

@@ -70,6 +70,7 @@ export const ha: Partial<Record<TranslationKey, string>> = {
   'tabs.listen':       'Sauraro',
   'tabs.daily':        'Yau da kullum',
   'tabs.library':      'Ɗakin karatu',
+  'tabs.more':         'Ƙari',
   'tabs.account':      'Bayanin Kai',
 
   // Home

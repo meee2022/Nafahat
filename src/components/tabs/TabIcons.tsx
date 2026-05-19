@@ -158,6 +158,31 @@ export const TabListenIcon: React.FC<IconProps> = ({ size = 26, color, focused }
   );
 };
 
+// ───────────── ⋯ المزيد - ثلاث نقط أنيقة ─────────────
+export const TabMoreIcon: React.FC<IconProps> = ({ size = 26, color, focused }) => {
+  const fill = focused ? color : 'none';
+  const stroke = color;
+  const sw = focused ? 1.4 : 1.8;
+  // أربعة "صدف" دوائر مرتّبة 2x2 - أنيقة وعثمانية أكثر من 3-dots عادية
+  return (
+    <Svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+      {/* الإطار الخارجي - شكل معيّن (rhombus) رقيق */}
+      <Path
+        d="M 16 3 L 29 16 L 16 29 L 3 16 Z"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={sw}
+        strokeLinejoin="round"
+        opacity={focused ? 0.95 : 0.55}
+      />
+      {/* ثلاث نقاط أفقية في المنتصف */}
+      <Circle cx="10" cy="16" r="2.2" fill={focused ? '#FBF7EA' : color} />
+      <Circle cx="16" cy="16" r="2.2" fill={focused ? '#FBF7EA' : color} />
+      <Circle cx="22" cy="16" r="2.2" fill={focused ? '#FBF7EA' : color} />
+    </Svg>
+  );
+};
+
 // ───────────── 👤 حسابي - شخص أنيق ─────────────
 export const TabAccountIcon: React.FC<IconProps> = ({ size = 26, color, focused }) => {
   const fill = focused ? color : 'none';

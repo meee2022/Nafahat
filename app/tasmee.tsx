@@ -1,16 +1,27 @@
 /**
- * شاشة التسميع - تسجيل صوتي + مقارنة + نظام تقييم.
+ * شاشة التسميع - تسجيل صوتي حقيقي + playback.
+ *
+ * V2: الـ recording بقى شغّال فعلاً عبر expo-av (مش Alert placeholder زي قبل).
+ *  - يطلب إذن الميكروفون عند أول استخدام
+ *  - يسجّل بـ HIGH_QUALITY preset
+ *  - يحفظ الـ URI ويعرض زر playback
+ *  - يحسب المدة بدقّة
+ *  - الـ AI comparison لسه stub (مؤجّل لـ V3)
  */
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Mic, Square, Play, Sparkles, RotateCcw, Check } from 'lucide-react-native';
+import { Mic, Square, Play, Sparkles, RotateCcw, Check, Pause } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card, AppHeader, Chip, Button, ProgressBar } from '@components/ui';
 import { arabicNumber } from '@data/surahs';
 import { useT } from '@store/languageStore';
 import { useStatsStore } from '@store/index';
+import {
+  ensureRecordingPermission, startRecording as startVoiceRec, stopRecording as stopVoiceRec,
+  cancelRecording, playRecording, stopPlayback,
+} from '@services/voiceRecording';
 
 type Mode = 'self' | 'sheikh' | 'complete' | 'quiz';
 
@@ -21,26 +32,92 @@ export default function TasmeeScreen() {
   const [mode, setMode] = useState<Mode>('self');
   const [recording, setRecording] = useState(false);
   const [hasRecording, setHasRecording] = useState(false);
+  const [recordingUri, setRecordingUri] = useState<string | null>(null);
+  const [recordingDurationMs, setRecordingDurationMs] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [saved, setSaved] = useState(false);
   const recordSession = useStatsStore((s) => s.recordSession);
+  const startedAtRef = useRef<number>(0);
+
+  // 🕐 عدّاد المدة وقت التسجيل
+  useEffect(() => {
+    if (!recording) return;
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
+    }, 500);
+    return () => clearInterval(id);
+  }, [recording]);
+
+  // 🧹 cleanup عند المغادرة
+  useEffect(() => {
+    return () => {
+      cancelRecording().catch(() => {});
+      stopPlayback().catch(() => {});
+    };
+  }, []);
+
+  const handleStartRecording = async () => {
+    const ok = await ensureRecordingPermission();
+    if (!ok) {
+      Alert.alert('إذن مرفوض', 'يجب السماح بالميكروفون من إعدادات النظام لاستخدام التسميع.');
+      return;
+    }
+    try {
+      await startVoiceRec();
+      startedAtRef.current = Date.now();
+      setElapsed(0);
+      setRecording(true);
+      setHasRecording(false);
+      setRecordingUri(null);
+    } catch (e) {
+      Alert.alert('فشل التسجيل', 'تعذّر بدء التسجيل. حاول مرة أخرى.');
+    }
+  };
+
+  const handleStopRecording = async () => {
+    const result = await stopVoiceRec();
+    setRecording(false);
+    if (result?.uri) {
+      setRecordingUri(result.uri);
+      setRecordingDurationMs(result.durationMs);
+      setHasRecording(true);
+    } else {
+      Alert.alert('لم يتم الحفظ', 'حدثت مشكلة في حفظ التسجيل.');
+    }
+  };
 
   const handleSaveSession = () => {
-    // نحفظ جلسة بـ 3 دقائق تقديرية كجلسة استماع
-    recordSession(3);
+    // المدة الفعلية بالدقائق (تقريب لأقرب دقيقة بحد أدنى 1)
+    const minutes = Math.max(1, Math.round(recordingDurationMs / 60000));
+    recordSession(minutes);
     setSaved(true);
-    Alert.alert('تم الحفظ ✓', 'تم تسجيل جلسة التسميع في سجلك.', [
+    Alert.alert('تم الحفظ ✓', `تم تسجيل ${minutes} دقيقة من التسميع في سجلك.`, [
       { text: 'حسناً', onPress: () => {
         setHasRecording(false);
         setRecording(false);
+        setRecordingUri(null);
         setSaved(false);
       } },
     ]);
   };
 
-  const handleListenRecording = () => {
-    Alert.alert('استماع للتسجيل', 'سيتم تشغيل التسجيل الصوتي قريباً.\n(يتطلب تكامل expo-av Recording للتسجيل الفعلي)', [
-      { text: 'حسناً' },
-    ]);
+  const handleListenRecording = async () => {
+    if (!recordingUri) return;
+    if (isPlaying) {
+      await stopPlayback();
+      setIsPlaying(false);
+      return;
+    }
+    setIsPlaying(true);
+    await playRecording(recordingUri, () => setIsPlaying(false));
+  };
+
+  const handleRetake = async () => {
+    await stopPlayback();
+    setHasRecording(false);
+    setRecordingUri(null);
+    setIsPlaying(false);
   };
 
   const modes: { id: Mode; labelKey: any; descKey: any }[] = [
@@ -127,16 +204,24 @@ export default function TasmeeScreen() {
         {recording ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: t.colors.error }} />
-            <Text variant="label" color={t.colors.error}>{tr('tasmee.recording')} ٠٠:٢٣</Text>
+            <Text variant="label" color={t.colors.error}>
+              {tr('tasmee.recording')} {arabicNumber(Math.floor(elapsed / 60)).padStart(2, '٠')}:{arabicNumber(elapsed % 60).padStart(2, '٠')}
+            </Text>
+          </View>
+        ) : recordingDurationMs > 0 && !recording ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 }}>
+            <Check size={12} color={t.colors.success} />
+            <Text variant="label" color={t.colors.success}>
+              مدة التسجيل: {arabicNumber(Math.floor(recordingDurationMs / 60000))}:{arabicNumber(Math.floor((recordingDurationMs / 1000) % 60)).padStart(2, '٠')}
+            </Text>
           </View>
         ) : null}
 
-        {/* الزر الكبير */}
+        {/* الزر الكبير - تسجيل/إيقاف حقيقي */}
         <Pressable
-          onPress={() => {
-            if (recording) { setRecording(false); setHasRecording(true); }
-            else { setRecording(true); setHasRecording(false); }
-          }}
+          onPress={recording ? handleStopRecording : handleStartRecording}
+          accessibilityRole="button"
+          accessibilityLabel={recording ? 'إيقاف التسجيل' : 'بدء التسجيل'}
           style={{ marginTop: 22 }}
         >
           <LinearGradient
@@ -147,10 +232,20 @@ export default function TasmeeScreen() {
           </LinearGradient>
         </Pressable>
 
-        {hasRecording ? (
+        {hasRecording && recordingUri ? (
           <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-            <Button label={tr('tasmee.listenRecording')} iconLeft={<Play size={16} color="#fff" />} variant="primary" onPress={handleListenRecording} />
-            <Button label={tr('tasmee.retake')} iconLeft={<RotateCcw size={16} color={t.colors.primary} />} variant="outline" onPress={() => { setHasRecording(false); }} />
+            <Button
+              label={isPlaying ? 'إيقاف' : tr('tasmee.listenRecording')}
+              iconLeft={isPlaying ? <Pause size={16} color="#fff" /> : <Play size={16} color="#fff" />}
+              variant="primary"
+              onPress={handleListenRecording}
+            />
+            <Button
+              label={tr('tasmee.retake')}
+              iconLeft={<RotateCcw size={16} color={t.colors.primary} />}
+              variant="outline"
+              onPress={handleRetake}
+            />
           </View>
         ) : null}
       </Card>

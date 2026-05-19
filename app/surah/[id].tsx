@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Play, Pause, AlertCircle, RotateCcw, X, CheckCircle2,
-  Menu, ArrowLeft,
+  Menu, ArrowLeft, Languages, X as XIcon,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@theme/index';
@@ -35,6 +35,7 @@ import {
   MushafQpcPage,
 } from '@components/mushaf';
 import { getCurrentAyah, getAyahStartTimeMs } from '@services/verseSync';
+import { getWordsByVerse, type QuranWord } from '@services/wordByWord';
 import { getSurahTimings, type SurahTimings } from '@services/audioTimings';
 
 // Removed DEFAULT_RECITER; now fetched dynamically.
@@ -143,6 +144,10 @@ export default function SurahDetail() {
   const [showSurahJump, setShowSurahJump] = useState(false);
   const [showJuzJump, setShowJuzJump] = useState(false);
   const [currentPageIdx, setCurrentPageIdx] = useState(0);
+  // 🌐 Word-by-word translation mode — tap word shows translation banner instead of opening AyahSheet
+  const [wbwMode, setWbwMode] = useState(false);
+  const [wbwInfo, setWbwInfo] = useState<{ arabic: string; english: string; translit: string } | null>(null);
+  const [wbwLoading, setWbwLoading] = useState(false);
 
   // 📄 تجميع الآيات حسب رقم الصفحة (المصحف الحقيقي)
   const pages = useMemo(() => {
@@ -370,12 +375,30 @@ export default function SurahDetail() {
     : t.fontFamilies.arabicQuran;
 
   // 🔑 callbacks ثابتة الهوية - تمنع MushafQpcPage من re-render على كل state tick
-  const handleWordPress = useCallback((w: { verse_key?: string }) => {
+  const handleWordPress = useCallback((w: any) => {
     const [, aya] = (w.verse_key ?? '').split(':');
     const ayahNum = Number(aya);
     if (!ayahNum) return;
+    // 🌐 WBW mode: tap على الكلمة يجيب ترجمتها ويعرضها في الـ banner
+    if (wbwMode && w.position && surah) {
+      setWbwLoading(true);
+      getWordsByVerse(surah.id, ayahNum)
+        .then((words: QuranWord[]) => {
+          const word = words.find((wo) => wo.position === w.position);
+          if (word) {
+            setWbwInfo({
+              arabic: word.text || w.char || '',
+              english: word.translation || '',
+              translit: word.transliteration || '',
+            });
+          }
+        })
+        .catch(() => {})
+        .finally(() => setWbwLoading(false));
+      return;
+    }
     setSelectedAyah((cur) => (cur === ayahNum ? null : ayahNum));
-  }, []);
+  }, [wbwMode, surah]);
 
   const handleWordLongPress = useCallback((w: { verse_key?: string }) => {
     const [, aya] = (w.verse_key ?? '').split(':');
@@ -531,18 +554,37 @@ export default function SurahDetail() {
             >
               <Menu size={18} color={MUSHAF.goldDeep} strokeWidth={2} />
             </Pressable>
-            <Pressable
-              onPress={() => { if (router.canGoBack?.()) router.back(); else router.replace('/mushaf'); }}
-              hitSlop={12}
-              accessibilityRole="button"
-              accessibilityLabel="رجوع"
-              style={({ pressed }) => [
-                styles.navBtn,
-                { backgroundColor: MUSHAF.buttonBg, borderColor: MUSHAF.gold, opacity: pressed ? 0.7 : 1 },
-              ]}
-            >
-              <ArrowLeft size={18} color={MUSHAF.goldDeep} strokeWidth={2} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {/* 🌐 Word-by-word translation toggle */}
+              <Pressable
+                onPress={() => { setWbwMode((v) => !v); setWbwInfo(null); }}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel={wbwMode ? 'إيقاف ترجمة الكلمات' : 'تفعيل ترجمة الكلمات'}
+                style={({ pressed }) => [
+                  styles.navBtn,
+                  {
+                    backgroundColor: wbwMode ? MUSHAF.gold : MUSHAF.buttonBg,
+                    borderColor: MUSHAF.gold,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+              >
+                <Languages size={18} color={wbwMode ? MUSHAF.page : MUSHAF.goldDeep} strokeWidth={2} />
+              </Pressable>
+              <Pressable
+                onPress={() => { if (router.canGoBack?.()) router.back(); else router.replace('/mushaf'); }}
+                hitSlop={12}
+                accessibilityRole="button"
+                accessibilityLabel="رجوع"
+                style={({ pressed }) => [
+                  styles.navBtn,
+                  { backgroundColor: MUSHAF.buttonBg, borderColor: MUSHAF.gold, opacity: pressed ? 0.7 : 1 },
+                ]}
+              >
+                <ArrowLeft size={18} color={MUSHAF.goldDeep} strokeWidth={2} />
+              </Pressable>
+            </View>
           </View>
 
           {/* شريط الجزء + السورة */}
@@ -575,6 +617,54 @@ export default function SurahDetail() {
               {pageContentNode}
             </View>
           )}
+
+          {/* 🌐 Word-by-word translation banner — يطفو فوق المصحف لما WBW mode شغّال */}
+          {wbwMode ? (
+            <View
+              pointerEvents="box-none"
+              style={{ position: 'absolute', bottom: 12, left: 12, right: 12 }}
+            >
+              <View style={[styles.wbwBanner, { backgroundColor: MUSHAF.pageWarm, borderColor: MUSHAF.gold, shadowColor: MUSHAF.gold }]}>
+                {wbwLoading ? (
+                  <Text style={{ color: MUSHAF.inkSoft, fontSize: 12, textAlign: 'center' }}>
+                    جاري تحميل الترجمة...
+                  </Text>
+                ) : wbwInfo ? (
+                  <View>
+                    <View style={styles.wbwHeader}>
+                      <Text style={{ color: MUSHAF.goldDeep, fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>
+                        ترجمة الكلمة
+                      </Text>
+                      <Pressable
+                        onPress={() => setWbwInfo(null)}
+                        hitSlop={10}
+                        accessibilityRole="button"
+                        accessibilityLabel="إغلاق الترجمة"
+                      >
+                        <XIcon size={14} color={MUSHAF.inkSoft} />
+                      </Pressable>
+                    </View>
+                    <Text style={{ color: MUSHAF.ink, fontSize: 22, fontWeight: '700', textAlign: 'center', fontFamily: quranFont, marginTop: 6 }}>
+                      {wbwInfo.arabic}
+                    </Text>
+                    {wbwInfo.translit ? (
+                      <Text style={{ color: MUSHAF.inkSoft, fontSize: 12, fontStyle: 'italic', textAlign: 'center', marginTop: 2 }}>
+                        {wbwInfo.translit}
+                      </Text>
+                    ) : null}
+                    <View style={[styles.wbwDivider, { backgroundColor: MUSHAF.gold + '40' }]} />
+                    <Text style={{ color: MUSHAF.ink, fontSize: 14, fontWeight: '600', textAlign: 'center' }}>
+                      {wbwInfo.english || '—'}
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={{ color: MUSHAF.inkSoft, fontSize: 12, textAlign: 'center', fontWeight: '600' }}>
+                    اضغط على أي كلمة في المصحف لعرض ترجمتها
+                  </Text>
+                )}
+              </View>
+            </View>
+          ) : null}
         </View>
 
         {/* ── FOOTER AREA ── */}
@@ -871,6 +961,24 @@ function juzNameAr(juzNumber: number): string {
 
 const styles = StyleSheet.create({
   // ── البنية الجديدة: 3 أقسام عمودية بدل overlays ──
+  wbwBanner: {
+    borderRadius: 14,
+    borderWidth: 1.5,
+    padding: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  wbwHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  wbwDivider: {
+    height: 0.6,
+    marginVertical: 8,
+  },
   pageArea: {
     flex: 1,
     // الإطار يعيش هنا فقط - يأخذ كل المساحة المتاحة بين الهيدر والفوتر

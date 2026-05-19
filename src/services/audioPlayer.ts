@@ -159,6 +159,49 @@ export function isLoaded(): boolean {
   return !!currentSound;
 }
 
+/**
+ * 🌙 يُخفت الصوت تدريجياً (fade-out) ثم يوقف.
+ * @param durationMs المدة الإجمالية للـ fade (مثلاً 8000 = 8 ثوانٍ)
+ * @param steps عدد خطوات التدريج (الافتراضي 40 = خفض كل 200ms للـ 8s)
+ *
+ * استخدام: sleep timer يستدعيها قبل لحظات من الانتهاء.
+ * يحترم cancellation: لو الـ user عمل seek/play/stop يدوياً، الـ fade لا يكمل.
+ */
+let fadeAbortToken = 0;
+export async function fadeOutAndStop(durationMs: number = 8000, steps: number = 40): Promise<void> {
+  if (!currentSound) return;
+  const myToken = ++fadeAbortToken;
+  const stepMs = Math.max(50, durationMs / steps);
+  const startVolume = 1; // expo-av maximum
+
+  for (let i = 1; i <= steps; i++) {
+    if (myToken !== fadeAbortToken) return; // تم الإلغاء
+    if (!currentSound) return;
+    const v = Math.max(0, startVolume * (1 - i / steps));
+    try { await currentSound.setVolumeAsync(v); } catch {}
+    await new Promise((r) => setTimeout(r, stepMs));
+  }
+  if (myToken !== fadeAbortToken) return;
+  // بعد الـ fade: أوقف ورجّع volume للـ next session
+  try {
+    if (currentSound) {
+      await currentSound.pauseAsync();
+      await currentSound.setVolumeAsync(1);
+    }
+  } catch {}
+}
+
+/**
+ * يلغي أي fade-out جارٍ ويعيد volume لطبيعته.
+ * يُستخدم لما المستخدم يلمس play/seek بعد بدء الـ fade.
+ */
+export async function cancelFade(): Promise<void> {
+  fadeAbortToken++;
+  if (currentSound) {
+    try { await currentSound.setVolumeAsync(1); } catch {}
+  }
+}
+
 // ─────────────── صوت "خاطف" لكلمات/تنبيهات قصيرة (لا يتداخل مع التلاوة الرئيسية) ───────────────
 
 let oneShotSound: Audio.Sound | null = null;

@@ -182,6 +182,28 @@ export default function MemorizationScreen() {
                 </Card>
               </Pressable>
             ))}
+
+            {/* 🎯 خطة مخصّصة - يفتح wizard كامل */}
+            <Pressable
+              onPress={() => { setShowTemplates(false); router.push('/memo-create'); }}
+              accessibilityRole="button"
+              accessibilityLabel="إنشاء خطة حفظ مخصّصة"
+            >
+              <Card padding={t.spacing.lg} elevation="xs" bordered style={{ borderColor: t.colors.accent, borderWidth: 1.5, backgroundColor: t.colors.accent + '0A' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ width: 48, height: 48, borderRadius: 14, backgroundColor: t.colors.accent + '22', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: t.colors.accent }}>
+                    <Sparkles size={22} color={t.colors.accent} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text variant="subtitle" color={t.colors.accent}>خطة مخصّصة ✨</Text>
+                    <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
+                      اختر السور والكمّ اليومي والجدول بنفسك
+                    </Text>
+                  </View>
+                </View>
+              </Card>
+            </Pressable>
+
             <Button label="إلغاء" variant="ghost" onPress={() => setShowTemplates(false)} />
           </View>
         </View>

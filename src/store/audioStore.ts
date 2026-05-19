@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Reciter } from '@/types/index';
 import { getSurahAudioUrl } from '@data/reciters';
 import { getSurahById } from '@data/surahs';
-import { loadAndPlay, setPlaying, setSpeed as setSpeedAv, seekTo, unload } from '@services/audioPlayer';
+import { loadAndPlay, setPlaying, setSpeed as setSpeedAv, seekTo, unload, fadeOutAndStop, cancelFade } from '@services/audioPlayer';
 import { getAyahStartTimeMs } from '@services/verseSync';
 
 const PREFS_KEY = '@nafahat/audio/prefs';
@@ -126,6 +126,8 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   },
 
   async toggle() {
+    // أي تفاعل يدوي يُلغي fade-out جاري (لو فيه)
+    cancelFade().catch(() => {});
     const playing = !get().isPlaying;
     set({ isPlaying: playing });
     await setPlaying(playing);
@@ -144,11 +146,13 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
   setSleepTimer(min) {
     clearSleepInternals();
+    cancelFade().catch(() => {});
     if (min === null) {
       set({ sleepTimerMin: null, sleepRemainingMs: null });
       return;
     }
     const totalMs = min * 60 * 1000;
+    const FADE_MS = 8_000; // آخر 8 ثوانٍ هتكون fade-out ناعم بدل cut هرد
     const startedAt = Date.now();
     set({ sleepTimerMin: min, sleepRemainingMs: totalMs });
 
@@ -163,16 +167,24 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       set({ sleepRemainingMs: left });
     }, 1000);
 
-    // الإيقاف الفعلي بعد المدة
+    // 🌙 ابدأ الـ fade-out قبل الانتهاء بـ FADE_MS عشان الصوت يخفت تدريجياً
+    const fadeStartDelay = Math.max(0, totalMs - FADE_MS);
     sleepTimeoutId = setTimeout(async () => {
-      clearSleepInternals();
       const st = get();
       if (st.isPlaying) {
-        set({ isPlaying: false });
-        try { await setPlaying(false); } catch {}
+        // ابدأ fade تدريجي (لا يحجب الـ thread - يشتغل async)
+        fadeOutAndStop(FADE_MS).catch(() => {});
+        // بعد ما يخلص الـ fade، حدّث الـ state
+        setTimeout(() => {
+          clearSleepInternals();
+          set({ isPlaying: false, sleepTimerMin: null, sleepRemainingMs: null });
+        }, FADE_MS + 200);
+      } else {
+        // لو مفيش audio شغّال، نظّف فقط
+        clearSleepInternals();
+        set({ sleepTimerMin: null, sleepRemainingMs: null });
       }
-      set({ sleepTimerMin: null, sleepRemainingMs: null });
-    }, totalMs);
+    }, fadeStartDelay);
   },
 
   async seek(ms) {

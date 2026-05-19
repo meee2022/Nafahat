@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Award, BookOpen, Brain, Headphones, Heart, Flame, Calendar,
   Moon, Sun, Type, Bell, Globe, Download, Cloud, Info, ChevronLeft,
-  LogIn, FileText, Mic, Sparkles, Edit3, Shield, Wrench, MapPin,
+  LogIn, FileText, Mic, Sparkles, Edit3, Shield, Wrench, MapPin, Share2,
 } from 'lucide-react-native';
 import { useIsAdmin } from '@store/appConfigStore';
 import { computeUserLevel } from '@utils/userLevel';
@@ -18,6 +18,8 @@ import { StatCard } from '@components/common';
 import { useUserStore, useStatsStore, useSettingsStore } from '@store/index';
 import { arabicNumber } from '@data/surahs';
 import { useCloudSync } from '@hooks/useCloudSync';
+import { exportAsJsonString, summarizeExport } from '@services/exportData';
+import { copyToClipboard, shareText } from '@utils/clipboard';
 import { useLanguageStore, useT } from '@store/languageStore';
 import { LANGUAGES } from '@/i18n/index';
 import { useAuthStore } from '@store/authStore';
@@ -235,6 +237,23 @@ export default function AccountScreen() {
           label={tr('settings.cloudSync')}
           trailing={cloudSyncEnabled ? tr('settings.cloudConnected') : tr('settings.cloudOffline')}
           onPress={() => router.push('/cloud-sync')}
+        />
+        {/* 📤 Export progress — حقّ المستخدم في أخذ بياناته */}
+        <Row
+          icon={<Share2 size={18} color={t.colors.featureSepia} />}
+          label="تصدير البيانات"
+          trailing="نسخ احتياطي"
+          onPress={() => {
+            const summary = summarizeExport()
+              .filter((s) => s.count > 0)
+              .map((s) => `${s.count} ${s.label}`)
+              .join(' · ');
+            const json = exportAsJsonString();
+            shareText(json, `Nafahat backup - ${summary}`).catch(() => {
+              // fallback to clipboard
+              copyToClipboard(json);
+            });
+          }}
         />
         <Row
           icon={<Info size={18} color={t.colors.textSecondary} />}

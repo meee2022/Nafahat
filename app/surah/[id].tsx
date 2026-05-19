@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, ActivityIndicator, Modal, FlatList, TextInput, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, ActivityIndicator, Modal, FlatList, TextInput, Platform, PanResponder } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -395,9 +395,31 @@ export default function SurahDetail() {
   // وضع QPC دائماً يستخدم الإطار الزخرفي
   const useDecoFrame = true;
 
+  // 🖐️ PanResponder للـ swipe gesture الكامل على الصفحة بدل swipe zones صغيرة.
+  //   شرط الـ swipe: حركة أفقية > 60px مع dx مهيمن على dy (مش scroll عمودي).
+  //   كده تـ taps العادية على الكلمات بتشتغل بدون تداخل، والـ horizontal swipe
+  //   ينقل بين الصفحات بسلاسة.
+  const panResponder = React.useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gs) =>
+        Math.abs(gs.dx) > 18 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2,
+      onPanResponderRelease: (_evt, gs) => {
+        const threshold = 50;
+        if (Math.abs(gs.dx) < threshold) return;
+        // ✋ ملاحظة RTL: في المصحف، swipe يمين = الصفحة السابقة (مصحف يُقرأ من اليمين)
+        if (gs.dx > 0) {
+          // user swiped to the right → previous page (الـ "أخرى" في الترتيب الأرقامي = أقل)
+          goToPrevPage();
+        } else {
+          goToNextPage();
+        }
+      },
+    }),
+  ).current;
+
   // Use an inline JSX element instead of a component to prevent remounting/flickering
   const pageContentNode = (
-    <View style={styles.pageWrap}>
+    <View style={styles.pageWrap} {...panResponder.panHandlers}>
       {/* رسالة خطأ */}
       {loadError ? (
         <View style={[styles.errBox, { borderColor: MUSHAF.gold, backgroundColor: 'rgba(184,148,86,0.10)' }]}>
@@ -602,13 +624,19 @@ export default function SurahDetail() {
 
             <Pressable
               onPress={() => setShowRecitersModal(true)}
+              accessibilityRole="button"
+              accessibilityLabel={`القارئ الحالي: ${activeReciter.nameAr}. اضغط لتغييره`}
               style={({ pressed }) => [
                 styles.reciterChip,
                 { backgroundColor: MUSHAF.buttonBg, borderColor: MUSHAF.gold, opacity: pressed ? 0.7 : 1 },
               ]}
             >
-              <Text style={{ color: MUSHAF.goldDeep, fontSize: 12, fontWeight: '700' }}>
-                بصوت: {activeReciter.nameAr.split(' ').slice(-2).join(' ')}
+              <Text
+                style={{ color: MUSHAF.goldDeep, fontSize: 11, fontWeight: '700' }}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                بصوت: {activeReciter.nameAr}
               </Text>
             </Pressable>
 

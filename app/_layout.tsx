@@ -198,6 +198,8 @@ function AppGate() {
       <Stack.Screen name="library" />
       {/* Location picker — يغيّر مواقيت الصلاة + الأذان + القبلة */}
       <Stack.Screen name="location" />
+      {/* Memorization custom plan wizard */}
+      <Stack.Screen name="memo-create" />
       <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       <Stack.Screen name="player" options={{ presentation: 'modal' }} />
     </Stack>

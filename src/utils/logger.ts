@@ -24,16 +24,56 @@ type LogContext = Record<string, unknown>;
 const isDev = (typeof __DEV__ !== 'undefined') ? __DEV__ : (process.env.NODE_ENV !== 'production');
 
 /**
- * 🛰️ Sentry hook — placeholder. لما نركّب @sentry/react-native لاحقاً:
- *   import * as Sentry from '@sentry/react-native';
- *   Sentry.init({ dsn: process.env.EXPO_PUBLIC_SENTRY_DSN });
- *   وبعدها نـ replace الـ no-op functions بـ Sentry.captureException / captureMessage.
+ * 🛰️ Sentry integration — graceful: يشتغل لو الـ package متركّب والـ DSN موجود،
+ *   وإلا يفضل no-op.
+ *
+ *   لتفعيل Sentry فعلياً:
+ *     1. npm install @sentry/react-native
+ *     2. ضع EXPO_PUBLIC_SENTRY_DSN في .env
+ *     3. (iOS) cd ios && pod install
+ *     4. أعد بناء التطبيق
+ *
+ *   الـ require الـ try/catch يحمي build لو الـ package لسه ما تركّبش.
  */
+let SentryLib: any = null;
+let sentryReady = false;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  SentryLib = require('@sentry/react-native');
+  const dsn = (process.env.EXPO_PUBLIC_SENTRY_DSN ?? '').trim();
+  if (dsn && SentryLib?.init) {
+    SentryLib.init({
+      dsn,
+      tracesSampleRate: 0.2,
+      enableInExpoDevelopment: false,
+      debug: false,
+    });
+    sentryReady = true;
+  }
+} catch {
+  // Sentry غير متركّب - نشتغل بدونه
+}
+
 const sentry = {
-  captureException: (_e: unknown, _ctx?: LogContext) => { /* TODO: wire Sentry */ },
-  captureMessage:   (_msg: string, _ctx?: LogContext) => { /* TODO: wire Sentry */ },
-  addBreadcrumb:    (_b: { message: string; data?: LogContext; level?: string }) => { /* TODO */ },
+  captureException: (e: unknown, ctx?: LogContext) => {
+    if (sentryReady && SentryLib?.captureException) {
+      try { SentryLib.captureException(e, { extra: ctx ?? {} }); } catch {}
+    }
+  },
+  captureMessage: (msg: string, ctx?: LogContext) => {
+    if (sentryReady && SentryLib?.captureMessage) {
+      try { SentryLib.captureMessage(msg, { extra: ctx ?? {} }); } catch {}
+    }
+  },
+  addBreadcrumb: (b: { message: string; data?: LogContext; level?: string }) => {
+    if (sentryReady && SentryLib?.addBreadcrumb) {
+      try { SentryLib.addBreadcrumb(b as any); } catch {}
+    }
+  },
 };
+
+/** Public flag — لتعرف لو Sentry فعّال أو لا (للـ UI debug screens) */
+export const isSentryActive = () => sentryReady;
 
 function fmt(msg: string, ctx?: LogContext): string {
   if (!ctx || Object.keys(ctx).length === 0) return msg;

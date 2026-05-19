@@ -11,3 +11,4 @@ export { Skeleton, SkeletonCard, SkeletonList } from './Skeleton';
 export { ErrorBoundary } from './ErrorBoundary';
 export { PremiumGate } from './PremiumGate';
 export { MemorizationHeatmap } from './MemorizationHeatmap';
+export { AvatarPicker } from './AvatarPicker';

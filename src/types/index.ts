@@ -227,6 +227,8 @@ export interface UserProfile {
   name: string;
   role: 'guest' | 'student' | 'teacher' | 'child' | 'elder';
   avatarSeed: string;
+  /** 🆕 صورة الملف الشخصي - data URI أو local file URI. اختياري. */
+  avatarUri?: string;
   joinedAt: number;
 }
 

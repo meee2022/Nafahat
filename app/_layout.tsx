@@ -27,6 +27,8 @@ import { convex, ConvexProviderImpl } from '@services/convex';
 import { useAppInfo } from '@store/appConfigStore';
 import { ToastProvider, useToast } from '@components/common/Toast';
 import { ErrorBoundary } from '@components/common/ErrorBoundary';
+import { initPremium, checkActiveSubscription } from '@services/premium';
+import { registerForPushNotifications } from '@services/pushNotifications';
 import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
@@ -121,6 +123,9 @@ function AppGate() {
         hydrateStats(), hydrateTasbeeh(), hydrateLang(),
         hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(), hydrateAudio(),
       ]);
+      // 💎 Premium + 🔔 Push (graceful - no-op لو الـ packages مش متركّبة)
+      initPremium().then(() => checkActiveSubscription()).catch(() => {});
+      registerForPushNotifications().catch(() => {});
       setTimeout(() => setHydrated(true), 1500);
     })();
   }, []);

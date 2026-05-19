@@ -14,7 +14,7 @@ import { useIsAdmin } from '@store/appConfigStore';
 import { computeUserLevel } from '@utils/userLevel';
 import { useTheme, useThemeMode } from '@theme/index';
 import { Screen, Text, Card, AppHeader, ProgressBar, Chip } from '@components/ui';
-import { StatCard } from '@components/common';
+import { StatCard, AvatarPicker } from '@components/common';
 import { useUserStore, useStatsStore, useSettingsStore } from '@store/index';
 import { arabicNumber } from '@data/surahs';
 import { useCloudSync } from '@hooks/useCloudSync';
@@ -72,9 +72,7 @@ export default function AccountScreen() {
         colors={[t.colors.primary, t.colors.primaryDark]}
         style={[styles.profileCard, { borderRadius: t.radius.xl }]}
       >
-        <View style={[styles.avatar, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
-          <Text variant="h1" color="#fff">{displayInitial}</Text>
-        </View>
+        <AvatarPicker size={64} enableEdit />
         <View style={{ flex: 1 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             <Text variant="h2" color="#fff">{displayName}</Text>

@@ -7,6 +7,8 @@ interface UserState {
   hasOnboarded: boolean;
   setName: (name: string) => void;
   setRole: (role: UserProfile['role']) => void;
+  /** 🆕 يحدّث صورة الملف الشخصي (data URI أو local URI). null يحذفها. */
+  setAvatar: (uri: string | null) => void;
   completeOnboarding: () => void;
   hydrate: () => Promise<void>;
 }
@@ -33,6 +35,11 @@ export const useUserStore = create<UserState>((set, get) => ({
   },
   setRole(role) {
     const next = { ...get().profile, role };
+    set({ profile: next });
+    AsyncStorage.setItem(KEY_PROFILE, JSON.stringify(next)).catch(() => {});
+  },
+  setAvatar(uri) {
+    const next: UserProfile = { ...get().profile, avatarUri: uri ?? undefined };
     set({ profile: next });
     AsyncStorage.setItem(KEY_PROFILE, JSON.stringify(next)).catch(() => {});
   },

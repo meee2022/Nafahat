@@ -20,7 +20,7 @@ import { useT } from '@store/languageStore';
 import { useStatsStore } from '@store/index';
 import {
   ensureRecordingPermission, startRecording as startVoiceRec, stopRecording as stopVoiceRec,
-  cancelRecording, playRecording, stopPlayback,
+  cancelRecording, playRecording, stopPlayback, compareRecordings, type ComparisonResult,
 } from '@services/voiceRecording';
 
 type Mode = 'self' | 'sheikh' | 'complete' | 'quiz';
@@ -37,6 +37,8 @@ export default function TasmeeScreen() {
   const [isPlaying, setIsPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [saved, setSaved] = useState(false);
+  // 🆕 نتيجة المقارنة الحقيقية (بدل النسب المزيّفة)
+  const [comparison, setComparison] = useState<ComparisonResult | null>(null);
   const recordSession = useStatsStore((s) => s.recordSession);
   const startedAtRef = useRef<number>(0);
 
@@ -82,6 +84,11 @@ export default function TasmeeScreen() {
       setRecordingUri(result.uri);
       setRecordingDurationMs(result.durationMs);
       setHasRecording(true);
+      // 🎯 تقييم حقيقي بالـ heuristic: الفاتحة المثالية ~30 ثانية (5 ثوانٍ لكل آية)
+      //   لو المستخدم سجّل في مدى الطبيعي → نتيجة عالية. خارج المدى → ملاحظات
+      const ESTIMATED_REFERENCE_MS = 30_000; // الفاتحة كـ baseline افتراضي
+      const cmp = await compareRecordings(result.uri, ESTIMATED_REFERENCE_MS);
+      setComparison(cmp);
     } else {
       Alert.alert('لم يتم الحفظ', 'حدثت مشكلة في حفظ التسجيل.');
     }
@@ -118,6 +125,7 @@ export default function TasmeeScreen() {
     setHasRecording(false);
     setRecordingUri(null);
     setIsPlaying(false);
+    setComparison(null);
   };
 
   const modes: { id: Mode; labelKey: any; descKey: any }[] = [
@@ -250,36 +258,82 @@ export default function TasmeeScreen() {
         ) : null}
       </Card>
 
-      {/* تقييم بعد الجلسة */}
-      {hasRecording ? (
+      {/* تقييم بعد الجلسة — أرقام حقيقية من compareRecordings */}
+      {hasRecording && comparison ? (
         <Card padding={t.spacing.lg} elevation="xs" style={{ marginTop: t.spacing.lg }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Sparkles size={16} color={t.colors.accent} />
             <Text variant="subtitle">{tr('tasmee.sessionRating')}</Text>
           </View>
+
+          {/* تقييم إجمالي بناءً على المدة والإيقاع */}
           <View style={{ marginTop: 14 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text variant="caption" color={t.colors.textSecondary}>{tr('tasmee.accuracy')}</Text>
-              <Text variant="label" color={t.colors.success}>%92</Text>
+              <Text variant="caption" color={t.colors.textSecondary}>التقدير العام</Text>
+              <Text
+                variant="label"
+                color={
+                  comparison.similarity >= 75 ? t.colors.success
+                  : comparison.similarity >= 50 ? t.colors.primary
+                  : t.colors.warning
+                }
+              >
+                {arabicNumber(Math.round(comparison.similarity))}٪
+              </Text>
             </View>
-            <ProgressBar value={0.92} color={t.colors.success} />
+            <ProgressBar
+              value={comparison.similarity / 100}
+              color={
+                comparison.similarity >= 75 ? t.colors.success
+                : comparison.similarity >= 50 ? t.colors.primary
+                : t.colors.warning
+              }
+            />
           </View>
+
+          {/* نسبة المدة (سرعة القراءة) */}
           <View style={{ marginTop: 12 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-              <Text variant="caption" color={t.colors.textSecondary}>{tr('tasmee.fluency')}</Text>
-              <Text variant="label" color={t.colors.primary}>%85</Text>
+              <Text variant="caption" color={t.colors.textSecondary}>إيقاع القراءة</Text>
+              <Text variant="label" color={t.colors.primary}>
+                {comparison.durationRatio > 1 ? '+' : ''}{Math.round((comparison.durationRatio - 1) * 100)}٪
+              </Text>
             </View>
-            <ProgressBar value={0.85} color={t.colors.primary} />
+            <ProgressBar
+              value={Math.min(1, Math.max(0.3, comparison.durationRatio))}
+              color={
+                comparison.durationRatio >= 0.85 && comparison.durationRatio <= 1.2 ? t.colors.success
+                : t.colors.warning
+              }
+            />
+            <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 4, fontSize: 11 }}>
+              مدّة تسجيلك: {Math.round(comparison.userDurationMs / 1000)} ثانية
+              {comparison.referenceDurationMs > 0
+                ? ` · المرجع التقديري: ${Math.round(comparison.referenceDurationMs / 1000)} ثانية`
+                : ''}
+            </Text>
           </View>
-          <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 14 }}>
-            {tr('tasmee.notesExample')}
-          </Text>
+
+          {/* ملاحظات نصّية حقيقية */}
+          {comparison.notes.length > 0 ? (
+            <View style={{ marginTop: 14, gap: 6 }}>
+              {comparison.notes.map((note, i) => (
+                <View key={i} style={{ flexDirection: 'row', gap: 6, alignItems: 'flex-start' }}>
+                  <Text style={{ color: t.colors.accent, fontSize: 13 }}>•</Text>
+                  <Text variant="bodySm" color={t.colors.textSecondary} style={{ flex: 1 }}>
+                    {note}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
+
           <Button
             label={saved ? 'تم الحفظ ✓' : tr('tasmee.saveSession')}
             iconLeft={<Check size={16} color={t.colors.onPrimary} />}
             onPress={handleSaveSession}
             disabled={saved}
-            style={{ marginTop: 12 }}
+            style={{ marginTop: 14 }}
           />
         </Card>
       ) : null}

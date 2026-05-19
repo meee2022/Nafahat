@@ -218,6 +218,8 @@ function AppGate() {
       <Stack.Screen name="location" />
       {/* Memorization custom plan wizard */}
       <Stack.Screen name="memo-create" />
+      {/* Premium subscription paywall + status */}
+      <Stack.Screen name="premium" options={{ presentation: 'modal' }} />
       <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       <Stack.Screen name="player" options={{ presentation: 'modal' }} />
     </Stack>

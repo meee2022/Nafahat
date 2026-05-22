@@ -165,7 +165,7 @@ export default function HomeScreen() {
           onPress={() => router.push(f.path as any)}
         >
           {f.icon}
-          <Text style={[styles.featureText, { color: t.colors.textPrimary }]}>{f.title}</Text>
+          <Text style={[styles.featureText, { color: t.colors.textPrimary }]} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>{f.title}</Text>
         </Pressable>
       ))}
     </View>
@@ -277,11 +277,16 @@ export default function HomeScreen() {
             </Pressable>
             <Pressable
               onPress={() => setSelectedDate(new Date())}
-              style={{ flex: 1, alignItems: 'center' }}
+              style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}
               accessibilityRole="button"
               accessibilityLabel="عُد لليوم الحالي"
             >
-              <Text style={{ color: t.colors.textPrimary, fontWeight: '700', fontSize: 13 }}>
+              <Text
+                style={{ color: t.colors.textPrimary, fontWeight: '700', fontSize: 12, textAlign: 'center', lineHeight: 17 }}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.75}
+              >
                 {dateString}
               </Text>
             </Pressable>
@@ -301,8 +306,8 @@ export default function HomeScreen() {
               const isActive = isToday && nextP.name === pKey;
               return (
                 <View key={pKey} style={[styles.timeItem, isActive && { backgroundColor: t.colors.primary }]}>
-                  <Text style={[styles.timeName, isActive && { color: '#FFF' }]}>{PRAYER_NAMES_AR[pKey]}</Text>
-                  <Text style={[styles.timeValue, isActive && { color: '#FFF' }]}>
+                  <Text style={[styles.timeName, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{PRAYER_NAMES_AR[pKey]}</Text>
+                  <Text style={[styles.timeValue, isActive && { color: '#FFF' }]} numberOfLines={1}>
                     {todayPrayers[pKey]}
                   </Text>
                 </View>

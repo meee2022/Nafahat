@@ -268,7 +268,7 @@ export default function QuizHubScreen() {
               }]}
             >
               <Text variant="caption" color={quizMode === 'algorithmic' ? t.colors.accent : t.colors.textSecondary} style={{ fontWeight: '700' }}>
-                خوارزمية
+                ذكية
               </Text>
             </Pressable>
             <Pressable
@@ -279,7 +279,7 @@ export default function QuizHubScreen() {
               }]}
             >
               <Text variant="caption" color={quizMode === 'curated' ? t.colors.accent : t.colors.textSecondary} style={{ fontWeight: '700' }}>
-                ⭐ منسَّقة
+                ⭐ مختارة
               </Text>
             </Pressable>
             <Pressable
@@ -290,14 +290,14 @@ export default function QuizHubScreen() {
               }]}
             >
               <Text variant="caption" color={quizMode === 'mixed' ? t.colors.accent : t.colors.textSecondary} style={{ fontWeight: '700' }}>
-                خليط
+                متنوعة
               </Text>
             </Pressable>
           </View>
           <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 8 }}>
-            {quizMode === 'algorithmic' && 'أسئلة مُولَّدة من الآيات والسور'}
-            {quizMode === 'curated' && 'أسئلة منسَّقة من امتحانات حفظ معتمدة (5 خيارات)'}
-            {quizMode === 'mixed' && 'خليط من الخوارزمية والمنسَّقة - تنوّع أكبر'}
+            {quizMode === 'algorithmic' && 'أسئلة تتولّد تلقائياً من آيات القرآن وسوره'}
+            {quizMode === 'curated' && 'أسئلة مختارة يدوياً من امتحانات الحفظ المعتمدة'}
+            {quizMode === 'mixed' && 'مزيج من الأسئلة الذكية والمختارة — تنوّع أكبر'}
           </Text>
         </View>
 

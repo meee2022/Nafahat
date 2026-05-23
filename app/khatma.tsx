@@ -7,12 +7,16 @@ import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Award, Calendar, Moon, BookOpen } from 'lucide-react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card, AppHeader, ProgressBar, Button, EmptyState } from '@components/ui';
 import { useStatsStore, useKhatmaStore } from '@store/index';
 import { Alert } from 'react-native';
 import { arabicNumber } from '@data/surahs';
 import { useT } from '@store/languageStore';
+
+const EMERALD = '#0A3D38';
+const GOLD    = '#B8923B';
 
 type PlanDef = {
   id: string;
@@ -24,11 +28,11 @@ type PlanDef = {
 };
 
 const PLANS: PlanDef[] = [
-  { id: '30',  titleKey: 'khatma.plan30',      days: 30,  pages: 21, accent: '#14746F' },
-  { id: 'r',   titleKey: 'khatma.planRamadan', days: 29,  pages: 21, accent: '#7C3AED', badgeKey: 'khatma.mostPopular' },
-  { id: '60',  titleKey: 'khatma.plan60',      days: 60,  pages: 11, accent: '#0284C7' },
-  { id: '90',  titleKey: 'khatma.plan90',      days: 90,  pages: 7,  accent: '#10A37F' },
-  { id: '10',  titleKey: 'khatma.planLast10',  days: 10,  pages: 60, accent: '#D97706', badgeKey: 'khatma.intensive' },
+  { id: '30',  titleKey: 'khatma.plan30',      days: 30,  pages: 21, accent: EMERALD },
+  { id: 'r',   titleKey: 'khatma.planRamadan', days: 29,  pages: 21, accent: GOLD, badgeKey: 'khatma.mostPopular' },
+  { id: '60',  titleKey: 'khatma.plan60',      days: 60,  pages: 11, accent: '#2D6A4F' },
+  { id: '90',  titleKey: 'khatma.plan90',      days: 90,  pages: 7,  accent: '#74C69D' },
+  { id: '10',  titleKey: 'khatma.planLast10',  days: 10,  pages: 60, accent: '#E11D48', badgeKey: 'khatma.intensive' },
 ];
 
 export default function KhatmaScreen() {
@@ -94,26 +98,81 @@ export default function KhatmaScreen() {
       {/* الختمة النشطة - تظهر فقط إذا قرأ المستخدم صفحات فعلًا */}
       {hasActive ? (
         <LinearGradient
-          colors={['#7C3AED', '#5B21B6']}
-          style={[styles.activeCard, { borderRadius: t.radius.xl }]}
+          colors={[EMERALD, '#062623']}
+          style={[styles.activeCard, {
+            borderRadius: t.radius.xl,
+            borderWidth: 1.5,
+            borderColor: GOLD,
+            overflow: 'hidden',
+            position: 'relative'
+          }]}
         >
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <View>
-              <Text variant="caption" color="rgba(255,255,255,0.7)">{tr('khatma.activeKhatma')}</Text>
-              <Text variant="h2" color="#fff" style={{ marginTop: 2 }}>
+          {/* Decorative radial ambient gold glow in background */}
+          <View pointerEvents="none" style={{
+            position: 'absolute',
+            top: -40,
+            right: -40,
+            width: 140,
+            height: 140,
+            borderRadius: 70,
+            backgroundColor: 'rgba(184, 146, 59, 0.15)',
+          }} />
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 }}>
+                {tr('khatma.activeKhatma')}
+              </Text>
+              <Text variant="h2" style={{ color: '#fff', marginTop: 4, fontWeight: '800' }}>
                 {completedKhatmas > 0 ? `${tr('khatma.khatmaNumber')} ${arabicNumber(completedKhatmas + 1)}` : tr('khatma.firstKhatma')}
               </Text>
-            </View>
-            <Moon size={36} color="rgba(255,255,255,0.9)" />
-          </View>
+              
+              {activePlan && (
+                <Text style={{ fontSize: 13, color: GOLD, marginTop: 4, fontWeight: '700' }}>
+                  {tr(activePlan.titleKey as any)}
+                </Text>
+              )}
 
-          <View style={{ marginTop: 18 }}>
-            <ProgressBar value={currentPages / 604} color="#fff" trackColor="rgba(255,255,255,0.18)" height={8} />
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-              <Text variant="caption" color="rgba(255,255,255,0.85)">
-                {arabicNumber(currentPages)} / {arabicNumber(604)} {tr('common.page')}
-              </Text>
-              <Text variant="caption" color="#fff">{Math.round((currentPages / 604) * 100)}%</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12 }}>
+                <BookOpen size={13} color="rgba(255,255,255,0.7)" />
+                <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', fontWeight: '600' }}>
+                  {arabicNumber(currentPages)} / {arabicNumber(604)} {tr('common.page')}
+                </Text>
+              </View>
+            </View>
+
+            {/* Concentric Progress Ring */}
+            <View style={{ width: 90, height: 90, alignItems: 'center', justifyContent: 'center' }}>
+              <Svg width={90} height={90}>
+                <Circle
+                  cx={45}
+                  cy={45}
+                  r={38}
+                  stroke="rgba(184, 146, 59, 0.15)"
+                  strokeWidth={6}
+                  fill="transparent"
+                />
+                <Circle
+                  cx={45}
+                  cy={45}
+                  r={38}
+                  stroke={GOLD}
+                  strokeWidth={6}
+                  strokeDasharray={2 * Math.PI * 38}
+                  strokeDashoffset={2 * Math.PI * 38 - (Math.min(604, currentPages) / 604) * (2 * Math.PI * 38)}
+                  strokeLinecap="round"
+                  fill="transparent"
+                  transform="rotate(-90 45 45)"
+                />
+              </Svg>
+              <View style={{ position: 'absolute', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 16, fontWeight: '800', color: GOLD }}>
+                  {Math.round((currentPages / 604) * 100)}%
+                </Text>
+                <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', marginTop: -2, fontWeight: '700' }}>
+                  مكتمل
+                </Text>
+              </View>
             </View>
           </View>
         </LinearGradient>

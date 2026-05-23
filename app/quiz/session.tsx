@@ -25,7 +25,7 @@ import { Text, Button } from '@components/ui';
 import { generateQuiz, answersMatch, computeSessionStats } from '@services/quiz';
 import { useQuizStore } from '@store/index';
 import { QuizQuestion, QuizLevel, QuizAnswer } from '@/types/index';
-import { arabicNumber } from '@data/surahs';
+import { arabicNumber, SURAHS } from '@data/surahs';
 
 // ── ثوابت ──
 const TIMER_SECONDS = 30;
@@ -494,16 +494,34 @@ export default function QuizSessionScreen() {
         </View>
       </View>
 
-      {/* ── شريط المؤقت ── */}
+      {/* ── شريط المؤقت الفاخر المذهب ── */}
       {!revealed && (
-        <View style={{ paddingHorizontal: 16, paddingVertical: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Clock size={12} color={timerColor} />
-            <View style={[styles.timerTrack, { backgroundColor: t.colors.border, flex: 1 }]}>
-              <View style={[styles.timerFill, { width: `${timerPct * 100}%`, backgroundColor: timerColor }]} />
+        <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingHorizontal: 12,
+            paddingVertical: 8,
+            backgroundColor: 'rgba(10, 61, 56, 0.05)',
+            borderWidth: 1,
+            borderColor: 'rgba(184, 146, 59, 0.35)',
+            borderRadius: 14
+          }}>
+            <Clock size={13} color={GOLD} />
+            <View style={{
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: 'rgba(184, 146, 59, 0.1)',
+              flex: 1,
+              overflow: 'hidden',
+              borderWidth: 0.5,
+              borderColor: 'rgba(184, 146, 59, 0.2)'
+            }}>
+              <View style={[styles.timerFill, { width: `${timerPct * 100}%`, backgroundColor: timerPct < 0.3 ? '#BE123C' : GOLD }]} />
             </View>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: timerColor, minWidth: 20, textAlign: 'center' }}>
-              {arabicNumber(timerLeft)}
+            <Text style={{ fontSize: 12, fontWeight: '800', color: timerPct < 0.3 ? '#BE123C' : GOLD, minWidth: 24, textAlign: 'center' }}>
+              {arabicNumber(timerLeft)}ث
             </Text>
           </View>
         </View>
@@ -718,35 +736,106 @@ const SummaryBadge: React.FC<{ value: string; label: string; color: string }> = 
   </View>
 );
 
+const getSurahAndAyahFromQuestion = (q: QuizQuestion) => {
+  if (q.kind === 'curated' && q.explanation) {
+    const cleanExpl = q.explanation;
+    for (const s of SURAHS) {
+      if (cleanExpl.includes(s.nameAr)) {
+        const match = cleanExpl.match(new RegExp(`${s.nameAr}\\s*:\\s*(\\d+)`)) || 
+                      cleanExpl.match(new RegExp(`سورة\\s+${s.nameAr}\\s*:\\s*(\\d+)`)) || 
+                      cleanExpl.match(new RegExp(`${s.nameAr}\\s+(\\d+)`));
+        if (match) {
+          return { surahId: s.id, ayahNumber: Number(match[1]) };
+        }
+      }
+    }
+  }
+
+  const parts = q.id.split('-');
+  if (parts[0] === 'q' && parts.length >= 3) {
+    const surahId = Number(parts[1]);
+    const ayahNumber = Number(parts[2]);
+    if (!isNaN(surahId) && !isNaN(ayahNumber)) {
+      return { surahId, ayahNumber };
+    }
+  }
+  return null;
+};
+
 const ReviewCard: React.FC<{
   question: QuizQuestion; answer: QuizAnswer;
   questionIndex: number; isCorrect: boolean; t: any;
-}> = ({ question, answer, questionIndex, isCorrect, t }) => (
-  <View style={[styles.reviewCard, {
-    backgroundColor: isCorrect ? '#3F8F6E08' : t.colors.error + '08',
-    borderColor: isCorrect ? '#3F8F6E30' : t.colors.error + '30',
-  }]}>
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-      <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: isCorrect ? '#3F8F6E20' : t.colors.error + '20', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
-        {isCorrect ? <Check size={13} color="#3F8F6E" /> : <X size={13} color={t.colors.error} />}
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 12, fontWeight: '700', color: t.colors.textSecondary, marginBottom: 4 }}>
-          س{arabicNumber(questionIndex + 1)}: {kindLabel(question.kind)}
-        </Text>
-        <Text style={{ fontSize: 13, color: t.colors.textPrimary, lineHeight: 22 }}>{question.prompt}</Text>
-        {question.context && (
-          <Text style={{ fontSize: 12, color: t.colors.textSecondary, fontFamily: t.fontFamilies.arabicQuran, lineHeight: 26, marginTop: 4, padding: 8, backgroundColor: t.colors.surfaceAlt, borderRadius: 6 }}>
-            {question.context.length > 80 ? question.context.slice(0, 80) + '...' : question.context}
+}> = ({ question, answer, questionIndex, isCorrect, t }) => {
+  const router = useRouter();
+  const surahAndAyah = getSurahAndAyahFromQuestion(question);
+
+  return (
+    <View style={[styles.reviewCard, {
+      backgroundColor: isCorrect ? '#B8923B0A' : '#BE123C0A',
+      borderColor: isCorrect ? '#B8923B30' : '#BE123C30',
+    }]}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+        <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: isCorrect ? '#B8923B18' : '#BE123C18', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+          {isCorrect ? <Check size={13} color="#B8923B" /> : <X size={13} color="#BE123C" />}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: t.colors.textSecondary, marginBottom: 4 }}>
+            س{arabicNumber(questionIndex + 1)}: {kindLabel(question.kind)}
           </Text>
-        )}
-        {question.explanation && (
-          <Text style={{ fontSize: 11, color: t.colors.textTertiary, marginTop: 6, lineHeight: 18 }}>{question.explanation}</Text>
-        )}
+          <Text style={{ fontSize: 14, color: t.colors.textPrimary, fontWeight: '700', lineHeight: 22 }}>
+            {question.prompt}
+          </Text>
+          {question.context && (
+            <Text style={{
+              fontSize: 18,
+              color: t.colors.textPrimary,
+              fontFamily: t.fontFamilies.arabicQuran,
+              lineHeight: 32,
+              marginTop: 6,
+              padding: 10,
+              backgroundColor: t.colors.surfaceAlt,
+              borderRadius: 8,
+              textAlign: 'center',
+              borderWidth: 0.5,
+              borderColor: t.colors.border
+            }}>
+              {question.context}
+            </Text>
+          )}
+          {question.explanation && (
+            <Text style={{ fontSize: 12, color: t.colors.textTertiary, marginTop: 6, lineHeight: 18, fontWeight: '600' }}>
+              {question.explanation}
+            </Text>
+          )}
+          
+          {surahAndAyah && (
+            <Pressable
+              onPress={() => router.push(`/surah/${surahAndAyah.surahId}?ayah=${surahAndAyah.ayahNumber}`)}
+              style={({ pressed }) => [
+                {
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 10,
+                  alignSelf: 'flex-start',
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: '#B8923B50',
+                  backgroundColor: pressed ? 'rgba(184, 146, 59, 0.12)' : 'rgba(184, 146, 59, 0.04)',
+                }
+              ]}
+            >
+              <BookOpen size={12} color="#B8923B" />
+              <Text style={{ fontSize: 11, fontWeight: '800', color: '#B8923B' }}>تلاوة الآية في سياق السورة 📖</Text>
+            </Pressable>
+          )}
+        </View>
       </View>
     </View>
-  </View>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   topBar: {

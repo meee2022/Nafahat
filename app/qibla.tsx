@@ -10,29 +10,27 @@
  *
  * Identity: أخضر + ذهبي. السهم ذهبي، البوصلة بحدود ذهبية، الكعبة في رأس السهم.
  */
-import React, { useState, useMemo } from 'react';
-import { View, StyleSheet, Pressable, Dimensions, ScrollView, Modal } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, StyleSheet, Pressable, Dimensions, ScrollView, Modal, Animated } from 'react-native';
+import { Magnetometer } from 'expo-sensors';
+import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle, G, Line, Rect, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { ArrowRight, MapPin, Navigation, Search, X, Globe, ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card } from '@components/ui';
-import { OrnamentalRule } from '@components/ornaments';
-import { useT } from '@store/languageStore';
 import { useSettingsStore } from '@store/index';
-import {
-  calculateQiblaBearing, distanceToKaaba, describeBearingAr,
-  PRESET_CITIES, City,
-} from '@services/qibla';
+import { useT } from '@store/languageStore';
+import { calculateQiblaBearing, distanceToKaaba, describeBearingAr, PRESET_CITIES } from '@services/qibla';
+import { OrnamentalRule } from '@components/ornaments';
 
 const SIZE = Math.min(Dimensions.get('window').width - 64, 320);
-
 export default function QiblaScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
-  // 🌍 الموقع الموحّد من settingsStore — يتغيّر من شاشة /location ويتزامن مع
-  //   مواقيت الصلاة والأذان. نوفّر picker سريع داخلي كـ shortcut.
+  
+  // 🌍 الموقع الموحّد من settingsStore
   const userLocation = useSettingsStore((s) => s.location);
   const setUserLocation = useSettingsStore((s) => s.setLocation);
 
@@ -49,6 +47,75 @@ export default function QiblaScreen() {
     [userLocation],
   );
   const direction = useMemo(() => describeBearingAr(bearing), [bearing]);
+
+  // 🧭 مستشعرات البوصلة والحركة في الوقت الفعلي
+  const [heading, setHeading] = useState(0);
+  const [hasSensor, setHasSensor] = useState(true);
+  const [isAligned, setIsAligned] = useState(false);
+
+  useEffect(() => {
+    let subscription: any = null;
+
+    const subscribe = async () => {
+      try {
+        const isAvailable = await Magnetometer.isAvailableAsync();
+        if (!isAvailable) {
+          setHasSensor(false);
+          return;
+        }
+
+        Magnetometer.setUpdateInterval(60); // 60ms for buttery smooth compass rendering
+
+        subscription = Magnetometer.addListener((data) => {
+          if (!data || data.x === undefined || data.y === undefined) return;
+
+          // Calculate real compass heading (top of phone relative to Magnetic North)
+          // Using Math.atan2(-x, y) yields the mathematically correct device orientation
+          let rawHeading = Math.atan2(-data.x, data.y) * (180 / Math.PI);
+          if (rawHeading < 0) {
+            rawHeading += 360;
+          }
+
+          // Low-pass filter to smooth out high-frequency sensor noise & hand tremors
+          setHeading((prev) => {
+            let diff = rawHeading - prev;
+            // Handle 360 degrees wrap-around boundary cases
+            if (diff > 180) diff -= 360;
+            if (diff < -180) diff += 360;
+            return Math.round(prev + diff * 0.15); // 0.15 is the damping factor
+          });
+
+          // Check alignment with Kaaba direction (Qibla)
+          let diffToKaaba = bearing - rawHeading;
+          diffToKaaba = ((diffToKaaba + 180) % 360) - 180;
+          if (diffToKaaba < -180) diffToKaaba += 360;
+
+          const aligned = Math.abs(diffToKaaba) < 6; // 6 degrees alignment threshold
+          if (aligned) {
+            setIsAligned((prev) => {
+              if (!prev) {
+                // Trigger a light haptic tap only when entering the aligned state
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+              }
+              return true;
+            });
+          } else {
+            setIsAligned(false);
+          }
+        });
+      } catch (err) {
+        setHasSensor(false);
+      }
+    };
+
+    subscribe();
+
+    return () => {
+      if (subscription) {
+        subscription.remove();
+      }
+    };
+  }, [bearing]);
 
   const filteredCities = useMemo(() => {
     if (!query.trim()) return PRESET_CITIES;
@@ -93,9 +160,7 @@ export default function QiblaScreen() {
       </View>
 
       <Screen scrollable={false} contentStyle={{ paddingHorizontal: 16 }}>
-        {/* بطاقة المدينة الحالية — مع زرَّين:
-            "تغيير سريع" يفتح modal صغير بـ 30 مدينة preset (qibla service)
-            "كل المدن" يفتح شاشة /location الكاملة بـ 60+ مدينة */}
+        {/* بطاقة المدينة الحالية */}
         <View style={[styles.cityCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold }]}>
           <View style={[styles.cityIcon, { backgroundColor: t.colors.accent + '14' }]}>
             <MapPin size={18} color={t.colors.accent} />
@@ -139,95 +204,135 @@ export default function QiblaScreen() {
           </View>
         </View>
 
-        {/* البوصلة */}
+        {/* البوصلة التفاعلية الدوّارة */}
         <View style={{ alignItems: 'center', marginTop: 18 }}>
-          <Svg width={SIZE} height={SIZE} viewBox="0 0 100 100">
-            <Defs>
-              <RadialGradient id="qiblaBg" cx="50%" cy="50%" rx="50%" ry="50%">
-                <Stop offset="0%" stopColor={t.colors.surface} />
-                <Stop offset="100%" stopColor={t.colors.surfaceAlt} />
-              </RadialGradient>
-            </Defs>
+          <View style={{ transform: [{ rotate: `${-heading}deg` }] }}>
+            <Svg width={SIZE} height={SIZE} viewBox="0 0 100 100">
+              <Defs>
+                <RadialGradient id="qiblaBg" cx="50%" cy="50%" rx="50%" ry="50%">
+                  <Stop offset="0%" stopColor={t.colors.surface} />
+                  <Stop offset="100%" stopColor={t.colors.surfaceAlt} />
+                </RadialGradient>
+              </Defs>
 
-            <Circle cx="50" cy="50" r="48" fill="url(#qiblaBg)" stroke={t.colors.accent} strokeWidth="0.8" />
-            <Circle cx="50" cy="50" r="44" fill="none" stroke={t.colors.accent} strokeWidth="0.3" opacity="0.5" />
-
-            {/* علامات الدرجات */}
-            {Array.from({ length: 36 }).map((_, i) => {
-              const angle = (i * Math.PI * 2) / 36;
-              const isMain = i % 9 === 0;
-              const r1 = isMain ? 38 : 41;
-              const x1 = 50 + r1 * Math.cos(angle - Math.PI / 2);
-              const y1 = 50 + r1 * Math.sin(angle - Math.PI / 2);
-              const x2 = 50 + 44 * Math.cos(angle - Math.PI / 2);
-              const y2 = 50 + 44 * Math.sin(angle - Math.PI / 2);
-              return (
-                <Line
-                  key={i}
-                  x1={x1} y1={y1} x2={x2} y2={y2}
-                  stroke={t.colors.textPrimary}
-                  strokeWidth={isMain ? 0.8 : 0.25}
-                  opacity={isMain ? 1 : 0.5}
-                />
-              );
-            })}
-
-            {/* السهم الشمالي */}
-            <Path d="M50 14 L48 22 L52 22 Z" fill={t.colors.error} />
-            <Circle cx="50" cy="50" r="3" fill={t.colors.textPrimary} />
-
-            {/* نقش هندسي داخلي */}
-            <Circle cx="50" cy="50" r="30" fill="none" stroke={t.colors.accent} strokeWidth="0.3" opacity="0.4" />
-
-            {/* سهم القبلة (يدور حسب الزاوية المحسوبة) */}
-            <G transform={`rotate(${bearing}, 50, 50)`}>
-              <Path
-                d="M 50 16 L 57 38 L 50 33 L 43 38 Z"
-                fill={t.colors.accent}
-                stroke={t.colors.accentDeep}
-                strokeWidth="0.5"
+              {/* Glowing golden/green border when aligned */}
+              <Circle
+                cx="50"
+                cy="50"
+                r="48"
+                fill="url(#qiblaBg)"
+                stroke={isAligned ? '#3F8F6E' : t.colors.accent}
+                strokeWidth={isAligned ? 1.4 : 0.8}
               />
-              {/* الكعبة في رأس السهم */}
-              <G transform="translate(50, 12)">
-                <Rect x="-5" y="-5" width="10" height="10" fill="#1A1815" rx="0.5" />
-                <Path d="M-4,-2 L4,-2" stroke={t.colors.accent} strokeWidth="0.6" />
-                <Path d="M-3,1 L3,1" stroke={t.colors.accent} strokeWidth="0.4" opacity="0.7" />
+              <Circle
+                cx="50"
+                cy="50"
+                r="44"
+                fill="none"
+                stroke={isAligned ? '#3F8F6E' : t.colors.accent}
+                strokeWidth="0.3"
+                opacity={isAligned ? 0.8 : 0.5}
+              />
+
+              {/* علامات الدرجات */}
+              {Array.from({ length: 36 }).map((_, i) => {
+                const angle = (i * Math.PI * 2) / 36;
+                const isMain = i % 9 === 0;
+                const r1 = isMain ? 38 : 41;
+                const x1 = 50 + r1 * Math.cos(angle - Math.PI / 2);
+                const y1 = 50 + r1 * Math.sin(angle - Math.PI / 2);
+                const x2 = 50 + 44 * Math.cos(angle - Math.PI / 2);
+                const y2 = 50 + 44 * Math.sin(angle - Math.PI / 2);
+                return (
+                  <Line
+                    key={i}
+                    x1={x1} y1={y1} x2={x2} y2={y2}
+                    stroke={t.colors.textPrimary}
+                    strokeWidth={isMain ? 0.8 : 0.25}
+                    opacity={isMain ? 1 : 0.5}
+                  />
+                );
+              })}
+
+              {/* السهم الشمالي */}
+              <Path d="M50 14 L48 22 L52 22 Z" fill={t.colors.error} />
+              <Circle cx="50" cy="50" r="3" fill={t.colors.textPrimary} />
+
+              {/* نقش هندسي داخلي */}
+              <Circle cx="50" cy="50" r="30" fill="none" stroke={t.colors.accent} strokeWidth="0.3" opacity="0.4" />
+
+              {/* سهم القبلة (يدور بزاوية الكعبة الثابتة) */}
+              <G transform={`rotate(${bearing}, 50, 50)`}>
+                <Path
+                  d="M 50 16 L 57 38 L 50 33 L 43 38 Z"
+                  fill={isAligned ? '#3F8F6E' : t.colors.accent}
+                  stroke={isAligned ? '#2E6F54' : t.colors.accentDeep}
+                  strokeWidth="0.5"
+                />
+                {/* الكعبة في رأس السهم */}
+                <G transform="translate(50, 12)">
+                  <Rect x="-5" y="-5" width="10" height="10" fill="#1A1815" rx="0.5" />
+                  <Path d="M-4,-2 L4,-2" stroke={t.colors.accent} strokeWidth="0.6" />
+                  <Path d="M-3,1 L3,1" stroke={t.colors.accent} strokeWidth="0.4" opacity="0.7" />
+                </G>
               </G>
-            </G>
 
-            {/* درجة في الوسط */}
-            <Circle cx="50" cy="50" r="14" fill={t.colors.surface} stroke={t.colors.accent} strokeWidth="0.3" />
-          </Svg>
+              {/* درجة في الوسط */}
+              <Circle cx="50" cy="50" r="14" fill={t.colors.surface} stroke={t.colors.accent} strokeWidth="0.3" />
+            </Svg>
 
-          {/* درجة الزاوية في الوسط */}
+            {/* أحرف الجهات (تدور مع البوصلة) */}
+            <View pointerEvents="none" style={[styles.compassOverlay, { width: SIZE, height: SIZE }]}>
+              <View style={[styles.compassLabel, styles.labelN]}>
+                <Text style={[styles.directionText, { color: t.colors.error }]}>ش</Text>
+              </View>
+              <View style={[styles.compassLabel, styles.labelE]}>
+                <Text style={[styles.directionText, { color: t.colors.textSecondary }]}>ش‍ ر</Text>
+              </View>
+              <View style={[styles.compassLabel, styles.labelS]}>
+                <Text style={[styles.directionText, { color: t.colors.textSecondary }]}>ج</Text>
+              </View>
+              <View style={[styles.compassLabel, styles.labelW]}>
+                <Text style={[styles.directionText, { color: t.colors.textSecondary }]}>غ</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* درجة الزاوية الثابتة في المنتصف لسهولة القراءة */}
           <View style={[styles.centerLabel, { width: SIZE, height: SIZE }]} pointerEvents="none">
             <View style={{ alignItems: 'center' }}>
-              <Text style={{ fontSize: 26, fontWeight: '800', color: t.colors.accent, letterSpacing: -0.5, fontFamily: t.fontFamilies.arabicQuran }}>
+              <Text style={{ fontSize: 26, fontWeight: '800', color: isAligned ? '#3F8F6E' : t.colors.accent, letterSpacing: -0.5, fontFamily: t.fontFamilies.arabicQuran }}>
                 {Math.round(bearing)}°
               </Text>
               <Text variant="caption" color={t.colors.textSecondary} style={{ marginTop: 2 }}>{direction}</Text>
             </View>
           </View>
-
-          {/* أحرف الجهات */}
-          <View pointerEvents="none" style={[styles.compassOverlay, { width: SIZE, height: SIZE }]}>
-            <View style={[styles.compassLabel, styles.labelN]}>
-              <Text style={[styles.directionText, { color: t.colors.error }]}>ش</Text>
-            </View>
-            <View style={[styles.compassLabel, styles.labelE]}>
-              <Text style={[styles.directionText, { color: t.colors.textSecondary }]}>ش‍ ر</Text>
-            </View>
-            <View style={[styles.compassLabel, styles.labelS]}>
-              <Text style={[styles.directionText, { color: t.colors.textSecondary }]}>ج</Text>
-            </View>
-            <View style={[styles.compassLabel, styles.labelW]}>
-              <Text style={[styles.directionText, { color: t.colors.textSecondary }]}>غ</Text>
-            </View>
-          </View>
         </View>
 
+        {/* Alignment Glow Badge */}
+        <View style={{ alignItems: 'center', marginTop: 12 }}>
+          {isAligned ? (
+            <View style={[styles.alignmentBadge, { backgroundColor: '#3F8F6E', borderColor: '#2E6F54', borderWidth: 0.5 }]}>
+              <Text style={styles.alignmentText}>❖ أنت تتجه نحو القبلة مباشرة 🕋</Text>
+            </View>
+          ) : (
+            <View style={[styles.alignmentBadge, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold, borderWidth: 1 }]}>
+              <Text style={[styles.alignmentText, { color: t.colors.textSecondary }]}>❖ قم بتدوير الهاتف لموازنة السهم ❖</Text>
+            </View>
+          )}
+        </View>
+
+        {/* وضع محاكاة البوصلة في حال عدم توفر مستشعر */}
+        {!hasSensor ? (
+          <View style={[styles.sensorWarning, { backgroundColor: t.colors.error + '10', borderColor: t.colors.error + '30' }]}>
+            <Text variant="caption" color={t.colors.error} style={{ fontWeight: 'bold', textAlign: 'center' }}>
+              ⚠️ مستشعر البوصلة غير متوفر (على هاتفك الحقيقي ستدور تلقائياً مع الحركة)
+            </Text>
+          </View>
+        ) : null}
+
         {/* بطاقة المعلومات */}
-        <Card padding={t.spacing.lg} elevation="xs" style={{ marginTop: 18 }} bordered>
+        <Card padding={t.spacing.lg} elevation="xs" style={{ marginTop: 14 }} bordered>
           {isInMakkah ? (
             <View style={{ alignItems: 'center' }}>
               <Text style={{ fontSize: 36 }}>🕋</Text>
@@ -266,20 +371,17 @@ export default function QiblaScreen() {
           )}
         </Card>
 
-        <View style={{ alignItems: 'center', marginTop: 16 }}>
+        <View style={{ alignItems: 'center', marginTop: 12 }}>
           <OrnamentalRule width={140} color={t.colors.accent} variant="rosette" />
         </View>
 
-        <Card padding={t.spacing.lg} elevation="xs" style={{ marginTop: 16 }} bordered>
+        <Card padding={t.spacing.lg} elevation="xs" style={{ marginTop: 12 }} bordered>
           <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
             <Navigation size={16} color={t.colors.accent} />
             <View style={{ flex: 1 }}>
               <Text variant="subtitle">كيف أستخدم البوصلة</Text>
               <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 6, lineHeight: 22 }}>
-                وجّه الجزء العلوي من جهازك ناحية الشمال الجغرافي، ثم اتّبع السهم الذهبي - الكعبة المشرّفة تقع في اتجاهه.
-              </Text>
-              <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 8, lineHeight: 18 }}>
-                💡 لتجربة تلقائية بالـ GPS واستشعار المغناطيس، فعّل إذن الموقع من إعدادات النظام.
+                ضع الهاتف بشكل مسطّح، وقم بتدويره حتى يتم محاذاة السهم باللون الأخضر ويظهر تنبيه الاتجاه - ستكون الكعبة المشرّفة في هذا الاتجاه مباشرة.
               </Text>
             </View>
           </View>
@@ -329,13 +431,11 @@ export default function QiblaScreen() {
                 <Pressable
                   key={c.id}
                   onPress={() => {
-                    // 🌍 يحدّث الموقع الموحّد — يؤثر على كل التطبيق (الصلاة + الأذان)
                     setUserLocation({
                       cityAr: c.nameAr,
                       cityEn: c.nameEn,
                       latitude: c.latitude,
                       longitude: c.longitude,
-                      // PRESET_CITIES بدون timezone — نخلّيه يحافظ على القديم
                       timezone: userLocation.timezone,
                     });
                     setPickerOpen(false);
@@ -428,6 +528,29 @@ const styles = StyleSheet.create({
   labelE: { left: 4, top: 0, bottom: 0, alignItems: 'flex-start', justifyContent: 'center' },
   labelW: { right: 4, top: 0, bottom: 0, alignItems: 'flex-end', justifyContent: 'center' },
   directionText: { fontSize: 12, fontWeight: '800' },
+
+  alignmentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 4,
+  },
+  alignmentText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFF',
+    fontFamily: 'IBMPlexSansArabic_600SemiBold',
+  },
+  sensorWarning: {
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginTop: 12,
+    alignItems: 'center',
+  },
 
   search: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

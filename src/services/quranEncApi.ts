@@ -67,6 +67,7 @@ export const POPULAR_TRANSLATIONS = {
 
 // ─────────────── Cache محدود (LRU) لمنع تسرّب الذاكرة ───────────────
 
+import { Platform } from 'react-native';
 import { LruCache } from '@/utils/lruCache';
 
 const cache = new LruCache<string, Promise<any>>(300);
@@ -78,6 +79,40 @@ function cached<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
   cache.set(key, promise);
   promise.catch(() => cache.delete(key));
   return promise;
+}
+
+async function fetchJsonWithTimeout(url: string, timeoutMs = 10000): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchWithCorsProxy(directUrl: string): Promise<any> {
+  if (Platform.OS !== 'web') {
+    try {
+      return await fetchJsonWithTimeout(directUrl, 8000);
+    } catch {}
+  }
+
+  // Web / Fallback proxy
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(directUrl)}`;
+    const res = await fetchJsonWithTimeout(proxyUrl, 8000);
+    if (res?.contents) return JSON.parse(res.contents);
+  } catch {}
+
+  try {
+    const proxyUrl2 = `https://corsproxy.io/?url=${encodeURIComponent(directUrl)}`;
+    return await fetchJsonWithTimeout(proxyUrl2, 8000);
+  } catch {
+    return await fetchJsonWithTimeout(directUrl, 8000);
+  }
 }
 
 // ─────────────── الـ API methods ───────────────
@@ -94,9 +129,8 @@ export async function getAyah(
   const key = `${translationKey}/${suraNumber}/${ayaNumber}`;
   return cached(key, async () => {
     try {
-      const res = await fetch(`${API_BASE}/translation/aya/${translationKey}/${suraNumber}/${ayaNumber}`);
-      if (!res.ok) return null;
-      const json = await res.json();
+      const directUrl = `${API_BASE}/translation/aya/${translationKey}/${suraNumber}/${ayaNumber}`;
+      const json = await fetchWithCorsProxy(directUrl);
       return json?.result ?? null;
     } catch {
       return null;
@@ -114,9 +148,8 @@ export async function getSuraTranslation(
   const key = `sura/${translationKey}/${suraNumber}`;
   return cached(key, async () => {
     try {
-      const res = await fetch(`${API_BASE}/translation/sura/${translationKey}/${suraNumber}`);
-      if (!res.ok) return [];
-      const json = await res.json();
+      const directUrl = `${API_BASE}/translation/sura/${translationKey}/${suraNumber}`;
+      const json = await fetchWithCorsProxy(directUrl);
       return Array.isArray(json?.result) ? json.result : [];
     } catch {
       return [];

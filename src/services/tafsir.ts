@@ -36,9 +36,9 @@ const CACHE_PREFIX   = '@nafahat/tafsir/';
  * يمكن الحصول على القائمة من: GET /resources/tafsirs
  */
 const QURAN_COM_TAFSIR_IDS: Partial<Record<string, number>> = {
-  'ar.muyassar':  381,   // التفسير الميسّر
-  'ar.jalalayn':  74,    // تفسير الجلالين
-  'ar.qurtubi':   169,   // تفسير القرطبي (متاح في بعض النسخ)
+  'ar.muyassar':  16,    // التفسير الميسّر (ID 16 is correct on quran.com)
+  'ar.qurtubi':   90,    // تفسير القرطبي (ID 90 is correct on quran.com)
+  'ar.saadi':     91,    // تفسير السعدي (ID 91 is correct on quran.com)
 };
 
 async function fetchJsonWithTimeout(url: string, timeoutMs = 10000): Promise<any> {
@@ -135,7 +135,6 @@ export type AyahTextEdition = TafsirEdition | TranslationEdition;
  */
 const QURANENC_KEYS: Partial<Record<AyahTextEdition, string>> = {
   'ar.mukhtasar': 'arabic_mukhtasar',
-  'ar.saadi':     'arabic_saadi',
 };
 
 export interface TafsirMeta {
@@ -233,18 +232,28 @@ export async function getAyahText(
 
   const quranEncKey = QURANENC_KEYS[edition];
   if (quranEncKey) {
-    // المسار: QuranEnc.com (للمختصر والسعدي)
-    const result = await getQuranEncAyah(quranEncKey, surahId, ayahNumber);
-    text = result?.translation ?? '';
-    // الهوامش المعتمدة (إن وُجدت) تُضاف للنص للقارئ
-    if (result?.footnotes) {
-      const cleanedFootnotes = result.footnotes.replace(/<[^>]+>/g, '').trim();
-      if (cleanedFootnotes) text += `\n\n${cleanedFootnotes}`;
+    try {
+      // المسار: QuranEnc.com (للمختصر والسعدي)
+      const result = await getQuranEncAyah(quranEncKey, surahId, ayahNumber);
+      text = result?.translation ?? '';
+      // الهوامش المعتمدة (إن وُجدت) تُضاف للنص للقارئ
+      if (result?.footnotes) {
+        const cleanedFootnotes = result.footnotes.replace(/<[^>]+>/g, '').trim();
+        if (cleanedFootnotes) text += `\n\n${cleanedFootnotes}`;
+      }
+    } catch (e) {
+      console.warn(`QuranEnc failed for ${edition}:`, e);
     }
-  } else {
-    // المسار: AlQuran.cloud مع fallback تلقائي لـ quran.com وproxies متعددة
-    const directUrl = `${API_BASE}/ayah/${surahId}:${ayahNumber}/${edition}`;
-    const json = await fetchAlQuranCloudJson(directUrl, edition, surahId, ayahNumber);
+  }
+
+  // إذا لم يكن في QuranEnc أو فشل، نستخدم AlQuran.cloud أو quran.com مع fallbacks
+  if (!text) {
+    let fallbackEdition = edition;
+    if (edition === 'ar.mukhtasar') {
+      fallbackEdition = 'ar.jalalayn'; // fallback للمختصر إلى تفسير الجلالين
+    }
+    const directUrl = `${API_BASE}/ayah/${surahId}:${ayahNumber}/${fallbackEdition}`;
+    const json = await fetchAlQuranCloudJson(directUrl, fallbackEdition, surahId, ayahNumber);
     text = json?.data?.text ?? '';
   }
 

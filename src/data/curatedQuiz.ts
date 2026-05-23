@@ -565,6 +565,60 @@ for (const q of CURATED_QUIZ) {
   if (sid != null) QUESTION_SURAH_MAP.set(q.id, sid);
 }
 
+// 🗺️ map: questionId → exact Juz(s) mapping to strictly enforce boundaries
+const QUESTION_JUZ_MAP = new Map<string, number[]>([
+  ['cur-1', [22]],
+  ['cur-2', [20]],
+  ['cur-3', [3]],
+  ['cur-4', [14]],
+  ['cur-5', [29]],
+  ['cur-6', [19, 25]],
+  ['cur-7', [23]],
+  ['cur-8', [22]],
+  ['cur-9', [12, 24, 25]],
+  ['cur-10', [11]],
+  ['cur-11', [14]],
+  ['cur-12', [3]],
+  ['cur-13', [25]],
+  ['cur-14', [13]],
+  ['cur-15', [17]],
+  ['cur-16', [7]],
+  ['cur-17', [19]],
+  ['cur-18', [21]],
+  ['cur-19', [16]],
+  ['cur-20', [12]],
+  ['cur-21', [17]],
+  ['cur-22', [25, 22, 23]],
+  ['cur-23', [21]],
+  ['cur-24', [22]],
+  ['cur-25', [4]],
+  ['cur-26', [21]],
+  ['cur-27', [13]],
+  ['cur-28', [13]],
+  ['cur-29', [10]],
+  ['cur-30', [11]],
+  ['cur-31', [7]],
+  ['cur-32', [22]],
+  ['cur-33', [14]],
+  ['cur-34', [25]],
+  ['cur-35', [14]],
+  ['cur-36', [14, 19]],
+  ['cur-37', [24, 25]],
+  ['cur-38', [14]],
+  ['cur-39', [18]],
+  ['cur-40', [7]],
+  ['cur-41', [5]],
+  ['cur-42', [1, 9]],
+  ['cur-43', [18]],
+  ['cur-44', [1, 17]],
+  ['cur-45', [9, 21, 25]],
+  ['cur-46', [7]],
+  ['cur-47', [3]],
+  ['cur-48', [22]],
+  ['cur-49', [11]],
+  ['cur-50', [25]],
+]);
+
 /**
  * يرجّع surahId لسؤال معيّن من الـ map.
  * يرجع null لو السؤال "عام" (مفيش سورة محدّدة في explanation).
@@ -586,13 +640,10 @@ export function pickRandomCurated(count: number, juzs?: number[]): QuizQuestion[
   if (juzs && juzs.length > 0) {
     const juzSet = new Set(juzs);
     pool = CURATED_QUIZ.filter((q) => {
-      const surahId = QUESTION_SURAH_MAP.get(q.id);
-      if (surahId == null) return true; // أسئلة عامة بدون سورة محدّدة → مسموحة
-      const surah = SURAHS.find((s) => s.id === surahId);
-      if (!surah) return true;
-      // اسمح بالسؤال لو السورة تبدأ في الجزء المختار
-      // (سور كبيرة مثل البقرة الـ juzStart=1 ستظهر فقط لو الـ juz 1 ضمن المختار)
-      return juzSet.has(surah.juzStart);
+      const questionJuzs = QUESTION_JUZ_MAP.get(q.id);
+      if (!questionJuzs) return true; // أسئلة عامة بدون سورة محدّدة → مسموحة
+      // اسمح بالسؤال لو كان أحد الأجزاء المختارة يقع ضمن نطاق أجزاء هذا السؤال
+      return questionJuzs.some(j => juzSet.has(j));
     });
   }
   const shuffled = [...pool].sort(() => Math.random() - 0.5);

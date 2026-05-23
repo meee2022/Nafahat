@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   Award, BookOpen, Brain, Headphones, Heart, Flame, Calendar,
   Moon, Sun, Type, Bell, Globe, Download, Cloud, Info, ChevronLeft,
-  LogIn, FileText, Mic, Sparkles, Edit3, Shield, Wrench, MapPin, Share2,
+  LogIn, FileText, Mic, Sparkles, Edit3, Shield, Wrench, MapPin, Share2, Trophy,
 } from 'lucide-react-native';
 import { useIsAdmin } from '@store/appConfigStore';
 import { computeUserLevel } from '@utils/userLevel';
@@ -165,6 +165,7 @@ export default function AccountScreen() {
           trailing={undefined}
           onPress={() => router.push('/premium')}
         />
+        <Row icon={<Trophy size={18} color={t.colors.accent} />}    label="لوحة الإحصائيات الفخمة" onPress={() => router.push('/analytics')} />
         <Row icon={<Award size={18} color={t.colors.accent} />}    label={tr('account.achievements')} onPress={() => router.push('/achievements')} />
         <Row icon={<BookOpen size={18} color={t.colors.primary} />} label={tr('account.bookmarks')} onPress={() => router.push('/favorites')} />
         <Row icon={<FileText size={18} color={t.colors.info} />}    label={tr('account.notes')} onPress={() => router.push('/notes')} />

@@ -591,7 +591,7 @@ function makeFirstAyahOfSurah(surah: typeof SURAHS[number], ayahs: Ayah[]): Quiz
 // ─── 18. آخر آية في السورة ───
 function makeLastAyahOfSurah(surah: typeof SURAHS[number], ayahs: Ayah[]): QuizQuestion | null {
   const last = ayahs[ayahs.length - 1];
-  if (!last) return null;
+  if (!last || last.number !== surah.versesCount) return null;
   const pool = ayahs.filter(a => a.number !== last.number);
   if (pool.length < 3) return null;
   const distractors = pickN(pool, 3);

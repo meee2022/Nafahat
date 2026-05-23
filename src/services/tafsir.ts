@@ -23,24 +23,23 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+
 import { getAyah as getQuranEncAyah } from './quranEncApi';
 import { LruCache } from '@/utils/lruCache';
 
-const API_BASE = 'https://api.alquran.cloud/v1';
-const CACHE_PREFIX = '@nafahat/tafsir/';
+const API_BASE       = 'https://api.alquran.cloud/v1';
+const QURAN_COM_BASE = 'https://api.quran.com/api/v4';
+const CACHE_PREFIX   = '@nafahat/tafsir/';
 
 /**
- * 🌐 جلب JSON من AlQuran.cloud مع fallback متعدد المسارات:
- *   - web: عبر CORS proxy مباشرة (AlQuran.cloud ما عندوش CORS headers)
- *   - native: حاول مباشرة أولاً، ولو فشل (timeout/network/5xx) جرّب عبر CORS proxy
- *     كـ relay (AlQuran.cloud أحياناً بيكون unreachable من شبكات معيّنة).
- *
- *   كل محاولة عليها timeout ١٠ ثواني عشان مايعلّقش الـ UI لو الـ server صامت.
+ * معرّفات تفاسير quran.com (CORS-safe على الويب):
+ * يمكن الحصول على القائمة من: GET /resources/tafsirs
  */
-function proxyUrl(url: string): string {
-  return `https://corsproxy.io/?url=${encodeURIComponent(url)}`;
-}
+const QURAN_COM_TAFSIR_IDS: Partial<Record<string, number>> = {
+  'ar.muyassar':  381,   // التفسير الميسّر
+  'ar.jalalayn':  74,    // تفسير الجلالين
+  'ar.qurtubi':   169,   // تفسير القرطبي (متاح في بعض النسخ)
+};
 
 async function fetchJsonWithTimeout(url: string, timeoutMs = 10000): Promise<any> {
   const controller = new AbortController();
@@ -54,22 +53,62 @@ async function fetchJsonWithTimeout(url: string, timeoutMs = 10000): Promise<any
   }
 }
 
-async function fetchAlQuranCloudJson(directUrl: string): Promise<any> {
-  // على web: عبر proxy مباشرة - الـ direct بيفشل بسبب CORS
-  if (Platform.OS === 'web') {
-    return fetchJsonWithTimeout(proxyUrl(directUrl));
-  }
-  // على native: direct أولاً، ولو فشل proxy fallback
-  try {
-    return await fetchJsonWithTimeout(directUrl);
-  } catch (primaryErr) {
+/**
+ * يجلب تفسيراً عبر quran.com API (CORS-friendly دائماً)
+ */
+async function fetchFromQuranCom(edition: string, surahId: number, ayahNumber: number): Promise<string | null> {
+  const tafsirId = QURAN_COM_TAFSIR_IDS[edition];
+  if (!tafsirId) return null;
+
+  const url = `${QURAN_COM_BASE}/tafsirs/${tafsirId}/by_ayah/${surahId}:${ayahNumber}`;
+  const json = await fetchJsonWithTimeout(url, 8000);
+  const text: string = json?.tafsir?.text ?? '';
+  if (!text) return null;
+  // إزالة HTML tags لو وُجدت
+  return text.replace(/<[^>]+>/g, '').trim() || null;
+}
+
+/**
+ * يجلب JSON من AlQuran.cloud مع fallback متعدد:
+ *  1) quran.com (CORS-safe) — للإصدارات المدعومة
+ *  2) AlQuran.cloud مباشرة — على native
+ *  3) AllOrigins proxy — fallback مجاني وموثوق
+ *  4) CORS-Anywhere — fallback أخير
+ */
+async function fetchAlQuranCloudJson(directUrl: string, edition?: string, surahId?: number, ayahNumber?: number): Promise<any> {
+  // ── محاولة 1: quran.com (CORS-safe دائماً)
+  if (edition && surahId && ayahNumber) {
     try {
-      return await fetchJsonWithTimeout(proxyUrl(directUrl));
-    } catch {
-      throw primaryErr;
-    }
+      const qcText = await fetchFromQuranCom(edition, surahId, ayahNumber);
+      if (qcText) {
+        // نُعيد كـ shape متوافق مع الكود الحالي
+        return { data: { text: qcText } };
+      }
+    } catch {}
+  }
+
+  // ── محاولة 2: AlQuran.cloud مباشرة (native أو web)
+  try {
+    return await fetchJsonWithTimeout(directUrl, 8000);
+  } catch {}
+
+  // ── محاولة 3: allorigins.win proxy (مجاني وموثوق)
+  try {
+    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(directUrl)}`;
+    const res = await fetchJsonWithTimeout(proxyUrl, 8000);
+    // allorigins يُعيد { contents: '...json...' }
+    if (res?.contents) return JSON.parse(res.contents);
+  } catch {}
+
+  // ── محاولة 4: corsproxy.io كآخر محاولة
+  try {
+    const proxyUrl2 = `https://corsproxy.io/?url=${encodeURIComponent(directUrl)}`;
+    return await fetchJsonWithTimeout(proxyUrl2, 8000);
+  } catch (err) {
+    throw err;
   }
 }
+
 
 export type TafsirEdition  =
   | 'ar.muyassar'
@@ -203,10 +242,9 @@ export async function getAyahText(
       if (cleanedFootnotes) text += `\n\n${cleanedFootnotes}`;
     }
   } else {
-    // المسار: AlQuran.cloud (للميسّر، الجلالين، القرطبي، والترجمات)
-    // مع fallback تلقائي عبر CORS proxy لو الـ direct فشل (يحدث على بعض الشبكات)
+    // المسار: AlQuran.cloud مع fallback تلقائي لـ quran.com وproxies متعددة
     const directUrl = `${API_BASE}/ayah/${surahId}:${ayahNumber}/${edition}`;
-    const json = await fetchAlQuranCloudJson(directUrl);
+    const json = await fetchAlQuranCloudJson(directUrl, edition, surahId, ayahNumber);
     text = json?.data?.text ?? '';
   }
 

@@ -1,83 +1,153 @@
 /**
- * شاشة جلسة الاختبار - تعرض الأسئلة واحداً تلو الآخر وتجمع النقاط.
- *
- * تدفّق العمل:
- *  1. تستلم params من شاشة Hub (level, juzs, total)
- *  2. تحضّر الأسئلة عبر generateQuiz (يأخذ ثوانٍ معدودة لجلب نصوص الآيات)
- *  3. تعرض كل سؤال + تتلقى الإجابة + تظهر تغذية راجعة فورية
- *  4. عند انتهاء كل الأسئلة تعرض ملخّصاً وتحفظ في quizStore
+ * شاشة جلسة الاختبار — نسخة محسّنة:
+ * ✅ مؤقت زمني (30 ثانية/سؤال) مع شريط تقدم لوني
+ * ✅ Streak مرئي أثناء الجلسة
+ * ✅ Haptic feedback عند الإجابة
+ * ✅ عرض خاص لأسئلة ترتيب الآيات (كل خيار في بطاقة)
+ * ✅ returnKeyType + onSubmitEditing لأسئلة الكتابة
+ * ✅ شاشة ملخص تفصيلية بعد الانتهاء (الصحيح والخاطئ)
+ * ✅ شاشة تحميل محسّنة مع تقدم مرئي
+ * ✅ زر "بدء جديد" vs "العودة للقائمة" بوظيفتين مختلفتين
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, ActivityIndicator, TextInput } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  View, StyleSheet, Pressable, ScrollView, ActivityIndicator,
+  TextInput, Vibration, Platform,
+} from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  ArrowRight, Check, X, ChevronLeft, ChevronRight, Sparkles, Flame, Trophy, Target, Award, AlertCircle,
+  ArrowRight, Check, X, ChevronLeft, ChevronRight, Sparkles, Flame,
+  Trophy, Target, Clock, AlertCircle, BookOpen, RotateCcw,
 } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
-import { Text, Card, Button, ProgressBar } from '@components/ui';
-import { OrnamentalRule } from '@components/ornaments';
+import { Text, Button } from '@components/ui';
 import { generateQuiz, answersMatch, computeSessionStats } from '@services/quiz';
 import { useQuizStore } from '@store/index';
-import { useT } from '@store/languageStore';
 import { QuizQuestion, QuizLevel, QuizAnswer } from '@/types/index';
 import { arabicNumber } from '@data/surahs';
 
+// ── ثوابت ──
+const TIMER_SECONDS = 30;
+const EMERALD = '#0A3D38';
+const GOLD    = '#B8923B';
+
 export default function QuizSessionScreen() {
-  const t = useTheme();
-  const tr = useT();
+  const t      = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{ level: string; juzs: string; total: string; mode?: string }>();
-  const recordSession = useQuizStore((s) => s.recordSession);
+  const recordSession = useQuizStore(s => s.recordSession);
 
-  const level = (params.level as QuizLevel) ?? 'beginner';
-  const juzs = useMemo(() => {
-    if (!params.juzs) return [];
-    return params.juzs.split(',').map((x) => Number(x.trim())).filter((x) => x >= 1 && x <= 30);
-  }, [params.juzs]);
-  const totalQuestions = Math.max(1, Math.min(30, Number(params.total) || 8));
-  // 🎯 mode الكويز: algorithmic (افتراضي) | curated | mixed
-  const mode = (params.mode === 'curated' || params.mode === 'mixed') ? params.mode : 'algorithmic';
+  const level  = (params.level as QuizLevel) ?? 'beginner';
+  const juzs   = (params.juzs ?? '').split(',').map(x => Number(x.trim())).filter(x => x >= 1 && x <= 30);
+  const totalQ = Math.max(1, Math.min(30, Number(params.total) || 10));
+  const mode   = (params.mode === 'curated' || params.mode === 'mixed') ? params.mode : 'algorithmic';
 
-  const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [idx, setIdx] = useState(0);
-  const [answers, setAnswers] = useState<QuizAnswer[]>([]);
+  // ── حالة التحميل ──
+  const [questions,  setQuestions]  = useState<QuizQuestion[] | null>(null);
+  const [loadError,  setLoadError]  = useState<string | null>(null);
+  const [loadStage,  setLoadStage]  = useState('جارٍ تحضير الأسئلة...');
+
+  // ── حالة الجلسة ──
+  const [idx,            setIdx]            = useState(0);
+  const [answers,        setAnswers]        = useState<QuizAnswer[]>([]);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
-  const [typedAnswer, setTypedAnswer] = useState('');
-  const [revealed, setRevealed] = useState(false);
-  const [finished, setFinished] = useState(false);
-  const startedAtRef = useRef(Date.now());
-  const questionStartRef = useRef(Date.now());
+  const [typedAnswer,    setTypedAnswer]    = useState('');
+  const [revealed,       setRevealed]       = useState(false);
+  const [finished,       setFinished]       = useState(false);
 
-  // تحضير الأسئلة عند التحميل
+  // ── سلسلة الإجابات الصحيحة (streak) ──
+  const [currentStreak, setCurrentStreak] = useState(0);
+  const [bestStreakNow,  setBestStreakNow] = useState(0);
+
+  // ── المؤقت ──
+  const [timerLeft, setTimerLeft] = useState(TIMER_SECONDS);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const startedAtRef      = useRef(Date.now());
+  const questionStartRef  = useRef(Date.now());
+  const inputRef          = useRef<TextInput>(null);
+
+  // ── شاشة الملخص التفصيلية ──
+  const [showSummary, setShowSummary] = useState(false);
+
+  // ─── تحميل الأسئلة ───
   useEffect(() => {
     let mounted = true;
-    setQuestions(null);
-    setLoadError(null);
-    generateQuiz({ level, juzs, totalQuestions, mode })
-      .then((qs) => {
+    setLoadStage('جارٍ تحميل آيات القرآن الكريم...');
+    const timer = setTimeout(() => mounted && setLoadStage('جارٍ بناء الأسئلة...'), 1500);
+    generateQuiz({ level, juzs, totalQuestions: totalQ, mode })
+      .then(qs => {
+        clearTimeout(timer);
         if (!mounted) return;
         if (qs.length === 0) {
-          setLoadError(tr('quiz.failedToLoad'));
+          setLoadError('لا توجد أسئلة متاحة للنطاق المحدد.\nجرّب اختيار جزء أكبر أو مستوى مختلف.');
         } else {
           setQuestions(qs);
           questionStartRef.current = Date.now();
         }
       })
-      .catch(() => mounted && setLoadError(tr('quiz.failedToLoad')));
-    return () => { mounted = false; };
+      .catch(() => mounted && setLoadError('تعذّر تحضير الأسئلة. تحقق من اتصالك بالإنترنت.'));
+    return () => { mounted = false; clearTimeout(timer); };
   }, []);
 
-  // ====== Loading state ======
+  // ─── المؤقت الزمني ───
+  const stopTimer = useCallback(() => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+  }, []);
+
+  const startTimer = useCallback(() => {
+    stopTimer();
+    setTimerLeft(TIMER_SECONDS);
+    timerRef.current = setInterval(() => {
+      setTimerLeft(prev => {
+        if (prev <= 1) {
+          stopTimer();
+          // انتهى الوقت — تسجيل إجابة خاطئة تلقائياً
+          setAnswers(ans => {
+            const next = [...ans];
+            if (!next[idx]) {
+              next[idx] = { questionId: '', correct: false, userAnswer: undefined, timeMs: TIMER_SECONDS * 1000 };
+            }
+            return next;
+          });
+          setRevealed(true);
+          haptic('wrong');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }, [idx, stopTimer]);
+
+  useEffect(() => {
+    if (questions && !revealed && !finished) startTimer();
+    return stopTimer;
+  }, [idx, questions, finished]);
+
+  useEffect(() => { if (revealed) stopTimer(); }, [revealed]);
+
+  // ─── Haptic feedback ───
+  function haptic(type: 'correct' | 'wrong') {
+    if (Platform.OS === 'android') {
+      Vibration.vibrate(type === 'correct' ? 40 : [0, 30, 50, 30]);
+    }
+  }
+
+  // ─── شاشة التحميل ───
   if (loadError) {
     return (
-      <View style={[styles.center, { flex: 1, backgroundColor: t.colors.background, padding: 24 }]}>
-        <AlertCircle size={40} color={t.colors.error} />
-        <Text variant="subtitle" style={{ marginTop: 14 }}>{tr('quiz.failedToLoad')}</Text>
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
-          <Button label={tr('common.retry')} onPress={() => router.replace(`/quiz/session?level=${level}&juzs=${juzs.join(',')}&total=${totalQuestions}`)} />
-          <Button label={tr('quiz.backToHub')} variant="outline" onPress={() => router.back()} />
+      <View style={[styles.center, { flex: 1, backgroundColor: t.colors.background, padding: 28 }]}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, backgroundColor: t.colors.error + '18', alignItems: 'center', justifyContent: 'center', marginBottom: 16 }}>
+          <AlertCircle size={36} color={t.colors.error} />
+        </View>
+        <Text variant="subtitle" align="center" style={{ marginBottom: 8 }}>تعذّر تحضير الأسئلة</Text>
+        <Text variant="caption" color={t.colors.textSecondary} align="center" style={{ marginBottom: 24, lineHeight: 22 }}>
+          {loadError}
+        </Text>
+        <View style={{ gap: 10, width: '100%' }}>
+          <Button label="إعادة المحاولة" iconLeft={<RotateCcw size={16} color={t.colors.onPrimary} />} onPress={() => router.replace(`/quiz/session?level=${level}&juzs=${juzs.join(',')}&total=${totalQ}&mode=${mode}`)} fullWidth />
+          <Button label="العودة للاختبارات" variant="outline" onPress={() => router.back()} fullWidth />
         </View>
       </View>
     );
@@ -85,56 +155,178 @@ export default function QuizSessionScreen() {
 
   if (!questions) {
     return (
-      <View style={[styles.center, { flex: 1, backgroundColor: t.colors.background, padding: 24 }]}>
-        <ActivityIndicator color={t.colors.accent} size="large" />
-        <Text variant="subtitle" style={{ marginTop: 14 }}>{tr('quiz.preparing')}</Text>
-        <Text variant="caption" color={t.colors.textSecondary} align="center" style={{ marginTop: 4 }}>
-          {tr('quiz.preparingDesc')}
+      <View style={[styles.center, { flex: 1, backgroundColor: t.colors.background }]}>
+        <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: EMERALD + '18', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
+          <BookOpen size={38} color={EMERALD} />
+        </View>
+        <ActivityIndicator color={EMERALD} size="large" style={{ marginBottom: 16 }} />
+        <Text variant="subtitle" style={{ color: EMERALD, fontWeight: '700' }}>جارٍ تحضير اختبارك</Text>
+        <Text variant="caption" color={t.colors.textSecondary} align="center" style={{ marginTop: 8, maxWidth: 220, lineHeight: 22 }}>
+          {loadStage}
         </Text>
       </View>
     );
   }
 
-  // ====== Finished state - summary screen ======
+  // ─── شاشة الملخص التفصيلي ───
+  if (showSummary) {
+    const correctAnswers  = answers.filter(a => a.correct);
+    const wrongAnswers    = answers.filter(a => !a.correct);
+    return (
+      <View style={{ flex: 1, backgroundColor: t.colors.background }}>
+        <View style={[styles.topBar, { borderBottomColor: t.colors.borderGold }]}>
+          <Pressable onPress={() => setShowSummary(false)} hitSlop={10} style={[styles.iconBtn, { borderColor: t.colors.border }]}>
+            <ArrowRight size={18} color={t.colors.textPrimary} strokeWidth={1.6} />
+          </Pressable>
+          <Text style={{ flex: 1, textAlign: 'center', fontWeight: '800', fontSize: 16, color: t.colors.textPrimary }}>
+            مراجعة الإجابات
+          </Text>
+          <View style={[styles.iconBtn, { borderColor: 'transparent' }]} />
+        </View>
+
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+          {/* ملخص سريع */}
+          <View style={[styles.summaryTopRow, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
+            <SummaryBadge value={arabicNumber(correctAnswers.length)} label="صحيحة" color="#3F8F6E" />
+            <View style={{ width: 1, height: 40, backgroundColor: t.colors.border }} />
+            <SummaryBadge value={arabicNumber(wrongAnswers.length)} label="خاطئة" color={t.colors.error} />
+            <View style={{ width: 1, height: 40, backgroundColor: t.colors.border }} />
+            <SummaryBadge
+              value={questions.length > 0 ? `${Math.round((correctAnswers.length / questions.length) * 100)}%` : '0%'}
+              label="الدقة" color={EMERALD}
+            />
+          </View>
+
+          {/* الأسئلة الخاطئة أولاً */}
+          {wrongAnswers.length > 0 && (
+            <>
+              <Text style={[styles.summarySection, { color: t.colors.error }]}>❌ الأسئلة التي أخطأت فيها</Text>
+              {questions.map((q, i) => {
+                if (answers[i]?.correct !== false) return null;
+                return (
+                  <ReviewCard
+                    key={q.id}
+                    question={q}
+                    answer={answers[i]}
+                    questionIndex={i}
+                    isCorrect={false}
+                    t={t}
+                  />
+                );
+              })}
+            </>
+          )}
+
+          {/* الأسئلة الصحيحة */}
+          {correctAnswers.length > 0 && (
+            <>
+              <Text style={[styles.summarySection, { color: '#3F8F6E' }]}>✅ الأسئلة الصحيحة</Text>
+              {questions.map((q, i) => {
+                if (answers[i]?.correct !== true) return null;
+                return (
+                  <ReviewCard
+                    key={q.id}
+                    question={q}
+                    answer={answers[i]}
+                    questionIndex={i}
+                    isCorrect={true}
+                    t={t}
+                  />
+                );
+              })}
+            </>
+          )}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ─── شاشة النتيجة النهائية ───
   if (finished) {
-    const stats = computeSessionStats(answers.map((a, i) => ({ correct: a.correct, questionPoints: questions[i]?.points ?? 10 })));
-    const acc = questions.length > 0 ? Math.round((stats.correctCount / questions.length) * 100) : 0;
+    const stats  = computeSessionStats(answers.map((a, i) => ({ correct: a.correct, questionPoints: questions[i]?.points ?? 10 })));
+    const acc    = questions.length > 0 ? Math.round((stats.correctCount / questions.length) * 100) : 0;
     const passed = acc >= 60;
 
     return (
       <View style={{ flex: 1, backgroundColor: t.colors.background }}>
         <LinearGradient
-          colors={passed ? ['#10B981', '#059669', '#047857'] : ['#7C3AED', '#5B21B6', '#3730A3']}
+          colors={passed ? [EMERALD, '#0F4A41', '#1B4039'] : ['#5B21B6', '#7C3AED', '#4C1D95']}
           style={styles.finishHero}
         >
-          {passed ? <Sparkles size={60} color="#fff" /> : <Trophy size={60} color="#fff" />}
-          <Text style={[styles.finishTitle, { color: '#fff' }]}>
-            {passed ? tr('quiz.greatWork') : tr('quiz.sessionComplete')}
-          </Text>
-          <View style={{ marginTop: 12 }}>
-            <OrnamentalRule width={140} color="#fff" variant="rosette" />
+          {/* نقاط ذهبية زخرفية */}
+          <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            {[...Array(8)].map((_, i) => (
+              <View key={i} style={{
+                position: 'absolute',
+                top: 20 + (i * 55) % 260,
+                left: 10 + (i * 70) % 340,
+                width: 4, height: 4, borderRadius: 2,
+                backgroundColor: `rgba(184,146,59,${0.1 + (i % 4) * 0.07})`,
+              }} />
+            ))}
+            <View style={{ position: 'absolute', top: 0, left: 30, right: 30, height: 1, backgroundColor: 'rgba(184,146,59,0.3)' }} />
+            <View style={{ position: 'absolute', bottom: 0, left: 30, right: 30, height: 1, backgroundColor: 'rgba(184,146,59,0.3)' }} />
           </View>
-          <Text style={[styles.finishBigPoints, { color: '#fff' }]}>+{arabicNumber(stats.totalPoints)}</Text>
-          <Text style={[styles.finishPointsLabel, { color: 'rgba(255,255,255,0.8)' }]}>{tr('quiz.points')}</Text>
+
+          <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(184,146,59,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: GOLD + '60' }}>
+            {passed ? <Sparkles size={40} color={GOLD} /> : <Trophy size={40} color={GOLD} />}
+          </View>
+
+          <Text style={[styles.finishTitle, { color: '#fff', marginTop: 16 }]}>
+            {passed ? 'أداء رائع! 🎉' : 'أحسنت المحاولة'}
+          </Text>
+
+          <Text style={[styles.finishBigPoints, { color: GOLD }]}>+{arabicNumber(stats.totalPoints)}</Text>
+          <Text style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', letterSpacing: 2, fontWeight: '700', marginTop: -6 }}>نقطة</Text>
 
           <View style={styles.finishStatsRow}>
-            <FinishStat icon={<Check size={16} color="#fff" />} label={tr('quiz.accuracy')} value={`${acc}%`} />
-            <FinishStat icon={<Flame size={16} color="#fff" />} label={tr('quiz.bestStreakInSession')} value={arabicNumber(stats.bestStreak)} />
-            <FinishStat icon={<Target size={16} color="#fff" />} label={tr('quiz.questions')} value={`${arabicNumber(stats.correctCount)}/${arabicNumber(questions.length)}`} />
+            <FinishStat icon={<Check size={14} color={GOLD} />} label="الدقة"    value={`${acc}%`} gold={GOLD} />
+            <View style={{ width: 1, height: 32, backgroundColor: 'rgba(184,146,59,0.3)' }} />
+            <FinishStat icon={<Flame size={14} color={GOLD} />} label="أفضل سلسلة" value={arabicNumber(bestStreakNow)} gold={GOLD} />
+            <View style={{ width: 1, height: 32, backgroundColor: 'rgba(184,146,59,0.3)' }} />
+            <FinishStat icon={<Target size={14} color={GOLD} />} label="الإجابات" value={`${arabicNumber(stats.correctCount)}/${arabicNumber(questions.length)}`} gold={GOLD} />
           </View>
         </LinearGradient>
 
-        <View style={{ padding: 16, gap: 12 }}>
-          <Button label={tr('quiz.startNew')} iconLeft={<Sparkles size={18} color={t.colors.onPrimary} />} onPress={() => router.replace('/quiz')} fullWidth />
-          <Button label={tr('quiz.backToHub')} variant="outline" onPress={() => router.replace('/quiz')} fullWidth />
+        <View style={{ padding: 20, gap: 10 }}>
+          <Button
+            label="مراجعة الإجابات"
+            iconLeft={<BookOpen size={17} color={t.colors.onPrimary} />}
+            onPress={() => setShowSummary(true)}
+            fullWidth
+          />
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <View style={{ flex: 1 }}>
+              <Button
+                label="اختبار جديد"
+                iconLeft={<Sparkles size={16} color={EMERALD} />}
+                variant="outline"
+                onPress={() => router.replace('/quiz')}
+                fullWidth
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button
+                label="إعادة هذا الاختبار"
+                iconLeft={<RotateCcw size={16} color={EMERALD} />}
+                variant="outline"
+                onPress={() => router.replace(`/quiz/session?level=${level}&juzs=${juzs.join(',')}&total=${totalQ}&mode=${mode}` as any)}
+                fullWidth
+              />
+            </View>
+          </View>
         </View>
       </View>
     );
   }
 
-  // ====== Active question state ======
-  const current = questions[idx];
-  const progress = (idx + (revealed ? 1 : 0.5)) / questions.length;
+  // ─── حالة السؤال النشط ───
+  const current  = questions[idx];
+  const progress = (idx + (revealed ? 1 : 0)) / questions.length;
+  const timerPct = timerLeft / TIMER_SECONDS;
+  const timerColor = timerLeft <= 8 ? t.colors.error : timerLeft <= 15 ? '#F59E0B' : '#3F8F6E';
+  const isArrange = current.kind === 'arrangeAyahs';
+  const isTyping  = current.type === 'typing';
 
   const handleSelectOption = (i: number) => {
     if (revealed) return;
@@ -146,7 +338,7 @@ export default function QuizSessionScreen() {
     let correct = false;
     let userAnswer: string | number | undefined;
 
-    if (current.type === 'typing') {
+    if (isTyping) {
       if (!typedAnswer.trim()) return;
       userAnswer = typedAnswer.trim();
       correct = answersMatch(typedAnswer, current.correctAnswer ?? '');
@@ -156,66 +348,38 @@ export default function QuizSessionScreen() {
       correct = selectedOption === current.correctIndex;
     }
 
+    haptic(correct ? 'correct' : 'wrong');
+
+    const newStreak = correct ? currentStreak + 1 : 0;
+    setCurrentStreak(newStreak);
+    setBestStreakNow(prev => Math.max(prev, newStreak));
+
     const timeMs = Date.now() - questionStartRef.current;
     const newAnswer: QuizAnswer = { questionId: current.id, correct, userAnswer, timeMs };
-    // حفظ الإجابة بمفتاح index بدل push (لدعم الرجوع والتعديل)
-    setAnswers((prev) => {
-      const next = [...prev];
-      next[idx] = newAnswer;
-      return next;
-    });
+    setAnswers(prev => { const n = [...prev]; n[idx] = newAnswer; return n; });
     setRevealed(true);
+    stopTimer();
   };
 
-  /**
-   * استرجاع حالة الإجابة لسؤال محدد - يُستخدم لما المستخدم يرجع للسابق.
-   */
   const restoreStateForIndex = (newIdx: number) => {
     const stored = answers[newIdx];
     if (stored) {
-      // مُجاب عليه - أظهر الحالة كاملة
       setRevealed(true);
-      if (typeof stored.userAnswer === 'number') {
-        setSelectedOption(stored.userAnswer);
-        setTypedAnswer('');
-      } else if (typeof stored.userAnswer === 'string') {
-        setTypedAnswer(stored.userAnswer);
-        setSelectedOption(null);
-      } else {
-        setSelectedOption(null);
-        setTypedAnswer('');
-      }
+      if (typeof stored.userAnswer === 'number') { setSelectedOption(stored.userAnswer); setTypedAnswer(''); }
+      else if (typeof stored.userAnswer === 'string') { setTypedAnswer(stored.userAnswer); setSelectedOption(null); }
+      else { setSelectedOption(null); setTypedAnswer(''); }
     } else {
-      // مش مُجاب عليه - حالة فاضية
-      setRevealed(false);
-      setSelectedOption(null);
-      setTypedAnswer('');
+      setRevealed(false); setSelectedOption(null); setTypedAnswer('');
     }
     questionStartRef.current = Date.now();
   };
 
-  const handlePrevious = () => {
-    if (idx === 0) return;
-    const newIdx = idx - 1;
-    setIdx(newIdx);
-    restoreStateForIndex(newIdx);
-  };
-
   const handleNext = () => {
     if (idx >= questions.length - 1) {
-      // إنهاء الجلسة وحفظها
-      const finalAnswers: QuizAnswer[] = answers.filter(Boolean);
+      const finalAnswers = answers.filter(Boolean);
       const stats = computeSessionStats(finalAnswers.map((a, i) => ({ correct: a.correct, questionPoints: questions[i]?.points ?? 10 })));
       recordSession(
-        {
-          startedAt: startedAtRef.current,
-          finishedAt: Date.now(),
-          level,
-          juzs,
-          correctCount: stats.correctCount,
-          totalQuestions: questions.length,
-          points: stats.totalPoints,
-        },
+        { startedAt: startedAtRef.current, finishedAt: Date.now(), level, juzs, correctCount: stats.correctCount, totalQuestions: questions.length, points: stats.totalPoints },
         stats.bestStreak,
       );
       setFinished(true);
@@ -226,18 +390,53 @@ export default function QuizSessionScreen() {
     restoreStateForIndex(newIdx);
   };
 
+  const handlePrevious = () => {
+    if (idx === 0) return;
+    const newIdx = idx - 1;
+    setIdx(newIdx);
+    restoreStateForIndex(newIdx);
+  };
+
   const renderOption = (option: string, i: number) => {
     const isSelected = selectedOption === i;
-    const isCorrect = revealed && i === current.correctIndex;
-    const isWrong = revealed && isSelected && i !== current.correctIndex;
+    const isCorrect  = revealed && i === current.correctIndex;
+    const isWrong    = revealed && isSelected && i !== current.correctIndex;
+    const isArabicQ  = ['nextAyah', 'previousAyah', 'completeVerse', 'verseBeginning', 'ayahEnding', 'firstAyahOfSurah', 'lastAyahOfSurah'].includes(current.kind);
 
     let borderColor = t.colors.border;
-    let bgColor = t.colors.surface;
-    let textColor = t.colors.textPrimary;
-    if (isCorrect)        { borderColor = t.colors.success; bgColor = t.colors.success + '14'; textColor = t.colors.success; }
-    else if (isWrong)     { borderColor = t.colors.error;   bgColor = t.colors.error + '14';   textColor = t.colors.error; }
-    else if (isSelected)  { borderColor = t.colors.accent;  bgColor = t.colors.accent + '14'; }
+    let bgColor     = t.colors.surface;
+    let textColor   = t.colors.textPrimary;
+    if (isCorrect)        { borderColor = '#3F8F6E'; bgColor = '#3F8F6E14'; textColor = '#3F8F6E'; }
+    else if (isWrong)     { borderColor = t.colors.error; bgColor = t.colors.error + '14'; textColor = t.colors.error; }
+    else if (isSelected)  { borderColor = EMERALD; bgColor = EMERALD + '10'; }
 
+    // ─── عرض خاص لأسئلة ترتيب الآيات ───
+    if (isArrange) {
+      const lines = option.split('\n');
+      return (
+        <Pressable
+          key={i}
+          onPress={() => handleSelectOption(i)}
+          disabled={revealed}
+          style={[styles.arrangeOptionBtn, { borderColor, backgroundColor: bgColor }]}
+        >
+          {lines.map((line, li) => (
+            <View key={li} style={[styles.arrangeLineRow, li > 0 && { borderTopColor: borderColor + '40', borderTopWidth: StyleSheet.hairlineWidth }]}>
+              <Text style={{ fontSize: 11, fontWeight: '800', color: isCorrect ? '#3F8F6E' : isWrong ? t.colors.error : EMERALD, minWidth: 18 }}>
+                {line.split('.')[0]}.
+              </Text>
+              <Text style={{ flex: 1, fontSize: 13, fontFamily: t.fontFamilies.arabicQuran, color: textColor, lineHeight: 26, textAlign: 'right' }}>
+                {line.split('.').slice(1).join('.').trim()}
+              </Text>
+            </View>
+          ))}
+          {isCorrect && <Check size={16} color="#3F8F6E" style={{ alignSelf: 'flex-end', marginTop: 4 }} />}
+          {isWrong   && <X    size={16} color={t.colors.error} style={{ alignSelf: 'flex-end', marginTop: 4 }} />}
+        </Pressable>
+      );
+    }
+
+    // ─── الخيارات العادية ───
     return (
       <Pressable
         key={i}
@@ -247,177 +446,203 @@ export default function QuizSessionScreen() {
       >
         <Text style={{
           flex: 1,
-          fontSize: current.type === 'truefalse' ? 18 : 16,
+          fontSize: current.type === 'truefalse' ? 17 : 14,
           fontWeight: '600',
           color: textColor,
           textAlign: 'center',
-          fontFamily: ['nextAyah', 'previousAyah', 'completeVerse', 'verseBeginning', 'ayahEnding', 'firstAyahOfSurah', 'lastAyahOfSurah'].includes(current.kind) ? t.fontFamilies.arabicQuran : undefined,
+          lineHeight: isArabicQ ? 34 : 22,
+          fontFamily: isArabicQ ? t.fontFamilies.arabicQuran : undefined,
         }}>
           {option}
         </Text>
-        {isCorrect ? <Check size={20} color={t.colors.success} /> : null}
-        {isWrong   ? <X size={20} color={t.colors.error} /> : null}
+        {isCorrect && <Check size={18} color="#3F8F6E" />}
+        {isWrong   && <X    size={18} color={t.colors.error} />}
       </Pressable>
     );
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      {/* الترويسة + شريط التقدّم */}
-      <View style={[styles.topBar, { borderBottomColor: t.colors.borderGold }]}>
+
+      {/* ── الترويسة ── */}
+      <View style={[styles.topBar, { borderBottomColor: t.colors.borderGold, backgroundColor: t.colors.background }]}>
         <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.iconBtn, { borderColor: t.colors.border }]}>
           <ArrowRight size={18} color={t.colors.textPrimary} strokeWidth={1.6} />
         </Pressable>
-        <View style={{ flex: 1, marginHorizontal: 12 }}>
-          <ProgressBar value={progress} color={t.colors.accent} height={8} />
-          <Text variant="caption" color={t.colors.textSecondary} align="center" style={{ marginTop: 4 }}>
-            {tr('quiz.question')} {arabicNumber(idx + 1)} {tr('quiz.of')} {arabicNumber(questions.length)}
+
+        {/* شريط التقدم الرئيسي */}
+        <View style={{ flex: 1, marginHorizontal: 10 }}>
+          <View style={[styles.progressTrack, { backgroundColor: t.colors.border }]}>
+            <View style={[styles.progressFill, { width: `${progress * 100}%`, backgroundColor: EMERALD }]} />
+          </View>
+          <Text variant="caption" color={t.colors.textSecondary} align="center" style={{ marginTop: 4, fontSize: 11 }}>
+            {arabicNumber(idx + 1)} / {arabicNumber(questions.length)}
           </Text>
         </View>
-        <View style={[styles.iconBtn, { borderColor: 'transparent' }]} />
+
+        {/* Streak + نقاط */}
+        <View style={{ alignItems: 'center', gap: 2 }}>
+          {currentStreak >= 2 && (
+            <View style={[styles.streakBadge, { backgroundColor: GOLD + '20' }]}>
+              <Flame size={11} color={GOLD} />
+              <Text style={{ fontSize: 12, fontWeight: '800', color: GOLD }}>{arabicNumber(currentStreak)}</Text>
+            </View>
+          )}
+          <Text style={{ fontSize: 11, fontWeight: '700', color: t.colors.textTertiary }}>
+            +{arabicNumber(current.points)}
+          </Text>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 30 }}>
-        {/* السؤال */}
-        <Card padding={t.spacing.lg} elevation="sm" bordered>
-          <Text variant="caption" color={t.colors.accent} style={{ letterSpacing: 2, fontWeight: '700' }}>
-            ◇  +{arabicNumber(current.points)} {tr('quiz.points')}  ◇
-          </Text>
-          <Text variant="subtitle" align="center" style={{ marginTop: 10, lineHeight: 28 }}>
+      {/* ── شريط المؤقت ── */}
+      {!revealed && (
+        <View style={{ paddingHorizontal: 16, paddingVertical: 4 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Clock size={12} color={timerColor} />
+            <View style={[styles.timerTrack, { backgroundColor: t.colors.border, flex: 1 }]}>
+              <View style={[styles.timerFill, { width: `${timerPct * 100}%`, backgroundColor: timerColor }]} />
+            </View>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: timerColor, minWidth: 20, textAlign: 'center' }}>
+              {arabicNumber(timerLeft)}
+            </Text>
+          </View>
+        </View>
+      )}
+
+      <ScrollView
+        contentContainerStyle={{ padding: 16, paddingBottom: 30 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── بطاقة السؤال ── */}
+        <View style={[styles.questionCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold }]}>
+          {/* شريط الجزء والنوع */}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <View style={[styles.kindBadge, { backgroundColor: EMERALD + '12', borderColor: EMERALD + '30' }]}>
+              <Text style={{ fontSize: 10, color: EMERALD, fontWeight: '800' }}>
+                {kindLabel(current.kind)}
+              </Text>
+            </View>
+            <Text style={{ fontSize: 11, color: GOLD, fontWeight: '700' }}>
+              ◆ +{arabicNumber(current.points)} نقطة ◆
+            </Text>
+          </View>
+
+          <Text style={{ fontSize: 16, fontWeight: '700', color: t.colors.textPrimary, textAlign: 'center', lineHeight: 28 }}>
             {current.prompt}
           </Text>
 
-          {/* السياق (نص الآية إن وُجدت) */}
+          {/* السياق (نص الآية) */}
           {current.context ? (
             <View style={[styles.contextBox, { backgroundColor: t.colors.surfaceAlt, borderColor: t.colors.borderGold }]}>
-              <Text
-                style={{
-                  fontSize: 22,
-                  lineHeight: 44,
-                  textAlign: 'center',
-                  fontFamily: t.fontFamilies.arabicQuran,
-                  color: t.colors.textPrimary,
-                  fontWeight: '500',
-                }}
-              >
+              <Text style={{
+                fontSize: current.kind === 'arrangeAyahs' ? 13 : 21,
+                lineHeight: current.kind === 'arrangeAyahs' ? 24 : 42,
+                textAlign: 'center',
+                fontFamily: current.kind === 'arrangeAyahs' ? undefined : t.fontFamilies.arabicQuran,
+                color: t.colors.textPrimary,
+                fontWeight: '500',
+              }}>
                 {current.context}
               </Text>
             </View>
           ) : null}
-        </Card>
+        </View>
 
-        {/* الخيارات */}
-        {current.type === 'typing' ? (
-          <View style={{ marginTop: 18 }}>
+        {/* ── الخيارات ── */}
+        {isTyping ? (
+          <View style={{ marginTop: 16 }}>
             <TextInput
+              ref={inputRef}
               value={typedAnswer}
               onChangeText={setTypedAnswer}
               editable={!revealed}
-              placeholder={tr('quiz.typeAnswer')}
+              placeholder="اكتب إجابتك هنا..."
               placeholderTextColor={t.colors.textTertiary}
-              style={[
-                styles.textInput,
-                {
-                  borderColor: revealed
-                    ? (answersMatch(typedAnswer, current.correctAnswer ?? '') ? t.colors.success : t.colors.error)
-                    : t.colors.border,
-                  color: t.colors.textPrimary,
-                  fontFamily: t.fontFamilies.arabicQuran,
-                  textAlign: 'center',
-                },
-              ]}
+              returnKeyType="done"
+              onSubmitEditing={handleCheck}
+              style={[styles.textInput, {
+                borderColor: revealed
+                  ? (answersMatch(typedAnswer, current.correctAnswer ?? '') ? '#3F8F6E' : t.colors.error)
+                  : t.colors.border,
+                color: t.colors.textPrimary,
+                fontFamily: t.fontFamilies.arabicQuran,
+                backgroundColor: t.colors.surface,
+              }]}
             />
+            {revealed && !answersMatch(typedAnswer, current.correctAnswer ?? '') && (
+              <View style={[styles.correctAnswerBox, { backgroundColor: '#3F8F6E14', borderColor: '#3F8F6E40' }]}>
+                <Text style={{ fontSize: 11, color: t.colors.textSecondary, fontWeight: '600' }}>الإجابة الصحيحة:</Text>
+                <Text style={{ fontSize: 19, fontFamily: t.fontFamilies.arabicQuran, color: '#3F8F6E', marginTop: 4, textAlign: 'center' }}>
+                  {current.correctAnswer}
+                </Text>
+              </View>
+            )}
           </View>
         ) : (
-          <View style={{ marginTop: 14, gap: 10 }}>
+          <View style={{ marginTop: 12, gap: isArrange ? 8 : 8 }}>
             {current.options?.map((opt, i) => renderOption(opt, i))}
           </View>
         )}
 
-        {/* لافتة الإجابة */}
-        {revealed ? (
+        {/* ── لافتة التغذية الراجعة ── */}
+        {revealed && (
           <View style={[styles.feedbackBox, {
-            backgroundColor: (answers[idx]?.correct ? t.colors.success : t.colors.error) + '14',
-            borderColor: answers[idx]?.correct ? t.colors.success : t.colors.error,
+            backgroundColor: (answers[idx]?.correct ? '#3F8F6E' : t.colors.error) + '12',
+            borderColor:     answers[idx]?.correct ? '#3F8F6E40' : t.colors.error + '40',
           }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {answers[idx]?.correct ? (
-                <Check size={18} color={t.colors.success} />
-              ) : (
-                <X size={18} color={t.colors.error} />
+              {answers[idx]?.correct
+                ? <Check size={16} color="#3F8F6E" />
+                : <X     size={16} color={t.colors.error} />}
+              <Text style={{ fontWeight: '800', fontSize: 14, color: answers[idx]?.correct ? '#3F8F6E' : t.colors.error }}>
+                {answers[idx]?.correct ? '✓ إجابة صحيحة!' : '✗ إجابة خاطئة'}
+              </Text>
+              {answers[idx]?.correct && currentStreak >= 3 && (
+                <View style={[styles.streakBadge, { backgroundColor: GOLD + '20' }]}>
+                  <Flame size={10} color={GOLD} />
+                  <Text style={{ fontSize: 11, fontWeight: '800', color: GOLD }}>سلسلة {arabicNumber(currentStreak)}!</Text>
+                </View>
               )}
-              <Text variant="subtitle" color={answers[idx]?.correct ? t.colors.success : t.colors.error}>
-                {answers[idx]?.correct ? tr('quiz.correct') : tr('quiz.wrong')}
-              </Text>
             </View>
-            {!answers[idx]?.correct && current.type === 'typing' ? (
-              <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 6 }}>
-                {tr('quiz.correctAnswer')} {current.correctAnswer}
-              </Text>
-            ) : null}
             {current.explanation ? (
-              <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 6 }}>
+              <Text style={{ fontSize: 12, color: t.colors.textSecondary, marginTop: 6, lineHeight: 20 }}>
                 {current.explanation}
               </Text>
             ) : null}
           </View>
-        ) : null}
+        )}
 
-        {/* أزرار التنقّل */}
-        <View style={{ marginTop: 18 }}>
+        {/* ── أزرار التنقل ── */}
+        <View style={{ marginTop: 14 }}>
           {!revealed ? (
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              {idx > 0 ? (
-                <Pressable
-                  onPress={handlePrevious}
-                  style={({ pressed }) => [
-                    styles.navBtn,
-                    {
-                      borderColor: t.colors.border,
-                      backgroundColor: t.colors.surface,
-                      opacity: pressed ? 0.85 : 1,
-                    },
-                  ]}
-                >
-                  <ChevronRight size={18} color={t.colors.textSecondary} strokeWidth={2.2} />
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textSecondary }}>
-                    السابق
-                  </Text>
+              {idx > 0 && (
+                <Pressable onPress={handlePrevious} style={[styles.navBtn, { borderColor: t.colors.border, backgroundColor: t.colors.surface }]}>
+                  <ChevronRight size={17} color={t.colors.textSecondary} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: t.colors.textSecondary }}>السابق</Text>
                 </Pressable>
-              ) : null}
+              )}
               <View style={{ flex: 1 }}>
                 <Button
-                  label={tr('quiz.checkAnswer')}
+                  label="تحقق من الإجابة"
                   onPress={handleCheck}
-                  disabled={current.type === 'typing' ? !typedAnswer.trim() : selectedOption === null}
+                  disabled={isTyping ? !typedAnswer.trim() : selectedOption === null}
                   fullWidth
                 />
               </View>
             </View>
           ) : (
             <View style={{ flexDirection: 'row', gap: 10 }}>
-              {idx > 0 ? (
-                <Pressable
-                  onPress={handlePrevious}
-                  style={({ pressed }) => [
-                    styles.navBtn,
-                    {
-                      borderColor: t.colors.border,
-                      backgroundColor: t.colors.surface,
-                      opacity: pressed ? 0.85 : 1,
-                    },
-                  ]}
-                >
-                  <ChevronRight size={18} color={t.colors.textSecondary} strokeWidth={2.2} />
-                  <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textSecondary }}>
-                    السابق
-                  </Text>
+              {idx > 0 && (
+                <Pressable onPress={handlePrevious} style={[styles.navBtn, { borderColor: t.colors.border, backgroundColor: t.colors.surface }]}>
+                  <ChevronRight size={17} color={t.colors.textSecondary} />
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: t.colors.textSecondary }}>السابق</Text>
                 </Pressable>
-              ) : null}
+              )}
               <View style={{ flex: 1 }}>
                 <Button
-                  label={idx >= questions.length - 1 ? tr('quiz.finish') : tr('quiz.next')}
-                  iconLeft={<ChevronLeft size={18} color={t.colors.onPrimary} />}
+                  label={idx >= questions.length - 1 ? 'انهِ الاختبار' : 'السؤال التالي'}
+                  iconLeft={<ChevronLeft size={17} color={t.colors.onPrimary} />}
                   onPress={handleNext}
                   fullWidth
                 />
@@ -425,77 +650,201 @@ export default function QuizSessionScreen() {
             </View>
           )}
         </View>
+
+        {/* dots تقدم الأسئلة */}
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 4, marginTop: 18, flexWrap: 'wrap' }}>
+          {questions.map((_, i) => {
+            const done     = answers[i] !== undefined;
+            const correct  = answers[i]?.correct;
+            const isCurrent = i === idx;
+            return (
+              <View
+                key={i}
+                style={{
+                  width: isCurrent ? 18 : 7,
+                  height: 7,
+                  borderRadius: 4,
+                  backgroundColor: isCurrent
+                    ? EMERALD
+                    : done
+                      ? (correct ? '#3F8F6E' : t.colors.error)
+                      : t.colors.border,
+                }}
+              />
+            );
+          })}
+        </View>
       </ScrollView>
     </View>
   );
 }
 
-const FinishStat: React.FC<{ icon: React.ReactNode; label: string; value: string }> = ({ icon, label, value }) => (
+// ── تسمية نوع السؤال ──
+function kindLabel(kind: string): string {
+  const map: Record<string, string> = {
+    whichSurah: 'تعرّف السورة', whichJuz: 'تعرّف الجزء',
+    isFromSurah: 'صح/خطأ', ayahPosition: 'رقم الآية',
+    nextAyah: 'الآية التالية', previousAyah: 'الآية السابقة',
+    firstWordOfNext: 'أول كلمة', completeVerse: 'أكمل الآية',
+    verseBeginning: 'بداية الآية', ayahEnding: 'نهاية الآية',
+    typeNextWord: 'الكلمة التالية', fillBlank: 'أكمل الفراغ',
+    meccanMedinan: 'مكية/مدنية', verseCount: 'عدد الآيات',
+    surahBefore: 'السورة السابقة', surahAfter: 'السورة التالية',
+    firstAyahOfSurah: 'أول آية', lastAyahOfSurah: 'آخر آية',
+    surahOrder: 'ترتيب السورة', whichPage: 'رقم الصفحة',
+    wordCountAyah: 'عدد الكلمات', arrangeAyahs: 'ترتيب الآيات',
+    muqattaat: 'حروف مقطّعة', longestSurah: 'الأطول/الأقصر',
+    pageCountSurah: 'صفحات السورة',
+  };
+  return map[kind] ?? kind;
+}
+
+// ── مكونات مساعدة ──
+
+const FinishStat: React.FC<{ icon: React.ReactNode; label: string; value: string; gold: string }> = ({ icon, label, value, gold }) => (
   <View style={{ flex: 1, alignItems: 'center' }}>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
       {icon}
-      <Text style={{ fontSize: 10, color: 'rgba(255,255,255,0.85)', letterSpacing: 1 }}>{label}</Text>
+      <Text style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', letterSpacing: 0.8, fontWeight: '600' }}>{label}</Text>
     </View>
-    <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff', marginTop: 4 }}>{value}</Text>
+    <Text style={{ fontSize: 17, fontWeight: '800', color: '#fff', marginTop: 3 }}>{value}</Text>
+  </View>
+);
+
+const SummaryBadge: React.FC<{ value: string; label: string; color: string }> = ({ value, label, color }) => (
+  <View style={{ flex: 1, alignItems: 'center', paddingVertical: 12 }}>
+    <Text style={{ fontSize: 24, fontWeight: '800', color }}>{value}</Text>
+    <Text style={{ fontSize: 11, color: '#888', fontWeight: '600', marginTop: 2 }}>{label}</Text>
+  </View>
+);
+
+const ReviewCard: React.FC<{
+  question: QuizQuestion; answer: QuizAnswer;
+  questionIndex: number; isCorrect: boolean; t: any;
+}> = ({ question, answer, questionIndex, isCorrect, t }) => (
+  <View style={[styles.reviewCard, {
+    backgroundColor: isCorrect ? '#3F8F6E08' : t.colors.error + '08',
+    borderColor: isCorrect ? '#3F8F6E30' : t.colors.error + '30',
+  }]}>
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+      <View style={{ width: 26, height: 26, borderRadius: 13, backgroundColor: isCorrect ? '#3F8F6E20' : t.colors.error + '20', alignItems: 'center', justifyContent: 'center', marginTop: 2 }}>
+        {isCorrect ? <Check size={13} color="#3F8F6E" /> : <X size={13} color={t.colors.error} />}
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={{ fontSize: 12, fontWeight: '700', color: t.colors.textSecondary, marginBottom: 4 }}>
+          س{arabicNumber(questionIndex + 1)}: {kindLabel(question.kind)}
+        </Text>
+        <Text style={{ fontSize: 13, color: t.colors.textPrimary, lineHeight: 22 }}>{question.prompt}</Text>
+        {question.context && (
+          <Text style={{ fontSize: 12, color: t.colors.textSecondary, fontFamily: t.fontFamilies.arabicQuran, lineHeight: 26, marginTop: 4, padding: 8, backgroundColor: t.colors.surfaceAlt, borderRadius: 6 }}>
+            {question.context.length > 80 ? question.context.slice(0, 80) + '...' : question.context}
+          </Text>
+        )}
+        {question.explanation && (
+          <Text style={{ fontSize: 11, color: t.colors.textTertiary, marginTop: 6, lineHeight: 18 }}>{question.explanation}</Text>
+        )}
+      </View>
+    </View>
   </View>
 );
 
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14, paddingTop: 50, paddingBottom: 12,
+    gap: 8, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+  center:  { alignItems: 'center', justifyContent: 'center' },
 
-  center: { alignItems: 'center', justifyContent: 'center' },
+  progressTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressFill:  { height: '100%', borderRadius: 3 },
+
+  timerTrack: { height: 5, borderRadius: 3, overflow: 'hidden' },
+  timerFill:  { height: '100%', borderRadius: 3 },
+
+  streakBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8,
+  },
+
+  questionCard: {
+    padding: 18, borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 2,
+  },
+  kindBadge: {
+    paddingHorizontal: 9, paddingVertical: 3,
+    borderRadius: 6, borderWidth: 1,
+  },
 
   contextBox: {
-    marginTop: 14, padding: 16,
-    borderWidth: 1, borderRadius: 8,
+    marginTop: 14, padding: 14,
+    borderWidth: 1, borderRadius: 12,
   },
 
   optionBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 14,
-    borderWidth: 1.5, borderRadius: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 13,
+    borderWidth: 1.5, borderRadius: 12,
+  },
+
+  arrangeOptionBtn: {
+    padding: 12, borderWidth: 1.5, borderRadius: 14, gap: 4,
+  },
+  arrangeLineRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 8,
+    paddingVertical: 5,
   },
 
   navBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1.5,
-    borderRadius: 12,
-    minWidth: 110,
-    justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 14, paddingVertical: 12,
+    borderWidth: 1.5, borderRadius: 12,
+    minWidth: 100, justifyContent: 'center',
   },
 
   textInput: {
-    fontSize: 22, lineHeight: 32,
+    fontSize: 20, lineHeight: 32,
     paddingHorizontal: 16, paddingVertical: 14,
-    borderWidth: 1.5, borderRadius: 8,
+    borderWidth: 1.5, borderRadius: 12,
+    textAlign: 'center',
+  },
+  correctAnswerBox: {
+    marginTop: 10, padding: 14, borderRadius: 12,
+    borderWidth: 1, alignItems: 'center',
   },
 
   feedbackBox: {
-    marginTop: 16, padding: 14,
-    borderWidth: 1, borderRadius: 8,
+    marginTop: 14, padding: 14,
+    borderWidth: 1, borderRadius: 12,
   },
 
   finishHero: {
-    paddingTop: 80, paddingBottom: 50,
-    paddingHorizontal: 24,
-    alignItems: 'center',
+    paddingTop: 72, paddingBottom: 44,
+    paddingHorizontal: 24, alignItems: 'center',
   },
-  finishTitle: { fontSize: 28, fontWeight: '700', marginTop: 16 },
-  finishBigPoints: { fontSize: 64, fontWeight: '300', marginTop: 14, letterSpacing: -2 },
-  finishPointsLabel: { fontSize: 12, letterSpacing: 3, fontWeight: '700', marginTop: -4 },
-
+  finishTitle:      { fontSize: 26, fontWeight: '700' },
+  finishBigPoints:  { fontSize: 58, fontWeight: '300', letterSpacing: -2, marginTop: 12 },
   finishStatsRow: {
-    flexDirection: 'row', gap: 12,
-    marginTop: 24,
-    width: '100%',
+    flexDirection: 'row', gap: 8,
+    marginTop: 22, width: '100%',
+    paddingTop: 18,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(184,146,59,0.3)',
+  },
+
+  summaryTopRow: {
+    flexDirection: 'row', borderRadius: 16,
+    borderWidth: 1, overflow: 'hidden', marginBottom: 8,
+  },
+  summarySection: {
+    fontSize: 13, fontWeight: '800', marginVertical: 14,
+    letterSpacing: 0.5,
+  },
+  reviewCard: {
+    padding: 14, borderRadius: 14,
+    borderWidth: 1, marginBottom: 8,
   },
 });

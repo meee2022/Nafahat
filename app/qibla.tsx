@@ -11,7 +11,7 @@
  * Identity: أخضر + ذهبي. السهم ذهبي، البوصلة بحدود ذهبية، الكعبة في رأس السهم.
  */
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, StyleSheet, Pressable, Dimensions, ScrollView, Modal, Animated } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Modal, Animated, useWindowDimensions } from 'react-native';
 import { Magnetometer } from 'expo-sensors';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -24,11 +24,12 @@ import { useT } from '@store/languageStore';
 import { calculateQiblaBearing, distanceToKaaba, describeBearingAr, PRESET_CITIES } from '@services/qibla';
 import { OrnamentalRule } from '@components/ornaments';
 
-const SIZE = Math.min(Dimensions.get('window').width - 64, 320);
 export default function QiblaScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const SIZE = Math.min(width - 64, 320);
   
   // 🌍 الموقع الموحّد من settingsStore
   const userLocation = useSettingsStore((s) => s.location);

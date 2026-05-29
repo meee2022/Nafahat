@@ -8,7 +8,11 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/((?!_expo|assets|favicon\\.ico|robots\\.txt|.*\\.(?:png|jpg|jpeg|gif|svg|webp|ico|css|js|json|woff|woff2|ttf|otf|eot|mp3|mp4|webm)).*)",
+      "source": "/privacy-policy",
+      "destination": "/privacy-policy.html"
+    },
+    {
+      "source": "/((?!_expo|assets|favicon\\.ico|robots\\.txt|privacy-policy|.*\\.(?:html|png|jpg|jpeg|gif|svg|webp|ico|css|js|json|woff|woff2|ttf|otf|eot|mp3|mp4|webm)).*)",
       "destination": "/"
     }
   ],

@@ -28,3 +28,8 @@ Thumbs.db
 
 # misc
 .cache/
+
+# source PDFs / scratch (مراجع محلية لا تُرفع)
+*.pdf
+_pdf_dump.txt
+_pdf_meta.txt

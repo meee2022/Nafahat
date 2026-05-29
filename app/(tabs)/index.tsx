@@ -4,7 +4,8 @@
  */
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Dimensions, Image } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, useWindowDimensions, Image, Platform } from 'react-native';
+import { useResponsive } from '@hooks/useResponsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
@@ -73,6 +74,8 @@ export default function HomeScreen() {
   const tr = useT();
   const { lang } = useLanguage();
   const router = useRouter();
+  const { height: screenHeight } = useWindowDimensions();
+  const r = useResponsive();
   const location = useSettingsStore((s) => s.location);
   const isPremium = useSettingsStore((s) => s.isPremium);
   const authStatus = useAuthStore((s) => s.status);
@@ -173,10 +176,18 @@ export default function HomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          { paddingBottom: 100 },
+          r.isWide && { alignItems: 'center' },
+        ]}
+      >
+        {/* wrapper لتقييد العرض على الشاشات العريضة */}
+        <View style={r.isWide ? { width: '100%', maxWidth: r.contentMaxWidth } : undefined}>
         
         {/* 1. Hero Section - مستوحى من المصلي */}
-        <View style={[styles.hero, { paddingTop: Math.max(insets.top, 20) }]}>
+        <View style={[styles.hero, { paddingTop: Math.max(insets.top, 20), height: Math.min(380, screenHeight * 0.45) }]}>
           {/* خلفية متدرّجة + نقش هندسي ذهبي */}
           <LinearGradient
             colors={[t.colors.primary, '#0F4A41', '#062825']}
@@ -339,6 +350,7 @@ export default function HomeScreen() {
           {renderGrid(extraFeatures)}
         </View>
 
+        </View>{/* end wide wrapper */}
       </ScrollView>
     </View>
   );
@@ -383,7 +395,6 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 32,
     overflow: 'hidden',
     position: 'relative',
-    height: 380,
   },
   heroFrame: {
     position: 'absolute',

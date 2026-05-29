@@ -3,7 +3,7 @@
  * بطاقة محراب مركزية + شريط تقدم رفيع + أزرار دائرية معدنية.
  */
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Dimensions, Share, LayoutChangeEvent, GestureResponderEvent, AlertButton, Alert } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Share, LayoutChangeEvent, GestureResponderEvent, AlertButton, Alert } from 'react-native';
 import { useRouter, useRootNavigationState } from 'expo-router';
 import Svg, { Path, Circle, Defs, Pattern, Rect, LinearGradient as SvgGradient, Stop, G } from 'react-native-svg';
 import {
@@ -15,8 +15,6 @@ import { Text } from '@components/ui';
 import { useAudioStore, useReadingStore } from '@store/index';
 import { OrnamentalRule } from '@components/ornaments';
 import { useT } from '@store/languageStore';
-
-const W = Dimensions.get('window').width;
 
 const fmt = (ms: number) => {
   const total = Math.max(0, Math.floor(ms / 1000));

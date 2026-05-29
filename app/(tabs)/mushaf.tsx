@@ -16,6 +16,7 @@
  */
 import React, { useMemo } from 'react';
 import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { useResponsive } from '@hooks/useResponsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect, Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router';
@@ -45,6 +46,7 @@ export default function MushafHomeScreen() {
 
   // 🟢 آخر قراءة — الـ hero الأساسي
   const lastSurah = useMemo(() => lastRead ? getSurahById(lastRead.surahId) : null, [lastRead]);
+  const r = useResponsive();
 
   // 📿 آية اليوم
   const todayAyah = useMemo(() => {
@@ -85,7 +87,14 @@ export default function MushafHomeScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          { paddingBottom: 100 },
+          r.isWide && { alignItems: 'center' },
+        ]}
+      >
+        <View style={r.isWide ? { width: '100%', maxWidth: r.contentMaxWidth } : undefined}>
 
         {/* ═════════════ HERO: Continue Reading — أخضر premium ═════════════ */}
         <View style={[styles.hero, { paddingTop: Math.max(insets.top, 20) }]}>
@@ -267,6 +276,7 @@ export default function MushafHomeScreen() {
           </View>
         ) : null}
 
+        </View>{/* end wide wrapper */}
       </ScrollView>
     </View>
   );

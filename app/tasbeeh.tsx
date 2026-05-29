@@ -6,7 +6,7 @@
  * - زخارف محيطة بنبضات
  */
 import React from 'react';
-import { View, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle, G, Defs, RadialGradient, Stop, Line } from 'react-native-svg';
 import { ArrowRight, RotateCcw, Vibrate, Volume2, Settings2 } from 'lucide-react-native';
@@ -17,12 +17,12 @@ import { arabicNumber } from '@data/surahs';
 import { OrnamentalRule } from '@components/ornaments';
 import { useT } from '@store/languageStore';
 
-const SIZE = Math.min(Dimensions.get('window').width - 48, 340);
-
 export default function TasbeehScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const SIZE = Math.min(width - 48, 340);
   const { items, selectedId, select, increment, reset, todayCount } = useTasbeehStore();
   const incrementStats = useStatsStore((s) => s.incrementTasbeeh);
 

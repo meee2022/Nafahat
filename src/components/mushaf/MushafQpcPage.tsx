@@ -69,9 +69,12 @@ const MushafQpcPageImpl: React.FC<Props> = ({
   //   - heightBased: 15 سطر × lineHeight 1.7 + padding 20 يجب أن لا يتجاوز pageHeight
   //     → fontSize ≤ (pageHeight - 20) / (15 × 1.7) ≈ (pageHeight - 20) / 25.5
   //   نأخذ الأصغر من الاتنين عشان النص ما يتقصّش لا من الجنب ولا من تحت.
+  // سقف العرض أكبر على الشاشات العريضة (لوحي/أفقي واسع) لقراءة أكبر،
+  // مع بقاء قيد الارتفاع (heightBased) حارساً يمنع تجاوز النص للإطار.
+  const widthCap = pageWidth >= 700 ? 34 : 24;
   const fontSize = explicitFontSize ?? (() => {
     if (pageWidth === 0 || pageHeight === 0) return 18;
-    const widthBased  = Math.min(24, pageWidth / 18);
+    const widthBased  = Math.min(widthCap, pageWidth / 18);
     const heightBased = (pageHeight - 20) / 25.5;
     return Math.max(13, Math.min(widthBased, heightBased));
   })();

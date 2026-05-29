@@ -4,7 +4,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Pressable, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowRight, BellRing, BookOpen, Brain, Sunrise, Moon, AlertCircle, Check } from 'lucide-react-native';
+import { ArrowRight, BellRing, BookOpen, Brain, Sunrise, Moon, AlertCircle, Check, Volume2, ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card } from '@components/ui';
 import { OrnamentalRule } from '@components/ornaments';
@@ -179,6 +179,36 @@ export default function NotificationsScreen() {
             </Pressable>
           ))}
         </View>
+
+        {/* 🕌 تنبيهات الصلاة والأذان والإقامة */}
+        <View style={styles.sectionHead}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.eyebrow, { color: t.colors.accent }]}>الصلاة</Text>
+            <Text style={[styles.sectionTitle, { color: t.colors.textPrimary }]}>الأذان والإقامة</Text>
+          </View>
+        </View>
+
+        <Pressable
+          onPress={() => router.push('/prayer-times')}
+          accessibilityRole="button"
+          accessibilityLabel="إعدادات الأذان وتنبيهات الصلاة والإقامة"
+          style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
+        >
+          <Card padding={14} elevation="xs" bordered background={t.colors.accent + '08'}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View style={[styles.notifIcon, { backgroundColor: t.colors.accent + '14', borderColor: t.colors.accent }]}>
+                <Volume2 size={18} color={t.colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text variant="subtitle">تنبيهات الصلاة والأذان</Text>
+                <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
+                  فعّل الأذان التلقائي، اختر صوت الأذان، واضبط تنبيه الإقامة
+                </Text>
+              </View>
+              <ChevronLeft size={20} color={t.colors.textTertiary} />
+            </View>
+          </Card>
+        </Pressable>
 
         {/* الإعدادات */}
         <View style={styles.sectionHead}>

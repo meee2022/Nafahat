@@ -15,6 +15,7 @@ import {
   TextInput, Vibration, Platform,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowRight, Check, X, ChevronLeft, ChevronRight, Sparkles, Flame,
@@ -35,7 +36,14 @@ const GOLD    = '#B8923B';
 export default function QuizSessionScreen() {
   const t      = useTheme();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ level: string; juzs: string; total: string; mode?: string }>();
+
+  /** رجوع آمن: للخلف إن أمكن، وإلا إلى فهرس الاختبارات. */
+  const goBackSafe = useCallback(() => {
+    if (router.canGoBack?.()) router.back();
+    else router.replace('/quiz');
+  }, [router]);
   const recordSession = useQuizStore(s => s.recordSession);
 
   const level  = (params.level as QuizLevel) ?? 'beginner';
@@ -253,6 +261,16 @@ export default function QuizSessionScreen() {
           colors={passed ? [EMERALD, '#0F4A41', '#1B4039'] : ['#5B21B6', '#7C3AED', '#4C1D95']}
           style={styles.finishHero}
         >
+          {/* زر الرجوع */}
+          <Pressable
+            onPress={goBackSafe}
+            hitSlop={12}
+            style={[styles.finishBackBtn, { top: insets.top + 8 }]}
+            accessibilityLabel="رجوع"
+          >
+            <ArrowRight size={20} color="#fff" strokeWidth={2} />
+          </Pressable>
+
           {/* نقاط ذهبية زخرفية */}
           <View pointerEvents="none" style={StyleSheet.absoluteFill}>
             {[...Array(8)].map((_, i) => (
@@ -913,6 +931,13 @@ const styles = StyleSheet.create({
   finishHero: {
     paddingTop: 72, paddingBottom: 44,
     paddingHorizontal: 24, alignItems: 'center',
+  },
+  finishBackBtn: {
+    position: 'absolute', start: 16, zIndex: 10,
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
   },
   finishTitle:      { fontSize: 26, fontWeight: '700' },
   finishBigPoints:  { fontSize: 58, fontWeight: '300', letterSpacing: -2, marginTop: 12 },

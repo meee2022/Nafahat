@@ -8,7 +8,7 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, ActivityIndicator, Modal, FlatList, TextInput, Platform, PanResponder } from 'react-native';
+import { View, StyleSheet, Pressable, ActivityIndicator, Modal, FlatList, TextInput, Platform, PanResponder, I18nManager } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -481,11 +481,24 @@ export default function SurahDetail() {
         />
       ) : null}
 
-      {/* منطقتي السحب للتنقّل */}
+      {/* منطقتا اللمس للتنقّل بين الصفحات.
+          المصحف يُقرأ من اليمين: اللمس على يسار الشاشة فيزيائياً → الصفحة التالية،
+          واليمين → السابقة. نحسب الجانب بناءً على I18nManager لأن React Native
+          يعكس left/right تلقائياً في وضع RTL — فنضمن ثبات الموضع الفيزيائي. */}
       {pages && pages.length > 1 ? (
         <>
-          <Pressable onPress={goToPrevPage} disabled={currentPageIdx === 0} style={styles.swipeZoneRight} />
-          <Pressable onPress={goToNextPage} disabled={currentPageIdx === totalPages - 1} style={styles.swipeZoneLeft} />
+          {/* الجانب الأيسر فيزيائياً → التالية */}
+          <Pressable
+            onPress={goToNextPage}
+            disabled={currentPageIdx === totalPages - 1}
+            style={[styles.tapZoneEdge, I18nManager.isRTL ? { right: 0 } : { left: 0 }]}
+          />
+          {/* الجانب الأيمن فيزيائياً → السابقة */}
+          <Pressable
+            onPress={goToPrevPage}
+            disabled={currentPageIdx === 0}
+            style={[styles.tapZoneEdge, I18nManager.isRTL ? { left: 0 } : { right: 0 }]}
+          />
         </>
       ) : null}
 
@@ -1068,25 +1081,15 @@ const styles = StyleSheet.create({
   pageWrap: {
     flex: 1,
   },
-  // 👆 منطقتي اللمس للتنقّل بين الصفحات (شفافة - بدون أزرار مرئية)
-  swipeZoneRight: {
+  // 👆 منطقة اللمس للتنقّل بين الصفحات (شفافة - بدون أزرار مرئية).
+  //    الجانب (left/right) يُطبَّق inline بناءً على I18nManager لثبات الموضع الفيزيائي.
+  tapZoneEdge: {
     position: 'absolute',
     top: 0,
     bottom: 0,
-    right: 0,
     width: 60,
     zIndex: 100,
-    // فيه backgroundColor شفّاف للديباغ:
-    // backgroundColor: 'rgba(0, 255, 0, 0.1)',
-  },
-  swipeZoneLeft: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: 60,
-    zIndex: 100,
-    // backgroundColor: 'rgba(255, 0, 0, 0.1)',
+    // للديباغ: backgroundColor: 'rgba(0, 255, 0, 0.1)',
   },
   actionPanel: {
     marginTop: 22,

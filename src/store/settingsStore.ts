@@ -42,10 +42,16 @@ interface SettingsState {
   autoAdhanEnabled: boolean;
   /** صوت الأذان المختار. */
   adhanVoice: 'makkah' | 'madinah' | 'abdulbaset' | 'default';
+  /** هل تنبيه الإقامة مفعّل (تذكير بعد الأذان بعدد دقائق). */
+  iqamaEnabled: boolean;
+  /** عدد الدقائق بين الأذان والإقامة. */
+  iqamaOffsetMin: number;
 
   setNotifications: (v: boolean) => void;
   setAutoAdhan: (v: boolean) => void;
   setAdhanVoice: (v: 'makkah' | 'madinah' | 'abdulbaset' | 'default') => void;
+  setIqamaEnabled: (v: boolean) => void;
+  setIqamaOffsetMin: (m: number) => void;
   setAutoSaveTasmee: (v: boolean) => void;
   setCloudSync: (v: boolean) => void;
   setPreferredReciterId: (id: string) => void;
@@ -83,6 +89,8 @@ const DEFAULT = {
   mushafMode: 'qpc' as 'image' | 'text' | 'qpc',  // 🎯 QPC الافتراضي: مطابق لمصحف المدينة + تفاعلية كلمة-بكلمة
   autoAdhanEnabled: true,           // 🕌 الأذان التلقائي مفعّل افتراضياً
   adhanVoice: 'makkah' as 'makkah' | 'madinah' | 'abdulbaset' | 'default',
+  iqamaEnabled: false,              // 🕌 تنبيه الإقامة (معطّل افتراضياً)
+  iqamaOffsetMin: 10,               // ⏱️ 10 دقائق بين الأذان والإقامة افتراضياً
 };
 
 const persist = (s: Partial<SettingsState>) => {
@@ -99,6 +107,8 @@ const persist = (s: Partial<SettingsState>) => {
     mushafMode: s.mushafMode,
     autoAdhanEnabled: s.autoAdhanEnabled,
     adhanVoice: s.adhanVoice,
+    iqamaEnabled: s.iqamaEnabled,
+    iqamaOffsetMin: s.iqamaOffsetMin,
   };
   AsyncStorage.setItem(KEY, JSON.stringify(data)).catch(() => {});
 };
@@ -142,6 +152,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setAdhanVoice(v) {
     set({ adhanVoice: v });
+    persist(get());
+  },
+  setIqamaEnabled(v) {
+    set({ iqamaEnabled: v });
+    persist(get());
+  },
+  setIqamaOffsetMin(m) {
+    set({ iqamaOffsetMin: m });
     persist(get());
   },
   setPremium(v) {

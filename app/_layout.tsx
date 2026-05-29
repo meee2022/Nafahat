@@ -36,10 +36,24 @@ import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
 // عند الإقلاع نبدأ بـ RTL (لغة افتراضية عربية). languageStore يحدّث الاتجاه
 // لاحقاً بناءً على اختيار المستخدم المحفوظ.
+//
+// ⚠️ مشكلة أول تشغيل: على iOS/Android لا يُطبَّق forceRTL إلا بعد إعادة تحميل
+//    الحزمة — فأول فتح بعد التثبيت يظهر LTR والأيقونات معكوسة، ثم يُصلَح عند
+//    إعادة الفتح. الحل: نعيد التحميل مرة واحدة فوراً في الإنتاج عند اكتشاف
+//    أن RTL لم يُطبَّق بعد. forceRTL يُحفَظ في تخزين النظام فلا يتكرّر مستقبلاً.
 if (!I18nManager.isRTL) {
   try {
     I18nManager.allowRTL(true);
     I18nManager.forceRTL(true);
+    // في الإنتاج فقط (لا في dev/Expo Go حيث قد لا يُحفَظ الإعداد فيحدث loop)،
+    // وعلى الموبايل فقط (الويب يضبط الاتجاه عبر DOM أدناه بلا إعادة تحميل).
+    if (!__DEV__ && Platform.OS !== 'web') {
+      // تحميل expo-updates ديناميكياً لتفادي كسر الويب لو لم يكن متاحاً.
+      const Updates = require('expo-updates');
+      if (Updates?.reloadAsync) {
+        Updates.reloadAsync().catch(() => {});
+      }
+    }
   } catch {}
 }
 
@@ -403,7 +417,7 @@ function SplashView() {
           <G transform="translate(100, 56) scale(0.85)">
             <G transform="rotate(22.5 0 0)">
               <Rect x="-6" y="-6" width="12" height="12" fill="url(#goldGradient)" stroke="#8C7430" strokeWidth="0.5" />
-              <Rect x="-6" y="-6" width="12" height="12" fill="url(#goldGradient)" stroke="#8C7430" strokeWidth="0.5" transform="rotate(45)" transform-origin="0 0" />
+              <Rect x="-6" y="-6" width="12" height="12" fill="url(#goldGradient)" stroke="#8C7430" strokeWidth="0.5" transform="rotate(45)" transformOrigin="0 0" />
             </G>
             <Circle cx="0" cy="0" r="2.5" fill="#071F17" />
             <Circle cx="0" cy="0" r="1.2" fill="#F5EAC4" />
@@ -535,7 +549,7 @@ const AstrolabeSpinner: React.FC<{
               <Path d="M 0 -14 L 3.5 -4 L 14 0 L 3.5 4 L 0 14 L -3.5 4 L -14 0 L -3.5 -4 Z" fill="none" stroke="url(#goldGradient)" strokeWidth="0.8" />
             </G>
             <G transform="rotate(45 0 0)">
-              <Path d="M 0 -14 L 3.5 -4 L 14 0 L 3.5 4 L 0 14 L -3.5 4 L -14 0 L -3.5 -4 Z" fill="none" stroke="url(#goldGradient)" strokeWidth="0.5" opacity="0.7" transform="rotate(45)" transform-origin="0 0" />
+              <Path d="M 0 -14 L 3.5 -4 L 14 0 L 3.5 4 L 0 14 L -3.5 4 L -14 0 L -3.5 -4 Z" fill="none" stroke="url(#goldGradient)" strokeWidth="0.5" opacity="0.7" transform="rotate(45)" transformOrigin="0 0" />
             </G>
             {/* Center pointer hub */}
             <Circle cx="0" cy="0" r="3.5" fill="url(#goldGradient)" stroke="#8C7430" strokeWidth="0.5" />

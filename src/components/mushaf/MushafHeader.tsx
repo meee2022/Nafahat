@@ -83,16 +83,19 @@ const styles = StyleSheet.create({
   },
   cartouche: {
     flex: 1,
-    height: 30,
+    minHeight: 40,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   cartoucheText: {
-    fontSize: 13,
+    fontSize: 14,
+    lineHeight: 26,        // مساحة كافية لخط المصحف الطويل حتى لا يُقصّ
     fontWeight: '700',
-    marginTop: Platform.OS === 'ios' ? 1 : 0,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
 });

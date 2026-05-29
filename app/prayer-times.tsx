@@ -18,7 +18,16 @@ import { schedulePrayerNotifications, cancelAllPrayerNotifications, isAvailable 
 import { playAdhan, stopAdhan } from '@services/adhan';
 import { startAdhanScheduler, stopAdhanScheduler, updateAdhanTimes } from '@services/adhanScheduler';
 import { useSettingsStore } from '@store/index';
-import { Bell, BellOff, Volume2 } from 'lucide-react-native';
+import { Bell, BellOff, Volume2, ChevronDown, Check } from 'lucide-react-native';
+
+type AdhanVoiceId = 'makkah' | 'madinah' | 'abdulbaset' | 'default';
+
+const ADHAN_VOICES: { id: AdhanVoiceId; nameAr: string; descAr: string }[] = [
+  { id: 'makkah',     nameAr: 'الحرم المكّي',  descAr: 'أذان مكة المكرّمة' },
+  { id: 'madinah',    nameAr: 'الحرم النبوي',  descAr: 'أذان المدينة المنوّرة' },
+  { id: 'abdulbaset', nameAr: 'عبد الباسط',     descAr: 'أذان كلاسيكي مشهور' },
+  { id: 'default',    nameAr: 'أذان قصير',      descAr: 'الخيار الافتراضي' },
+];
 
 // إحداثيات افتراضية - مكة المكرّمة
 const DEFAULT_LOCATION = {
@@ -56,6 +65,7 @@ export default function PrayerTimesScreen() {
   const [now, setNow] = useState(new Date());
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [adhanPlaying, setAdhanPlaying] = useState(false);
+  const [showVoicePicker, setShowVoicePicker] = useState(false);
 
   // تحديث الوقت كل دقيقة (لإعادة حساب الـ countdown)
   useEffect(() => {
@@ -76,6 +86,12 @@ export default function PrayerTimesScreen() {
   // 🕌 الأذان التلقائي - يبدأ المُجدول لو مفعّل في الإعدادات
   const autoAdhanEnabled = useSettingsStore((s) => s.autoAdhanEnabled);
   const adhanVoice = useSettingsStore((s) => s.adhanVoice);
+  const setAutoAdhan = useSettingsStore((s) => s.setAutoAdhan);
+  const setAdhanVoice = useSettingsStore((s) => s.setAdhanVoice);
+  const iqamaEnabled = useSettingsStore((s) => s.iqamaEnabled);
+  const iqamaOffsetMin = useSettingsStore((s) => s.iqamaOffsetMin);
+  const setIqamaEnabled = useSettingsStore((s) => s.setIqamaEnabled);
+  const setIqamaOffsetMin = useSettingsStore((s) => s.setIqamaOffsetMin);
   useEffect(() => {
     if (autoAdhanEnabled) {
       startAdhanScheduler(times, adhanVoice);
@@ -138,62 +154,212 @@ export default function PrayerTimesScreen() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 40 }}>
         {/* صفّ التنبيهات + الأذان */}
         {notifAvailable() ? (
-          <View style={styles.actionsRow}>
-            <Pressable
-              onPress={async () => {
-                if (notifEnabled) {
-                  await cancelAllPrayerNotifications();
-                  setNotifEnabled(false);
-                  Alert.alert('✓ تم', 'تم إيقاف التذكيرات.');
-                } else {
-                  await schedulePrayerNotifications(times);
-                  setNotifEnabled(true);
-                  Alert.alert('✓ تم', '٥ صلوات + ٣ أذكار جُدْوِلَت يومياً.');
-                }
-              }}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                {
-                  backgroundColor: notifEnabled ? t.colors.success + '14' : t.colors.surface,
-                  borderColor: notifEnabled ? t.colors.success : t.colors.border,
-                  opacity: pressed ? 0.85 : 1,
-                },
-              ]}
-            >
-              {notifEnabled ? <Bell size={18} color={t.colors.success} /> : <BellOff size={18} color={t.colors.textSecondary} />}
-              <Text style={{ fontSize: 13, fontWeight: '700', color: notifEnabled ? t.colors.success : t.colors.textPrimary, marginStart: 8 }}>
-                {notifEnabled ? 'التنبيهات مُفعّلة' : 'فعّل تنبيهات الصلاة'}
-              </Text>
-            </Pressable>
-          </View>
+          <>
+            <View style={styles.actionsRow}>
+              <Pressable
+                onPress={async () => {
+                  if (notifEnabled) {
+                    await cancelAllPrayerNotifications();
+                    setNotifEnabled(false);
+                    Alert.alert('✓ تم', 'تم إيقاف التذكيرات.');
+                  } else {
+                    await schedulePrayerNotifications(times, { iqamaEnabled, iqamaOffsetMin });
+                    setNotifEnabled(true);
+                    Alert.alert('✓ تم', iqamaEnabled
+                      ? `٥ صلوات + إقامة (بعد ${iqamaOffsetMin} د) + ٣ أذكار جُدْوِلَت يومياً.`
+                      : '٥ صلوات + ٣ أذكار جُدْوِلَت يومياً.');
+                  }
+                }}
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  {
+                    backgroundColor: notifEnabled ? t.colors.success + '14' : t.colors.surface,
+                    borderColor: notifEnabled ? t.colors.success : t.colors.border,
+                    opacity: pressed ? 0.85 : 1,
+                  },
+                ]}
+              >
+                {notifEnabled ? <Bell size={18} color={t.colors.success} /> : <BellOff size={18} color={t.colors.textSecondary} />}
+                <Text style={{ fontSize: 13, fontWeight: '700', color: notifEnabled ? t.colors.success : t.colors.textPrimary, marginStart: 8 }}>
+                  {notifEnabled ? 'التنبيهات مُفعّلة' : 'فعّل تنبيهات الصلاة'}
+                </Text>
+              </Pressable>
+            </View>
+
+            {/* 🕌 تنبيه الإقامة */}
+            <Card padding={0} elevation="xs" bordered style={{ marginBottom: 10 }}>
+              <Pressable
+                onPress={async () => {
+                  const next = !iqamaEnabled;
+                  setIqamaEnabled(next);
+                  // أعد الجدولة فوراً لو التنبيهات مُفعّلة
+                  if (notifEnabled) {
+                    await schedulePrayerNotifications(times, { iqamaEnabled: next, iqamaOffsetMin });
+                  }
+                }}
+                style={({ pressed }) => [
+                  styles.voiceRow,
+                  { backgroundColor: pressed ? t.colors.surfaceAlt : 'transparent' },
+                ]}
+              >
+                <Bell size={20} color={iqamaEnabled ? t.colors.success : t.colors.textSecondary} />
+                <View style={{ flex: 1, marginStart: 12 }}>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textPrimary }}>
+                    تنبيه الإقامة
+                  </Text>
+                  <Text style={{ fontSize: 11, color: t.colors.textTertiary, marginTop: 2 }}>
+                    تذكير بعد الأذان بـ {iqamaOffsetMin} دقيقة
+                  </Text>
+                </View>
+                <View style={{
+                  width: 44, height: 26, borderRadius: 13, padding: 3,
+                  backgroundColor: iqamaEnabled ? t.colors.success : t.colors.border,
+                  alignItems: iqamaEnabled ? 'flex-end' : 'flex-start', justifyContent: 'center',
+                }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' }} />
+                </View>
+              </Pressable>
+
+              {/* اختيار عدد الدقائق */}
+              {iqamaEnabled ? (
+                <View style={[styles.voiceRow, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.colors.divider, flexWrap: 'wrap', gap: 8 }]}>
+                  {[5, 10, 15, 20, 25].map((mins) => {
+                    const active = iqamaOffsetMin === mins;
+                    return (
+                      <Pressable
+                        key={mins}
+                        onPress={async () => {
+                          setIqamaOffsetMin(mins);
+                          if (notifEnabled) {
+                            await schedulePrayerNotifications(times, { iqamaEnabled: true, iqamaOffsetMin: mins });
+                          }
+                        }}
+                        style={({ pressed }) => [
+                          styles.minChip,
+                          {
+                            backgroundColor: active ? t.colors.success : (pressed ? t.colors.surfaceAlt : t.colors.surface),
+                            borderColor: active ? t.colors.success : t.colors.border,
+                          },
+                        ]}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: active ? '#fff' : t.colors.textPrimary }}>
+                          {mins} د
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : null}
+            </Card>
+          </>
         ) : null}
 
-        <Pressable
-          onPress={async () => {
-            if (adhanPlaying) {
-              await stopAdhan();
-              setAdhanPlaying(false);
-            } else {
-              const ok = await playAdhan('makkah');
-              setAdhanPlaying(ok);
-              if (!ok) Alert.alert('عذراً', 'تعذّر تشغيل صوت الأذان.');
-            }
-          }}
-          style={({ pressed }) => [
-            styles.actionBtn,
-            {
-              backgroundColor: adhanPlaying ? t.colors.accent + '14' : t.colors.surface,
-              borderColor: adhanPlaying ? t.colors.accent : t.colors.border,
-              opacity: pressed ? 0.85 : 1,
-              marginBottom: 16,
-            },
-          ]}
-        >
-          <Volume2 size={18} color={adhanPlaying ? t.colors.accent : t.colors.textSecondary} />
-          <Text style={{ fontSize: 13, fontWeight: '700', color: adhanPlaying ? t.colors.accentDeep : t.colors.textPrimary, marginStart: 8 }}>
-            {adhanPlaying ? 'إيقاف الأذان' : 'استمع للأذان'}
-          </Text>
-        </Pressable>
+        {/* 🕌 لوحة الأذان: تفعيل تلقائي + اختيار الصوت + معاينة */}
+        <Card padding={0} elevation="xs" bordered style={{ marginBottom: 16 }}>
+          {/* تفعيل الأذان التلقائي */}
+          <Pressable
+            onPress={() => setAutoAdhan(!autoAdhanEnabled)}
+            style={({ pressed }) => [
+              styles.voiceRow,
+              { backgroundColor: pressed ? t.colors.surfaceAlt : 'transparent' },
+            ]}
+          >
+            <Volume2 size={20} color={autoAdhanEnabled ? t.colors.accent : t.colors.textSecondary} />
+            <View style={{ flex: 1, marginStart: 12 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textPrimary }}>
+                الأذان التلقائي
+              </Text>
+              <Text style={{ fontSize: 11, color: t.colors.textTertiary, marginTop: 2 }}>
+                يُؤذَّن تلقائياً عند دخول وقت كل صلاة
+              </Text>
+            </View>
+            {/* مفتاح بسيط */}
+            <View style={{
+              width: 44, height: 26, borderRadius: 13, padding: 3,
+              backgroundColor: autoAdhanEnabled ? t.colors.accent : t.colors.border,
+              alignItems: autoAdhanEnabled ? 'flex-end' : 'flex-start', justifyContent: 'center',
+            }}>
+              <View style={{ width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' }} />
+            </View>
+          </Pressable>
+
+          {/* اختيار صوت الأذان */}
+          <Pressable
+            onPress={() => setShowVoicePicker((v) => !v)}
+            style={({ pressed }) => [
+              styles.voiceRow,
+              {
+                borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.colors.divider,
+                backgroundColor: pressed ? t.colors.surfaceAlt : 'transparent',
+              },
+            ]}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textPrimary }}>
+                صوت الأذان
+              </Text>
+              <Text style={{ fontSize: 11, color: t.colors.accentDeep, marginTop: 2, fontWeight: '600' }}>
+                {ADHAN_VOICES.find((v) => v.id === adhanVoice)?.nameAr ?? 'الحرم المكّي'}
+              </Text>
+            </View>
+            <ChevronDown
+              size={18}
+              color={t.colors.textSecondary}
+              style={{ transform: [{ rotate: showVoicePicker ? '180deg' : '0deg' }] }}
+            />
+          </Pressable>
+
+          {showVoicePicker ? ADHAN_VOICES.map((v) => {
+            const active = adhanVoice === v.id;
+            return (
+              <Pressable
+                key={v.id}
+                onPress={() => { setAdhanVoice(v.id); }}
+                style={({ pressed }) => [
+                  styles.voiceOption,
+                  {
+                    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.colors.divider,
+                    backgroundColor: active ? t.colors.accent + '10' : (pressed ? t.colors.surfaceAlt : 'transparent'),
+                  },
+                ]}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 13, fontWeight: active ? '700' : '500', color: t.colors.textPrimary }}>
+                    {v.nameAr}
+                  </Text>
+                  <Text style={{ fontSize: 10, color: t.colors.textTertiary, marginTop: 1 }}>{v.descAr}</Text>
+                </View>
+                {/* معاينة الصوت */}
+                <Pressable
+                  hitSlop={8}
+                  onPress={async () => {
+                    const ok = await playAdhan(v.id);
+                    setAdhanPlaying(ok);
+                    if (!ok) Alert.alert('عذراً', 'تعذّر تشغيل صوت الأذان. تأكّد من الاتصال بالإنترنت.');
+                  }}
+                  style={({ pressed }) => [
+                    styles.previewBtn,
+                    { borderColor: t.colors.border, opacity: pressed ? 0.7 : 1 },
+                  ]}
+                >
+                  <Volume2 size={14} color={t.colors.accentDeep} />
+                  <Text style={{ fontSize: 11, fontWeight: '700', color: t.colors.accentDeep, marginStart: 4 }}>معاينة</Text>
+                </Pressable>
+                {active ? <Check size={18} color={t.colors.accent} style={{ marginStart: 10 }} /> : null}
+              </Pressable>
+            );
+          }) : null}
+
+          {/* إيقاف المعاينة لو شغّالة */}
+          {adhanPlaying ? (
+            <Pressable
+              onPress={async () => { await stopAdhan(); setAdhanPlaying(false); }}
+              style={{ padding: 12, alignItems: 'center', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.colors.divider }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: t.colors.accentDeep }}>إيقاف الأذان</Text>
+            </Pressable>
+          ) : null}
+        </Card>
 
         {/* الصلاة القادمة - hero */}
         <LinearGradient
@@ -354,6 +520,24 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     justifyContent: 'center',
+  },
+  voiceRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  voiceOption: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 12,
+  },
+  previewBtn: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 10, paddingVertical: 6,
+    borderRadius: 10, borderWidth: 1,
+  },
+  minChip: {
+    paddingHorizontal: 16, paddingVertical: 8,
+    borderRadius: 20, borderWidth: 1.5,
+    minWidth: 52, alignItems: 'center',
   },
   heroCard: {
     padding: 22,

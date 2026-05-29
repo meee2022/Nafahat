@@ -119,7 +119,16 @@ export const Button: React.FC<Props> = ({
       ) : (
         <>
           {iconLeft ? <View>{iconLeft}</View> : null}
-          <Text variant="button" color={v.fg} style={{ fontSize: sizes.fontSize }}>
+          {/* flexShrink + adjustsFontSizeToFit يمنعان قصّ النص العربي الطويل
+              عند حافة الأزرار الضيّقة (مثل زرّين متجاورين). */}
+          <Text
+            variant="button"
+            color={v.fg}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
+            style={{ fontSize: sizes.fontSize, flexShrink: 1, textAlign: 'center' }}
+          >
             {label}
           </Text>
           {iconRight ? <View>{iconRight}</View> : null}

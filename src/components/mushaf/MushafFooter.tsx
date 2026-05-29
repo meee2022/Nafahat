@@ -73,20 +73,25 @@ const styles = StyleSheet.create({
   },
   hizbLabel: {
     fontSize: 11,
+    lineHeight: 20,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0,     // العربية تتفكّك مع letterSpacing
     flex: 0,
   },
   pageBadge: {
-    width: 64,
-    height: 26,
+    minWidth: 64,
+    minHeight: 34,
     borderRadius: 10,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
   },
   pageNumber: {
     fontSize: 14,
+    lineHeight: 24,        // مساحة كافية لأرقام خط المصحف حتى لا تُقصّ
     fontWeight: '800',
+    includeFontPadding: false,
   },
 });

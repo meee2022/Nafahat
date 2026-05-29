@@ -11,6 +11,7 @@ import { Search } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, AppHeader } from '@components/ui';
 import { SurahListItem } from '@components/common';
+import { useResponsive } from '@hooks/useResponsive';
 import { OrnamentalRule } from '@components/ornaments';
 import { SURAHS, JUZ_LIST, HIZB_LIST, arabicNumber, JUZ_PAGE_STARTS, getSurahForPage } from '@data/surahs';
 import { useT } from '@store/languageStore';
@@ -150,11 +151,13 @@ const SurahFlatList: React.FC<{
   onItemPress: (id: number) => void;
   dividerColor: string;
   emptyTextColor: string;
-}> = ({ data, onItemPress, emptyTextColor }) => (
+}> = ({ data, onItemPress, emptyTextColor }) => {
+  const r = useResponsive();
+  return (
   <FlatList
     data={data}
     keyExtractor={(item) => String(item.id)}
-    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 4 }}
+    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 100, paddingTop: 4, maxWidth: r.contentMaxWidth, alignSelf: 'center', width: '100%' }}
     ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
     removeClippedSubviews={Platform.OS !== 'web'}
     initialNumToRender={12}
@@ -167,43 +170,55 @@ const SurahFlatList: React.FC<{
       </View>
     }
   />
-);
+  );
+};
 
-const JuzFlatList: React.FC<{ onItemPress: (juzId: number) => void }> = ({ onItemPress }) => (
-  <FlatList
-    data={JUZ_LIST}
-    numColumns={2}
-    keyExtractor={(j) => String(j.id)}
-    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
-    columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
-    renderItem={({ item }) => (
-      <JuzHizbCard
-        number={item.id}
-        title={item.nameAr}
-        kind="juz"
-        onPress={() => onItemPress(item.id)}
-      />
-    )}
-  />
-);
+const JuzFlatList: React.FC<{ onItemPress: (juzId: number) => void }> = ({ onItemPress }) => {
+  const r = useResponsive();
+  const cols = r.gridColumns(2);
+  return (
+    <FlatList
+      // المفتاح يتغيّر مع عدد الأعمدة لإجبار FlatList على إعادة البناء عند الدوران.
+      key={`juz-${cols}`}
+      data={JUZ_LIST}
+      numColumns={cols}
+      keyExtractor={(j) => String(j.id)}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80, maxWidth: r.contentMaxWidth, alignSelf: 'center', width: '100%' }}
+      columnWrapperStyle={{ gap: 12, marginBottom: 12 }}
+      renderItem={({ item }) => (
+        <JuzHizbCard
+          number={item.id}
+          title={item.nameAr}
+          kind="juz"
+          onPress={() => onItemPress(item.id)}
+        />
+      )}
+    />
+  );
+};
 
-const HizbFlatList: React.FC<{ onItemPress: (hizbId: number) => void }> = ({ onItemPress }) => (
-  <FlatList
-    data={HIZB_LIST}
-    numColumns={3}
-    keyExtractor={(h) => String(h.id)}
-    contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80 }}
-    columnWrapperStyle={{ gap: 10, marginBottom: 10 }}
-    renderItem={({ item }) => (
-      <JuzHizbCard
-        number={item.id}
-        title={item.nameAr}
-        kind="hizb"
-        onPress={() => onItemPress(item.id)}
-      />
-    )}
-  />
-);
+const HizbFlatList: React.FC<{ onItemPress: (hizbId: number) => void }> = ({ onItemPress }) => {
+  const r = useResponsive();
+  const cols = r.gridColumns(3);
+  return (
+    <FlatList
+      key={`hizb-${cols}`}
+      data={HIZB_LIST}
+      numColumns={cols}
+      keyExtractor={(h) => String(h.id)}
+      contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 80, maxWidth: r.contentMaxWidth, alignSelf: 'center', width: '100%' }}
+      columnWrapperStyle={{ gap: 10, marginBottom: 10 }}
+      renderItem={({ item }) => (
+        <JuzHizbCard
+          number={item.id}
+          title={item.nameAr}
+          kind="hizb"
+          onPress={() => onItemPress(item.id)}
+        />
+      )}
+    />
+  );
+};
 
 /**
  * بطاقة جزء/حزب مع رصيعة ذهبية بداخلها الرقم.

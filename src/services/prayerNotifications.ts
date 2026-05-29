@@ -1,8 +1,13 @@
 /**
  * خدمة جدولة إشعارات الصلوات اليومية المتكرّرة.
- * تستخدم expo-notifications إن كانت متاحة، وإلا تعمل graceful fallback.
  *
- * - الفجر/الظهر/العصر/المغرب/العشاء: 5 إشعارات يومية متكرّرة
+ * - على الموبايل (iOS/Android): تستخدم expo-notifications بإشعارات يومية متكرّرة.
+ * - على الويب: تستخدم Web Notifications API + جدولة بالـ setTimeout للصلوات
+ *   المتبقّية اليوم. ⚠️ على الويب تعمل فقط والتبويب/التطبيق مفتوح (لا يوجد
+ *   جدولة في الخلفية كما في الموبايل).
+ *
+ * المحتوى المُجَدْوَل:
+ * - الفجر/الظهر/العصر/المغرب/العشاء: 5 إشعارات يومية
  * - أذكار الصباح: بعد الفجر بـ ٣٠ دقيقة
  * - أذكار المساء: قبل المغرب بـ ٣٠ دقيقة
  * - تذكير بقراءة آية اليوم: بعد العشاء بـ ٣٠ دقيقة
@@ -10,14 +15,25 @@
 import { Platform } from 'react-native';
 import { PrayerTimes, PRAYER_NAMES_AR } from './prayerTimes';
 
+const isWeb = Platform.OS === 'web';
+
 let Notifications: any = null;
 try {
-  if (Platform.OS !== 'web') {
+  if (!isWeb) {
     Notifications = require('expo-notifications');
   }
 } catch {}
 
-export const isAvailable = (): boolean => !!Notifications && Platform.OS !== 'web';
+/** هل واجهة إشعارات المتصفح متاحة (ويب). */
+function webNotifSupported(): boolean {
+  return isWeb && typeof window !== 'undefined' && 'Notification' in window;
+}
+
+/** هل خدمة الإشعارات متاحة على المنصّة الحالية. */
+export const isAvailable = (): boolean => {
+  if (isWeb) return webNotifSupported();
+  return !!Notifications;
+};
 
 /** يحوّل "HH:MM" → { hour, minute } */
 function parseTime(t: string): { hour: number; minute: number } {
@@ -43,20 +59,96 @@ const NOTIF_IDS = {
   adhkarMorning:  'adhkar-morning',
   adhkarEvening:  'adhkar-evening',
   ayahOfDay:      'ayah-of-day',
+  iqamaFajr:      'iqama-fajr',
+  iqamaDhuhr:     'iqama-dhuhr',
+  iqamaAsr:       'iqama-asr',
+  iqamaMaghrib:   'iqama-maghrib',
+  iqamaIsha:      'iqama-isha',
 } as const;
 
-/** يلغي كل إشعارات الصلاة المُجَدْوَلة. */
-export async function cancelAllPrayerNotifications(): Promise<void> {
-  if (!isAvailable()) return;
-  try {
-    for (const id of Object.values(NOTIF_IDS)) {
-      await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
-    }
-  } catch {}
+/** خيارات الجدولة - تفعيل الإقامة وعدد دقائقها. */
+export interface ScheduleOptions {
+  iqamaEnabled?: boolean;
+  iqamaOffsetMin?: number;
 }
+
+/** الصلوات الخمس المفروضة (بدون الشروق) - تُستخدم للأذان والإقامة. */
+const FARD_PRAYERS: { key: keyof PrayerTimes; nameAr: string; adhanId: string; iqamaId: string }[] = [
+  { key: 'fajr',    nameAr: PRAYER_NAMES_AR.fajr,    adhanId: NOTIF_IDS.fajr,    iqamaId: NOTIF_IDS.iqamaFajr },
+  { key: 'dhuhr',   nameAr: PRAYER_NAMES_AR.dhuhr,   adhanId: NOTIF_IDS.dhuhr,   iqamaId: NOTIF_IDS.iqamaDhuhr },
+  { key: 'asr',     nameAr: PRAYER_NAMES_AR.asr,     adhanId: NOTIF_IDS.asr,     iqamaId: NOTIF_IDS.iqamaAsr },
+  { key: 'maghrib', nameAr: PRAYER_NAMES_AR.maghrib, adhanId: NOTIF_IDS.maghrib, iqamaId: NOTIF_IDS.iqamaMaghrib },
+  { key: 'isha',    nameAr: PRAYER_NAMES_AR.isha,    adhanId: NOTIF_IDS.isha,    iqamaId: NOTIF_IDS.iqamaIsha },
+];
+
+// ============== جدولة الويب (setTimeout) ==============
+
+/** مؤقّتات الويب النشطة - تُلغى عند إعادة الجدولة أو الإيقاف. */
+let webTimers: ReturnType<typeof setTimeout>[] = [];
+
+function clearWebTimers(): void {
+  for (const id of webTimers) clearTimeout(id);
+  webTimers = [];
+}
+
+/** يطلب إذن إشعارات المتصفح. */
+async function ensureWebPermission(): Promise<boolean> {
+  if (!webNotifSupported()) return false;
+  try {
+    if (Notification.permission === 'granted') return true;
+    if (Notification.permission === 'denied') return false;
+    const res = await Notification.requestPermission();
+    return res === 'granted';
+  } catch {
+    return false;
+  }
+}
+
+/** يجدول إشعاراً واحداً عبر setTimeout عند الساعة/الدقيقة اليوم (إن لم يَفُت بعد). */
+function scheduleWebAt(hour: number, minute: number, title: string, body: string): void {
+  const now = new Date();
+  const target = new Date();
+  target.setHours(hour, minute, 0, 0);
+  const delay = target.getTime() - now.getTime();
+  if (delay <= 0) return; // فات وقته اليوم
+  const id = setTimeout(() => {
+    try {
+      // eslint-disable-next-line no-new
+      new Notification(title, { body, tag: title });
+    } catch {}
+  }, delay);
+  webTimers.push(id);
+}
+
+async function scheduleWeb(times: PrayerTimes, opts: ScheduleOptions): Promise<void> {
+  const granted = await ensureWebPermission();
+  if (!granted) return;
+  clearWebTimers();
+
+  for (const p of FARD_PRAYERS) {
+    const { hour, minute } = parseTime(times[p.key]);
+    scheduleWebAt(hour, minute, `🕌 ${p.nameAr}`, `حان وقت أذان ${p.nameAr}`);
+
+    // تنبيه الإقامة بعد الأذان بعدد الدقائق المختار
+    if (opts.iqamaEnabled) {
+      const iq = addMinutes(times[p.key], opts.iqamaOffsetMin ?? 10);
+      scheduleWebAt(iq.hour, iq.minute, `🕌 إقامة ${p.nameAr}`, `حان وقت إقامة صلاة ${p.nameAr}`);
+    }
+  }
+
+  const m = addMinutes(times.fajr, 30);
+  scheduleWebAt(m.hour, m.minute, '🌅 أذكار الصباح', 'ابدأ يومك بحصن من ذكر الله');
+  const e = addMinutes(times.maghrib, -30);
+  scheduleWebAt(e.hour, e.minute, '🌙 أذكار المساء', 'لا تنسَ أذكار المساء قبل غروب الشمس');
+  const a = addMinutes(times.isha, 30);
+  scheduleWebAt(a.hour, a.minute, '📖 آية اليوم', 'لحظات تأمّل مع كتاب الله قبل النوم');
+}
+
+// ============== الواجهة العامّة ==============
 
 /** يطلب إذن الإشعارات إن لم يكن مُمنحاً. */
 export async function ensurePermission(): Promise<boolean> {
+  if (isWeb) return ensureWebPermission();
   if (!isAvailable()) return false;
   try {
     const { status: existing } = await Notifications.getPermissionsAsync();
@@ -68,11 +160,29 @@ export async function ensurePermission(): Promise<boolean> {
   }
 }
 
+/** يلغي كل إشعارات الصلاة المُجَدْوَلة. */
+export async function cancelAllPrayerNotifications(): Promise<void> {
+  if (isWeb) {
+    clearWebTimers();
+    return;
+  }
+  if (!isAvailable()) return;
+  try {
+    for (const id of Object.values(NOTIF_IDS)) {
+      await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+    }
+  } catch {}
+}
+
 /**
  * يجدول إشعارات الصلوات الخمس + أذكار + آية اليوم بناءً على مواقيت اليوم.
  * يلغي السابق ثم يُعيد الجدولة كاملة.
  */
-export async function schedulePrayerNotifications(times: PrayerTimes): Promise<void> {
+export async function schedulePrayerNotifications(times: PrayerTimes, opts: ScheduleOptions = {}): Promise<void> {
+  if (isWeb) {
+    await scheduleWeb(times, opts);
+    return;
+  }
   if (!isAvailable()) return;
   const granted = await ensurePermission();
   if (!granted) return;
@@ -80,20 +190,12 @@ export async function schedulePrayerNotifications(times: PrayerTimes): Promise<v
   // ألغِ السابق
   await cancelAllPrayerNotifications();
 
-  // جدول كل صلاة
-  const prayers: { id: string; key: keyof PrayerTimes; nameAr: string }[] = [
-    { id: NOTIF_IDS.fajr,    key: 'fajr',    nameAr: PRAYER_NAMES_AR.fajr },
-    { id: NOTIF_IDS.dhuhr,   key: 'dhuhr',   nameAr: PRAYER_NAMES_AR.dhuhr },
-    { id: NOTIF_IDS.asr,     key: 'asr',     nameAr: PRAYER_NAMES_AR.asr },
-    { id: NOTIF_IDS.maghrib, key: 'maghrib', nameAr: PRAYER_NAMES_AR.maghrib },
-    { id: NOTIF_IDS.isha,    key: 'isha',    nameAr: PRAYER_NAMES_AR.isha },
-  ];
-
-  for (const p of prayers) {
+  // جدول أذان + إقامة كل صلاة
+  for (const p of FARD_PRAYERS) {
     const { hour, minute } = parseTime(times[p.key]);
     try {
       await Notifications.scheduleNotificationAsync({
-        identifier: p.id,
+        identifier: p.adhanId,
         content: {
           title: `🕌 ${p.nameAr}`,
           body: `حان وقت أذان ${p.nameAr}`,
@@ -103,6 +205,23 @@ export async function schedulePrayerNotifications(times: PrayerTimes): Promise<v
         trigger: { hour, minute, repeats: true },
       });
     } catch {}
+
+    // تنبيه الإقامة بعد الأذان بعدد الدقائق المختار
+    if (opts.iqamaEnabled) {
+      const iq = addMinutes(times[p.key], opts.iqamaOffsetMin ?? 10);
+      try {
+        await Notifications.scheduleNotificationAsync({
+          identifier: p.iqamaId,
+          content: {
+            title: `🕌 إقامة ${p.nameAr}`,
+            body: `حان وقت إقامة صلاة ${p.nameAr}`,
+            sound: 'default',
+            data: { type: 'iqama', prayer: p.key },
+          },
+          trigger: { hour: iq.hour, minute: iq.minute, repeats: true },
+        });
+      } catch {}
+    }
   }
 
   // أذكار الصباح - بعد الفجر بـ ٣٠ دقيقة
@@ -153,6 +272,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes): Promise<v
 
 /** يحصل على قائمة الإشعارات المُجَدْوَلة (للتشخيص). */
 export async function getScheduledNotifications(): Promise<any[]> {
+  if (isWeb) return [];
   if (!isAvailable()) return [];
   try {
     return await Notifications.getAllScheduledNotificationsAsync();

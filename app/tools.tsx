@@ -22,7 +22,7 @@ import { useRouter } from 'expo-router';
 import {
   Compass, Hand, Calendar as CalendarIcon, ScrollText, BookHeart,
   Calculator, MapPin, Trophy, Award, Map, ChevronLeft, Palette, BookMarked,
-  Library, BookOpen,
+  Library, BookOpen, ShieldCheck,
 } from 'lucide-react-native';
 import { TajweedLegendSheet } from '@components/mushaf';
 import { useTheme } from '@theme/index';
@@ -104,6 +104,14 @@ export default function ToolsScreen() {
       descAr: 'دليل ألوان قواعد التجويد',
       path: '__tajweed_legend',
       accent: t.colors.featureSepia,
+    },
+    {
+      id: 'manaa',
+      icon: <ShieldCheck size={22} color={t.colors.primary} />,
+      titleAr: 'مناعة إيمانية',
+      descAr: 'دروس إيمانية سؤال وجواب',
+      path: '/manaa',
+      accent: t.colors.featureEmerald,
     },
   ];
 

@@ -83,7 +83,15 @@
       "Bash(cp /tmp/surah_list.tsx app/library.tsx)",
       "Bash(cp /tmp/new_mushaf_landing.tsx \"app/\\(tabs\\)/mushaf.tsx\")",
       "Bash(cp /tmp/old_home.tsx \"app/\\(tabs\\)/index.tsx\")",
-      "Bash(timeout 180 npx @sentry/wizard@latest -i reactNative --saas --org afkar-raqmyia --project react-native --uninstalledPackage true)"
+      "Bash(timeout 180 npx @sentry/wizard@latest -i reactNative --saas --org afkar-raqmyia --project react-native --uninstalledPackage true)",
+      "WebFetch(domain:mp3quran.net)",
+      "Bash(curl -s \"https://mp3quran.net/api/v3/reciters?language=ar\" -o /tmp/reciters.json)",
+      "Bash(python3 -c ' *)",
+      "WebFetch(domain:www.mp3quran.net)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(curl -s \"http://localhost:8081/\")",
+      "Bash(curl -s \"http://localhost:8081/_expo/static/js/web/index-aa9d0c4562a2c9494d09.js\" --max-time 10 -o /dev/null -w \"%{http_code}\")",
+      "Bash(curl -s \"http://localhost:8081/static/js/bundle.js\" --max-time 10 -o /dev/null -w \"%{http_code}\")"
     ]
   }
 }

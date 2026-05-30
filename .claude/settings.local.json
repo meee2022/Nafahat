@@ -1,6 +1,14 @@
 {
   "permissions": {
     "allow": [
+      "Bash(*)",
+      "Edit(*)",
+      "Write(*)",
+      "Read(*)",
+      "Grep(*)",
+      "Glob(*)",
+      "WebFetch(*)",
+      "PowerShell(*)",
       "Bash(npx expo *)",
       "Bash(npm install *)",
       "Bash(npx tsc *)",

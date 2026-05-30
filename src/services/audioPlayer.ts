@@ -1,17 +1,17 @@
 /**
- * خدمة تشغيل الصوت - تغليف expo-av Sound API.
+ * خدمة تشغيل الصوت — مبنية على expo-audio (بديل expo-av المهجور).
  * تُستخدم من الـ Zustand store. تدعم التشغيل في الخلفية وعلى الـ Web.
+ *
+ * ملاحظة: expo-audio يستخدم الثواني داخلياً؛ نُبقي الواجهة الخارجية
+ * بالمللي ثانية (positionMs/durationMs) كما كانت، ونحوّل داخلياً.
  */
 
-import { Audio, AVPlaybackStatus, AVPlaybackStatusSuccess } from 'expo-av';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer, type AudioStatus } from 'expo-audio';
 
-let currentSound: Audio.Sound | null = null;
-let statusListener: ((s: AVPlaybackStatusSuccess) => void) | null = null;
+let currentPlayer: AudioPlayer | null = null;
+let currentSub: { remove: () => void } | null = null;
 
-/**
- * رقم نسخة لكل استدعاء loadAndPlay - يستخدم كـ cancellation token.
- * لو طلب جديد ابتدأ قبل القديم ما يخلّص، القديم يكتشف نفسه قديم ويتجاهل نتائجه.
- */
+/** رقم نسخة لكل استدعاء loadAndPlay — يُستخدم كـ cancellation token. */
 let loadRequestVersion = 0;
 
 export interface PlaybackStatus {
@@ -25,44 +25,35 @@ let audioModeConfigured = false;
 async function ensureAudioMode() {
   if (audioModeConfigured) return;
   try {
-    await Audio.setAudioModeAsync({
-      // يسمح بالتشغيل حتى لو الجهاز على الوضع الصامت (iOS)
-      playsInSilentModeIOS: true,
-      // ✅ يبقى الصوت شغّالاً عند قفل الشاشة أو الانتقال لتطبيق آخر
-      staysActiveInBackground: true,
-      // يقلّل صوت تطبيقات أخرى لما يشتغل الـ Adhan/التلاوة بدل قطعها
-      shouldDuckAndroid: true,
-      playThroughEarpieceAndroid: false,
-      // تكامل مع Now Playing على iOS و notification controls على Android
-      interruptionModeIOS:     1, // InterruptionModeIOS.DoNotMix
-      interruptionModeAndroid: 1, // InterruptionModeAndroid.DoNotMix
+    await setAudioModeAsync({
+      playsInSilentMode: true,        // يشتغل حتى في الوضع الصامت (iOS)
+      shouldPlayInBackground: true,   // يبقى شغّالاً عند قفل الشاشة/التطبيق في الخلفية
+      shouldRouteThroughEarpiece: false,
+      interruptionMode: 'doNotMix',
+      interruptionModeAndroid: 'doNotMix',
     });
   } catch {}
   audioModeConfigured = true;
 }
 
+function teardown(player: AudioPlayer | null, sub: { remove: () => void } | null) {
+  try { sub?.remove(); } catch {}
+  try { player?.remove(); } catch {}
+}
+
 export async function unload(): Promise<void> {
-  if (currentSound) {
-    try { await currentSound.unloadAsync(); } catch {}
-    currentSound = null;
-  }
+  teardown(currentPlayer, currentSub);
+  currentPlayer = null;
+  currentSub = null;
 }
 
 /**
  * يحمّل ملف صوتي ويُشغّله من موضع محدّد.
- *
- * الفلسفة (إعادة هيكلة لإصلاح صمت التشغيل من آية):
- *  ١. كل استدعاء يأخذ رقم نسخة (loadRequestVersion) كـ cancellation token.
- *  ٢. نحمّل دائماً بـ `shouldPlay: false`، ثم نـ poll للـ duration بـ getStatusAsync
- *     (حتى 10 محاولات × 100ms)، ثم نـ seek، ثم نـ playAsync **متزامناً**.
- *     ده بيمنع الـ race condition القديم حيث الـ seek+play كان بيحصل في listener
- *     async IIFE والـ store كان بيـ set isPlaying:true قبل ما الصوت يبدأ فعلاً.
- *  ٣. الـ listener بيشتغل بعد ما نبدأ نشغّل، عشان status بيتبعت لـ caller صحيح.
  */
 export async function loadAndPlay(
   uri: string,
   onStatus?: (s: PlaybackStatus) => void,
-  /** اختياري: دالة تحسب موضع البداية من مدّة الـ MP3 - تُستخدم للبدء من آية محدّدة. */
+  /** اختياري: دالة تحسب موضع البداية (ms) من مدّة الـ MP3 (ms). */
   computeStartMs?: (durationMs: number) => number,
 ): Promise<void> {
   const myVersion = ++loadRequestVersion;
@@ -73,163 +64,132 @@ export async function loadAndPlay(
   await unload();
   if (myVersion !== loadRequestVersion) return;
 
-  // 🎯 نبدأ دائماً paused — هنشغّل بنفسنا بعد ما نـ seek
-  let sound: Audio.Sound;
+  // إنشاء المشغّل (متزامن في expo-audio) مع فاصل تحديث الحالة 250ms
+  let player: AudioPlayer;
   try {
-    const result = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: false, volume: 1 },
-    );
-    sound = result.sound;
+    player = createAudioPlayer({ uri }, 250);
   } catch (e) {
     if (myVersion !== loadRequestVersion) return;
     throw e;
   }
-
   if (myVersion !== loadRequestVersion) {
-    try { await sound.unloadAsync(); } catch {}
+    teardown(player, null);
     return;
   }
+  currentPlayer = player;
 
-  currentSound = sound;
-
-  // 🕐 لو محتاجين seek، نـ poll للـ duration الأول
+  // poll للـ duration ثم seek لو مطلوب
   if (computeStartMs) {
-    let duration = 0;
-    for (let i = 0; i < 10; i++) {
-      const st = await sound.getStatusAsync();
-      if (myVersion !== loadRequestVersion) {
-        try { await sound.unloadAsync(); } catch {}
-        return;
-      }
-      if (st.isLoaded && (st.durationMillis ?? 0) > 0) {
-        duration = st.durationMillis ?? 0;
+    let durationSec = 0;
+    for (let i = 0; i < 12; i++) {
+      if (myVersion !== loadRequestVersion) { teardown(player, null); return; }
+      if (player.isLoaded && (player.duration ?? 0) > 0) {
+        durationSec = player.duration;
         break;
       }
       await new Promise((r) => setTimeout(r, 100));
     }
-    if (duration > 0) {
-      const targetMs = computeStartMs(duration);
-      if (targetMs > 0 && targetMs < duration) {
-        try { await sound.setPositionAsync(targetMs); } catch {}
+    if (durationSec > 0) {
+      const targetMs = computeStartMs(durationSec * 1000);
+      const targetSec = targetMs / 1000;
+      if (targetSec > 0 && targetSec < durationSec) {
+        try { await player.seekTo(targetSec); } catch {}
       }
     }
   }
 
-  // 📡 listener قبل playAsync عشان أول status update يوصل للـ caller
-  sound.setOnPlaybackStatusUpdate((st: AVPlaybackStatus) => {
+  if (myVersion !== loadRequestVersion) { teardown(player, null); return; }
+
+  // listener لتحديث الحالة (تحويل الثواني → ms)
+  currentSub = player.addListener('playbackStatusUpdate', (st: AudioStatus) => {
     if (myVersion !== loadRequestVersion) return;
     if (!st.isLoaded) return;
-    const s = st as AVPlaybackStatusSuccess;
     onStatus?.({
-      isPlaying: s.isPlaying,
-      positionMs: s.positionMillis ?? 0,
-      durationMs: s.durationMillis ?? 0,
-      didJustFinish: s.didJustFinish === true,
+      isPlaying: st.playing,
+      positionMs: Math.round((st.currentTime ?? 0) * 1000),
+      durationMs: Math.round((st.duration ?? 0) * 1000),
+      didJustFinish: st.didJustFinish === true,
     });
   });
 
-  // ▶️ شغّل الآن — متزامن، عشان loadAndPlay ما يـ returnش غير بعد بداية فعلية
-  try { await sound.playAsync(); } catch {}
+  try { player.play(); } catch {}
 }
 
 export async function setPlaying(playing: boolean): Promise<void> {
-  if (!currentSound) return;
+  if (!currentPlayer) return;
   try {
-    if (playing) await currentSound.playAsync();
-    else await currentSound.pauseAsync();
+    if (playing) currentPlayer.play();
+    else currentPlayer.pause();
   } catch {}
 }
 
 export async function setSpeed(rate: number): Promise<void> {
-  if (!currentSound) return;
-  try {
-    await currentSound.setRateAsync(rate, true);
-  } catch {}
+  if (!currentPlayer) return;
+  try { currentPlayer.setPlaybackRate(rate); } catch {}
 }
 
 export async function seekTo(positionMs: number): Promise<void> {
-  if (!currentSound) return;
-  try {
-    await currentSound.setPositionAsync(positionMs);
-  } catch {}
+  if (!currentPlayer) return;
+  try { await currentPlayer.seekTo(positionMs / 1000); } catch {}
 }
 
 export function isLoaded(): boolean {
-  return !!currentSound;
+  return !!currentPlayer;
 }
 
 /**
- * 🌙 يُخفت الصوت تدريجياً (fade-out) ثم يوقف.
- * @param durationMs المدة الإجمالية للـ fade (مثلاً 8000 = 8 ثوانٍ)
- * @param steps عدد خطوات التدريج (الافتراضي 40 = خفض كل 200ms للـ 8s)
- *
- * استخدام: sleep timer يستدعيها قبل لحظات من الانتهاء.
- * يحترم cancellation: لو الـ user عمل seek/play/stop يدوياً، الـ fade لا يكمل.
+ * 🌙 يُخفت الصوت تدريجياً (fade-out) ثم يوقف. (يُستخدم في sleep timer)
  */
 let fadeAbortToken = 0;
 export async function fadeOutAndStop(durationMs: number = 8000, steps: number = 40): Promise<void> {
-  if (!currentSound) return;
+  if (!currentPlayer) return;
   const myToken = ++fadeAbortToken;
   const stepMs = Math.max(50, durationMs / steps);
-  const startVolume = 1; // expo-av maximum
+  const startVolume = 1;
 
   for (let i = 1; i <= steps; i++) {
-    if (myToken !== fadeAbortToken) return; // تم الإلغاء
-    if (!currentSound) return;
+    if (myToken !== fadeAbortToken) return;
+    if (!currentPlayer) return;
     const v = Math.max(0, startVolume * (1 - i / steps));
-    try { await currentSound.setVolumeAsync(v); } catch {}
+    try { currentPlayer.volume = v; } catch {}
     await new Promise((r) => setTimeout(r, stepMs));
   }
   if (myToken !== fadeAbortToken) return;
-  // بعد الـ fade: أوقف ورجّع volume للـ next session
   try {
-    if (currentSound) {
-      await currentSound.pauseAsync();
-      await currentSound.setVolumeAsync(1);
+    if (currentPlayer) {
+      currentPlayer.pause();
+      currentPlayer.volume = 1;
     }
   } catch {}
 }
 
-/**
- * يلغي أي fade-out جارٍ ويعيد volume لطبيعته.
- * يُستخدم لما المستخدم يلمس play/seek بعد بدء الـ fade.
- */
+/** يلغي أي fade-out جارٍ ويعيد volume لطبيعته. */
 export async function cancelFade(): Promise<void> {
   fadeAbortToken++;
-  if (currentSound) {
-    try { await currentSound.setVolumeAsync(1); } catch {}
+  if (currentPlayer) {
+    try { currentPlayer.volume = 1; } catch {}
   }
 }
 
-// ─────────────── صوت "خاطف" لكلمات/تنبيهات قصيرة (لا يتداخل مع التلاوة الرئيسية) ───────────────
+// ─────────────── صوت "خاطف" قصير (لا يتداخل مع التلاوة الرئيسية) ───────────────
 
-let oneShotSound: Audio.Sound | null = null;
+let oneShotPlayer: AudioPlayer | null = null;
+let oneShotSub: { remove: () => void } | null = null;
 
-/**
- * يشغّل ملف صوتي قصير (مثل كلمة من Tarteel) بدون أن يقطع التلاوة الرئيسية.
- * يُحمَّل ويُلعب ثم يُحرَّر تلقائياً عند الانتهاء.
- */
 export async function playOneShot(uri: string): Promise<void> {
   await ensureAudioMode();
-  // unload أي one-shot سابق
-  if (oneShotSound) {
-    try { await oneShotSound.unloadAsync(); } catch {}
-    oneShotSound = null;
-  }
+  teardown(oneShotPlayer, oneShotSub);
+  oneShotPlayer = null;
+  oneShotSub = null;
   try {
-    const { sound } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true, volume: 1 },
-      (st: AVPlaybackStatus) => {
-        if (!st.isLoaded) return;
-        const s = st as AVPlaybackStatusSuccess;
-        if (s.didJustFinish) {
-          sound.unloadAsync().catch(() => {});
-          if (oneShotSound === sound) oneShotSound = null;
-        }
-      },
-    );
-    oneShotSound = sound;
+    const player = createAudioPlayer({ uri }, 300);
+    oneShotPlayer = player;
+    oneShotSub = player.addListener('playbackStatusUpdate', (st: AudioStatus) => {
+      if (st.isLoaded && st.didJustFinish) {
+        teardown(player, oneShotSub);
+        if (oneShotPlayer === player) { oneShotPlayer = null; oneShotSub = null; }
+      }
+    });
+    player.play();
   } catch {}
 }

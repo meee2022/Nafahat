@@ -22,8 +22,10 @@
     "@react-native-async-storage/async-storage": "2.2.0",
     "convex": "^1.17.4",
     "expo": "~56.0.8",
-    "expo-av": "^16.0.8",
+    "expo-asset": "~56.0.15",
+    "expo-audio": "~56.0.11",
     "expo-constants": "~56.0.16",
+    "expo-dev-client": "~56.0.18",
     "expo-font": "~56.0.5",
     "expo-haptics": "~56.0.3",
     "expo-image-picker": "~56.0.15",
@@ -55,16 +57,8 @@
   },
   "private": true,
   "expo": {
-    "install": {
-      "exclude": [
-        "expo-av"
-      ]
-    },
     "doctor": {
       "reactNativeDirectoryCheck": {
-        "exclude": [
-          "expo-av"
-        ],
         "listUnknownPackages": false
       }
     }

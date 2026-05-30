@@ -144,6 +144,7 @@ export default function HomeScreen() {
     { id: 'tajweed',  title: tr('learn.tajweed'),  icon: <IllTajweed  size={68} />, path: '/tajweed' },
     { id: 'hadith',   title: 'الأحاديث',           icon: <IllHadith   size={68} />, path: '/hadith' },
     { id: 'articles', title: 'المقالات',           icon: <IllArticles size={68} />, path: '/articles' },
+    { id: 'manaa',    title: 'مناعة إيمانية',       icon: <IllAdhkar   size={68} />, path: '/manaa' },
   ];
 
   const extraFeatures = [

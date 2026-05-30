@@ -6,12 +6,7 @@
  *  - لاحقاً يمكن تحميل أصوات أذان متعدّدة (Makkah / Madinah / مشاري...)
  *    وحفظها في expo-file-system لتشغيلها أوفلاين.
  */
-import { Platform } from 'react-native';
-
-let Audio: any = null;
-try {
-  Audio = require('expo-av').Audio;
-} catch {}
+import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
 
 /**
  * 🕌 مصادر الأذان الحقيقية (ليست تلاوة قرآنية!).
@@ -32,7 +27,7 @@ const ADHAN_SOURCES = {
 
 export type AdhanVoice = keyof typeof ADHAN_SOURCES;
 
-let currentAdhan: any = null;
+let currentAdhan: AudioPlayer | null = null;
 /** علامة version لمنع التداخل بين استدعاءات playAdhan المتتالية بسرعة. */
 let adhanRequestVersion = 0;
 
@@ -41,27 +36,23 @@ let adhanRequestVersion = 0;
  * يُرجع true إذا بدأ التشغيل بنجاح.
  */
 export async function playAdhan(voice: AdhanVoice = 'default'): Promise<boolean> {
-  if (!Audio) return false;
-  // أعطِ رقم نسخة لهذه المحاولة - لو أتت محاولة أخرى قبل الانتهاء، نلغي الحالية
   const myVersion = ++adhanRequestVersion;
   try {
     // أوقف أي أذان سابق
     if (currentAdhan) {
-      try { await currentAdhan.unloadAsync(); } catch {}
+      try { currentAdhan.remove(); } catch {}
       currentAdhan = null;
     }
 
     const url = ADHAN_SOURCES[voice];
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: url },
-      { shouldPlay: true, volume: 1 },
-    );
-    // لو حصلت محاولة أحدث أثناء التحميل، تجاهل هذه (وحرّر الـ sound)
+    const player = createAudioPlayer({ uri: url });
+    // لو حصلت محاولة أحدث أثناء التحميل، تجاهل هذه (وحرّر الـ player)
     if (myVersion !== adhanRequestVersion) {
-      try { await sound.unloadAsync(); } catch {}
+      try { player.remove(); } catch {}
       return false;
     }
-    currentAdhan = sound;
+    currentAdhan = player;
+    player.play();
     return true;
   } catch {
     return false;
@@ -71,8 +62,7 @@ export async function playAdhan(voice: AdhanVoice = 'default'): Promise<boolean>
 /** يوقف الأذان الجاري. */
 export async function stopAdhan(): Promise<void> {
   if (!currentAdhan) return;
-  try { await currentAdhan.stopAsync(); } catch {}
-  try { await currentAdhan.unloadAsync(); } catch {}
+  try { currentAdhan.remove(); } catch {}
   currentAdhan = null;
 }
 

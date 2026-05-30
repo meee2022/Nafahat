@@ -1,24 +1,26 @@
 /**
  * 🎤 Voice recording — تسجيل صوت المستخدم للتسميع.
- *
- * يستخدم expo-av لتسجيل الصوت. نحفظ الـ URI في الذاكرة، ولاحقاً نقدر:
- *  - نشغّل الـ URI playback مقابل التلاوة المرجعية
- *  - نحفظه في AsyncStorage لجلسات سابقة
- *  - (مستقبلاً) نرسله لـ AI للمقارنة
+ * مبني على expo-audio (بديل expo-av المهجور).
  *
  * API نظيف:
+ *   await ensureRecordingPermission();
  *   await startRecording();
- *   ... المستخدم بيتكلم ...
  *   const result = await stopRecording();  // → { uri, durationMs }
  *   await playRecording(result.uri);
- *   await deleteRecording(result.uri);
  */
 
-import { Audio, type AVPlaybackStatusSuccess } from 'expo-av';
+import {
+  createAudioPlayer, setAudioModeAsync, requestRecordingPermissionsAsync,
+  RecordingPresets, type AudioPlayer, type AudioStatus,
+} from 'expo-audio';
+// الوصول للمسجّل بشكل إمبراطيفي (خارج الـ hooks) عبر الموديول الأصلي:
+import AudioModule from 'expo-audio/build/AudioModule';
+import { createRecordingOptions } from 'expo-audio/build/utils/options';
 import { log } from '@utils/logger';
 
-let currentRecording: Audio.Recording | null = null;
-let playbackSound: Audio.Sound | null = null;
+let currentRecording: any = null;
+let playbackPlayer: AudioPlayer | null = null;
+let playbackSub: { remove: () => void } | null = null;
 let recordingStartedAt = 0;
 
 export interface RecordingResult {
@@ -26,120 +28,106 @@ export interface RecordingResult {
   durationMs: number;
 }
 
-/**
- * يطلب إذن الميكروفون. يجب استدعاؤه قبل startRecording.
- * يرجع false لو رفض المستخدم.
- */
+/** يطلب إذن الميكروفون. يجب استدعاؤه قبل startRecording. */
 export async function ensureRecordingPermission(): Promise<boolean> {
   try {
-    const perm = await Audio.requestPermissionsAsync();
-    return perm.status === 'granted';
+    const perm = await requestRecordingPermissionsAsync();
+    return perm.granted === true || perm.status === 'granted';
   } catch (e) {
     log.warn('recording permission failed', { error: String(e) });
     return false;
   }
 }
 
-/**
- * يبدأ تسجيلاً جديداً. لو في تسجيل سابق، يلغيه.
- */
+/** يبدأ تسجيلاً جديداً. لو في تسجيل سابق، يلغيه. */
 export async function startRecording(): Promise<void> {
-  // أوقف أي تسجيل سابق
   if (currentRecording) {
-    try { await currentRecording.stopAndUnloadAsync(); } catch {}
+    try { await currentRecording.stop(); } catch {}
+    try { currentRecording.remove?.(); } catch {}
     currentRecording = null;
   }
 
-  await Audio.setAudioModeAsync({
-    allowsRecordingIOS: true,
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: false,
+  await setAudioModeAsync({
+    allowsRecording: true,
+    playsInSilentMode: true,
+    shouldPlayInBackground: false,
   });
 
-  const { recording } = await Audio.Recording.createAsync(
-    Audio.RecordingOptionsPresets.HIGH_QUALITY,
-  );
-  currentRecording = recording;
+  const options = createRecordingOptions(RecordingPresets.HIGH_QUALITY);
+  const recorder = new (AudioModule as any).AudioRecorder(options);
+  await recorder.prepareToRecordAsync();
+  recorder.record();
+  currentRecording = recorder;
   recordingStartedAt = Date.now();
 }
 
-/**
- * يوقف التسجيل الحالي ويرجّع الـ URI + المدة.
- */
+/** يوقف التسجيل الحالي ويرجّع الـ URI + المدة. */
 export async function stopRecording(): Promise<RecordingResult | null> {
   if (!currentRecording) return null;
+  const rec = currentRecording;
   try {
-    await currentRecording.stopAndUnloadAsync();
-    const uri = currentRecording.getURI();
+    await rec.stop();
+    const uri: string | null = rec.uri ?? null;
     const durationMs = Date.now() - recordingStartedAt;
+    try { rec.remove?.(); } catch {}
     currentRecording = null;
 
-    // ارجع الـ audio mode للوضع العادي بعد التسجيل
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
+    await setAudioModeAsync({
+      allowsRecording: false,
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
     });
 
     if (!uri) return null;
     return { uri, durationMs };
   } catch (e) {
     log.error('stopRecording failed', { error: String(e) });
+    try { rec.remove?.(); } catch {}
     currentRecording = null;
     return null;
   }
 }
 
-/**
- * يلغي التسجيل الحالي بدون حفظ.
- */
+/** يلغي التسجيل الحالي بدون حفظ. */
 export async function cancelRecording(): Promise<void> {
   if (!currentRecording) return;
-  try { await currentRecording.stopAndUnloadAsync(); } catch {}
+  try { await currentRecording.stop(); } catch {}
+  try { currentRecording.remove?.(); } catch {}
   currentRecording = null;
 }
 
-/**
- * يشغّل التسجيل عبر الـ URI المحفوظ.
- */
+/** يشغّل التسجيل عبر الـ URI المحفوظ. */
 export async function playRecording(uri: string, onFinish?: () => void): Promise<void> {
-  // أوقف أي تشغيل سابق
-  if (playbackSound) {
-    try { await playbackSound.unloadAsync(); } catch {}
-    playbackSound = null;
-  }
+  try { playbackSub?.remove(); } catch {}
+  try { playbackPlayer?.remove(); } catch {}
+  playbackPlayer = null;
+  playbackSub = null;
   try {
-    const { sound } = await Audio.Sound.createAsync(
-      { uri },
-      { shouldPlay: true, volume: 1 },
-      (st) => {
-        if (!st.isLoaded) return;
-        const s = st as AVPlaybackStatusSuccess;
-        if (s.didJustFinish) {
-          sound.unloadAsync().catch(() => {});
-          if (playbackSound === sound) playbackSound = null;
-          onFinish?.();
-        }
-      },
-    );
-    playbackSound = sound;
+    const player = createAudioPlayer({ uri }, 300);
+    playbackPlayer = player;
+    playbackSub = player.addListener('playbackStatusUpdate', (st: AudioStatus) => {
+      if (st.isLoaded && st.didJustFinish) {
+        try { playbackSub?.remove(); } catch {}
+        try { player.remove(); } catch {}
+        if (playbackPlayer === player) { playbackPlayer = null; playbackSub = null; }
+        onFinish?.();
+      }
+    });
+    player.play();
   } catch (e) {
     log.error('playRecording failed', { error: String(e) });
   }
 }
 
-/**
- * يوقف الـ playback.
- */
+/** يوقف الـ playback. */
 export async function stopPlayback(): Promise<void> {
-  if (!playbackSound) return;
-  try { await playbackSound.unloadAsync(); } catch {}
-  playbackSound = null;
+  try { playbackSub?.remove(); } catch {}
+  try { playbackPlayer?.remove(); } catch {}
+  playbackPlayer = null;
+  playbackSub = null;
 }
 
-/**
- * هل في تسجيل جاري حالياً؟
- */
+/** هل في تسجيل جاري حالياً؟ */
 export function isRecording(): boolean {
   return currentRecording !== null;
 }
@@ -147,47 +135,41 @@ export function isRecording(): boolean {
 // ════════ Voice comparison heuristic (MVP - بدون AI) ════════
 
 export interface ComparisonResult {
-  /** نسبة التطابق التقديرية 0-100% */
   similarity: number;
-  /** المدة الإجمالية لتسجيل المستخدم بالمللي ثانية */
   userDurationMs: number;
-  /** المدة المرجعية بالمللي ثانية */
   referenceDurationMs: number;
-  /** فرق المدة كنسبة من المرجع */
   durationRatio: number;
-  /** نص ملاحظات (سرعة، إيقاع، إلخ) */
   notes: string[];
 }
 
-/**
- * 🎵 يقارن تسجيل المستخدم مع تلاوة مرجعية بشكل بسيط (heuristic).
- *
- * MVP بدون AI - بيقارن:
- *  - المدة (هل المستخدم قرأ بسرعة طبيعية؟)
- *  - الوزن النسبي (audio file size كـ proxy للـ energy)
- *
- * النتيجة تعطي feedback مفيد بدون الحاجة لـ ML model.
- * الـ AI الحقيقي (Tarteel-like) يضاف لاحقاً.
- */
+/** يقيس مدّة ملف صوتي (ms) عبر expo-audio. */
+async function measureDurationMs(uri: string): Promise<number> {
+  let player: AudioPlayer | null = null;
+  try {
+    player = createAudioPlayer({ uri }, 500);
+    for (let i = 0; i < 12; i++) {
+      if (player.isLoaded && (player.duration ?? 0) > 0) {
+        return Math.round(player.duration * 1000);
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    return 0;
+  } catch {
+    return 0;
+  } finally {
+    try { player?.remove(); } catch {}
+  }
+}
+
+/** 🎵 يقارن تسجيل المستخدم مع تلاوة مرجعية بشكل بسيط (heuristic). */
 export async function compareRecordings(
   userUri: string,
   referenceDurationMs: number,
 ): Promise<ComparisonResult> {
-  // اجلب مدة تسجيل المستخدم
-  let userDurationMs = 0;
-  try {
-    const { sound, status } = await Audio.Sound.createAsync({ uri: userUri }, { shouldPlay: false });
-    if (status.isLoaded) {
-      userDurationMs = (status as any).durationMillis ?? 0;
-    }
-    await sound.unloadAsync();
-  } catch {
-    // فشل تحميل - rough estimate من file metadata غير متاح
-  }
+  const userDurationMs = await measureDurationMs(userUri);
 
-  // 🧮 احسب نسبة التطابق
   const notes: string[] = [];
-  let similarity = 60; // baseline
+  let similarity = 60;
 
   if (userDurationMs === 0 || referenceDurationMs === 0) {
     return {
@@ -201,7 +183,6 @@ export async function compareRecordings(
 
   const durationRatio = userDurationMs / referenceDurationMs;
 
-  // نسبة المدة - نتوقّع 0.8 - 1.3 طبيعي
   if (durationRatio < 0.6) {
     notes.push('قراءتك أسرع بكثير من المرجع - تأنّى أكثر في النطق');
     similarity -= 25;
@@ -219,7 +200,6 @@ export async function compareRecordings(
     similarity += 25;
   }
 
-  // إضافات إيجابية لو الإيقاع قريب جداً من المرجع
   if (durationRatio >= 0.95 && durationRatio <= 1.1) {
     similarity += 15;
     notes.push('تطابق مدّة ممتاز - استمرّ');
@@ -227,11 +207,5 @@ export async function compareRecordings(
 
   similarity = Math.max(0, Math.min(100, similarity));
 
-  return {
-    similarity,
-    userDurationMs,
-    referenceDurationMs,
-    durationRatio,
-    notes,
-  };
+  return { similarity, userDurationMs, referenceDurationMs, durationRatio, notes };
 }

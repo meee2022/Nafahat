@@ -13,7 +13,7 @@ import { useTheme } from '@theme/index';
 import { Text, Card, AppHeader } from '@components/ui';
 import { SURAHS, arabicNumber } from '@data/surahs';
 import { RECITERS } from '@data/reciters';
-import { TAJWEED_LESSONS } from '@data/tajweed';
+import { TAJWEED_LESSONS } from '@data/tajweedBook';
 import { ADHKAR } from '@data/adhkar';
 import { searchQuran, SearchResult } from '@services/quranSearch';
 
@@ -47,7 +47,7 @@ export default function SearchScreen() {
     const reciters = (scope === 'all' || scope === 'reciter')
       ? RECITERS.filter((r) => r.nameAr.includes(query) || r.nameEn.toLowerCase().includes(q)).slice(0, 6) : [];
     const lessons = (scope === 'all' || scope === 'lesson')
-      ? TAJWEED_LESSONS.filter((l) => l.title.includes(query) || l.summary.includes(query)).slice(0, 6) : [];
+      ? TAJWEED_LESSONS.filter((l) => l.title.includes(query) || l.category.includes(query)).slice(0, 6) : [];
     const adhkar = (scope === 'all' || scope === 'dhikr')
       ? ADHKAR.filter((d) => d.title.includes(query) || d.body.includes(query)).slice(0, 6) : [];
     return { surahs, reciters, lessons, adhkar };
@@ -285,7 +285,7 @@ export default function SearchScreen() {
                     <ResultCard
                       key={l.id}
                       title={l.title}
-                      sub={l.summary}
+                      sub={l.category}
                       onPress={() => router.replace(`/tajweed/${l.id}`)}
                     />
                   ))}

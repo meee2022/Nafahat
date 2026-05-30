@@ -469,7 +469,7 @@ export const ar = {
   'adhkar.completedOf':  'أكملت',
 
   // ============== Tajweed ==============
-  'tajweed.title':         'التجويد',
+  'tajweed.title':         'أحكام التجويد',
   'tajweed.subtitle':      'تعلّم أحكام التلاوة',
   'tajweed.path':          'مسارك التعليمي',
   'tajweed.beginner':      'مبتدئ',

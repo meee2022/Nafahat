@@ -1,72 +1,51 @@
+/**
+ * شاشة درس التجويد — تعرض صفحات الكتاب الأصلية (المرجع المعتمد) للدرس،
+ * مع إمكانية التكبير ملء الشاشة، وزر تعليم الدرس كمكتمل.
+ */
 import React, { useState } from 'react';
-import { View, StyleSheet, Alert } from 'react-native';
+import { View, StyleSheet, Image, Pressable, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Clock, BookOpen, Sparkles, CheckCircle2, Trophy } from 'lucide-react-native';
+import { CheckCircle2, Maximize2, X as XIcon, FileText } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
-import { Screen, Text, Card, AppHeader, Button } from '@components/ui';
-import { TAJWEED_LESSONS, TAJWEED_LEVELS } from '@data/tajweed';
+import { Screen, Text, AppHeader, Button } from '@components/ui';
+import { getTajweedLesson, TAJWEED_LESSONS } from '@data/tajweedBook';
+import { TAJWEED_PAGE_IMAGES } from '@data/tajweedPages';
 import { useTajweedStore } from '@store/index';
 
 export default function TajweedLesson() {
   const t = useTheme();
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const lesson = TAJWEED_LESSONS.find((l) => l.id === id);
-  const { isCompleted, completeLesson, quizScores } = useTajweedStore();
-  const [justCompleted, setJustCompleted] = useState(false);
+  const lesson = getTajweedLesson(id ?? '');
+  const { isCompleted, completeLesson } = useTajweedStore();
+  const [zoomPage, setZoomPage] = useState<number | null>(null);
 
   if (!lesson) return null;
 
-  const level = TAJWEED_LEVELS.find((l) => l.id === lesson.level)!;
   const completed = isCompleted(lesson.id);
-  const quizScore = quizScores[lesson.id];
-
-  const handleComplete = () => {
-    completeLesson(lesson.id);
-    setJustCompleted(true);
-    Alert.alert(
-      'أحسنت! ✓',
-      `تم تسجيل إنهاء درس "${lesson.title}". هل تريد البدء بالاختبار الآن؟`,
-      [
-        { text: 'لاحقاً', style: 'cancel' },
-        { text: 'ابدأ الاختبار', onPress: handleStartQuiz },
-      ],
-    );
-  };
-
-  const handleStartQuiz = () => {
-    // ننتقل لشاشة الاختبار - مع تمرير المستوى المناسب لتجاوب الأسئلة
-    const level = lesson.level === 'beginner' ? 'beginner' : lesson.level === 'intermediate' ? 'intermediate' : 'advanced';
-    router.push({
-      pathname: '/quiz/session',
-      params: {
-        level,
-        juzs: '30',
-        total: '5',
-      },
-    });
-  };
+  const idx = TAJWEED_LESSONS.findIndex((l) => l.id === lesson.id);
+  const next = TAJWEED_LESSONS[idx + 1];
+  // عرض الصورة بعرض الشاشة مع نسبة A4 تقريبية (1.41) كحدّ أدنى للارتفاع
+  const imgW = Math.min(width - 32, 720);
+  const imgH = imgW * 1.41;
 
   return (
     <Screen>
-      <AppHeader onBack={() => router.back()} title="درس تجويد" />
+      <AppHeader onBack={() => router.back()} title="أحكام التجويد" />
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: t.spacing.sm, flexWrap: 'wrap' }}>
-        <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: level.color + '20' }}>
-          <Text variant="label" color={level.color}>{level.titleAr}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
+        <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: t.colors.accent + '1A' }}>
+          <Text variant="label" color={t.colors.accentDeep}>{lesson.category}</Text>
         </View>
-        <Text variant="caption" color={t.colors.textTertiary}>{lesson.category}</Text>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-          <Clock size={12} color={t.colors.textTertiary} />
-          <Text variant="caption" color={t.colors.textTertiary}>{lesson.estimatedMinutes} د</Text>
+          <FileText size={12} color={t.colors.textTertiary} />
+          <Text variant="caption" color={t.colors.textTertiary}>
+            {lesson.pages.length > 1 ? `صفحات ${lesson.pages[0]}–${lesson.pages[lesson.pages.length - 1]}` : `صفحة ${lesson.pages[0]}`}
+          </Text>
         </View>
         {completed ? (
-          <View style={{
-            flexDirection: 'row', alignItems: 'center', gap: 4,
-            paddingHorizontal: 8, paddingVertical: 3,
-            borderRadius: 999,
-            backgroundColor: t.colors.success + '20',
-          }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 999, backgroundColor: t.colors.success + '20' }}>
             <CheckCircle2 size={11} color={t.colors.success} />
             <Text variant="caption" color={t.colors.success} style={{ fontWeight: '700' }}>مكتمل</Text>
           </View>
@@ -74,52 +53,102 @@ export default function TajweedLesson() {
       </View>
 
       <Text variant="h1">{lesson.title}</Text>
-      <Text variant="body" color={t.colors.textSecondary} style={{ marginTop: 8 }}>{lesson.summary}</Text>
+      <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 6 }}>
+        من كتاب «تيسير أحكام التجويد للمبتدئين» — اضغط على الصفحة لعرضها مكبّرة.
+      </Text>
 
-      <Card padding={t.spacing.xl} elevation="sm" style={{ marginTop: t.spacing.lg }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-          <BookOpen size={16} color={t.colors.primary} />
-          <Text variant="subtitle">شرح الدرس</Text>
-        </View>
-        <Text variant="body" style={{ lineHeight: 28 }}>{lesson.body}</Text>
-
-        {lesson.example ? (
-          <View style={{ marginTop: 16, padding: 14, borderRadius: 12, backgroundColor: t.colors.primarySoft }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-              <Sparkles size={14} color={t.colors.primary} />
-              <Text variant="label" color={t.colors.primary}>مثال</Text>
+      {/* صفحات الكتاب الأصلية */}
+      <View style={{ gap: 16, marginTop: t.spacing.lg, alignItems: 'center' }}>
+        {lesson.pages.map((p) => (
+          <Pressable
+            key={p}
+            onPress={() => setZoomPage(p)}
+            style={({ pressed }) => [
+              styles.pageWrap,
+              { width: imgW, borderColor: t.colors.borderGold, opacity: pressed ? 0.92 : 1 },
+            ]}
+          >
+            <Image source={TAJWEED_PAGE_IMAGES[p]} style={{ width: imgW, height: imgH }} resizeMode="contain" />
+            <View style={[styles.zoomBadge, { backgroundColor: t.colors.primary }]}>
+              <Maximize2 size={13} color="#fff" />
             </View>
-            <Text variant="body">{lesson.example}</Text>
-          </View>
-        ) : null}
-      </Card>
-
-      <View style={{ flexDirection: 'row', gap: 10, marginTop: t.spacing.lg }}>
-        <Button
-          label={completed || justCompleted ? 'تم الإنهاء ✓' : 'أنهيت الدرس'}
-          iconLeft={<CheckCircle2 size={16} color="#fff" />}
-          variant="primary"
-          fullWidth
-          onPress={handleComplete}
-          disabled={completed || justCompleted}
-        />
+            <View style={[styles.pageNum, { backgroundColor: 'rgba(0,0,0,0.55)' }]}>
+              <Text variant="caption" color="#fff">صفحة {p}</Text>
+            </View>
+          </Pressable>
+        ))}
       </View>
 
-      <Card padding={t.spacing.lg} elevation="xs" style={{ marginTop: t.spacing.lg }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <Trophy size={16} color={t.colors.accent} />
-          <Text variant="subtitle">اختبار قصير</Text>
-          {quizScore !== undefined ? (
-            <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, backgroundColor: t.colors.success + '20', marginStart: 'auto' as any }}>
-              <Text variant="caption" color={t.colors.success} style={{ fontWeight: '700' }}>{quizScore}%</Text>
-            </View>
+      {/* تعليم كمكتمل */}
+      <Button
+        label={completed ? 'تم الإنهاء ✓' : 'أنهيت الدرس'}
+        iconLeft={<CheckCircle2 size={16} color="#fff" />}
+        variant="primary"
+        fullWidth
+        onPress={() => completeLesson(lesson.id)}
+        disabled={completed}
+        style={{ marginTop: t.spacing.xl }}
+      />
+
+      {next ? (
+        <Button
+          label={`الدرس التالي: ${next.title}`}
+          variant="outline"
+          fullWidth
+          onPress={() => router.replace(`/tajweed/${next.id}`)}
+          style={{ marginTop: 10 }}
+        />
+      ) : null}
+
+      {/* عرض مكبّر ملء الشاشة مع تكبير/تحريك */}
+      <Modal visible={zoomPage !== null} transparent animationType="fade" onRequestClose={() => setZoomPage(null)}>
+        <View style={styles.modalBg}>
+          <Pressable onPress={() => setZoomPage(null)} hitSlop={12} style={styles.modalClose}>
+            <XIcon size={26} color="#fff" />
+          </Pressable>
+          {zoomPage !== null ? (
+            <ScrollView
+              maximumZoomScale={4}
+              minimumZoomScale={1}
+              contentContainerStyle={styles.modalScroll}
+              showsVerticalScrollIndicator={false}
+              showsHorizontalScrollIndicator={false}
+            >
+              <Image
+                source={TAJWEED_PAGE_IMAGES[zoomPage]}
+                style={{ width, height: width * 1.41 }}
+                resizeMode="contain"
+              />
+            </ScrollView>
           ) : null}
         </View>
-        <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 4 }}>
-          5 أسئلة لتثبيت ما تعلمت.
-        </Text>
-        <Button label="ابدأ الاختبار" variant="soft" onPress={handleStartQuiz} style={{ marginTop: 12 }} />
-      </Card>
+      </Modal>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  pageWrap: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+  },
+  zoomBadge: {
+    position: 'absolute', top: 8, end: 8,
+    width: 28, height: 28, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pageNum: {
+    position: 'absolute', bottom: 8, start: 8,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8,
+  },
+  modalBg: { flex: 1, backgroundColor: 'rgba(0,0,0,0.92)' },
+  modalClose: {
+    position: 'absolute', top: 44, end: 20, zIndex: 10,
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalScroll: { flexGrow: 1, justifyContent: 'center', alignItems: 'center' },
+});

@@ -1,54 +1,41 @@
 /**
- * شاشة التجويد - مسارات تعليمية + دروس.
+ * شاشة «أحكام التجويد» — مبنية بالكامل على كتاب
+ * «تيسير أحكام التجويد للمبتدئين». قائمة دروس بترتيب الكتاب،
+ * كل درس يعرض صفحاته الأصلية كمرجع معتمد.
  */
-import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { GraduationCap, BookOpen, Award, Clock, Sparkles, CheckCircle2, ChevronLeft } from 'lucide-react-native';
+import { GraduationCap, BookOpen, CheckCircle2, ChevronLeft, FileText } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
-import { Screen, Text, Card, Chip, AppHeader, ProgressBar } from '@components/ui';
-import { TAJWEED_LESSONS, TAJWEED_LEVELS } from '@data/tajweed';
-import { useT } from '@store/languageStore';
+import { Screen, Text, Card, AppHeader, ProgressBar } from '@components/ui';
+import { TAJWEED_LESSONS, TAJWEED_CATEGORIES, TAJWEED_BOOK } from '@data/tajweedBook';
 import { useTajweedStore } from '@store/index';
 
 export default function TajweedScreen() {
   const t = useTheme();
-  const tr = useT();
   const router = useRouter();
-  const [level, setLevel] = useState<'all' | 'beginner' | 'intermediate' | 'advanced'>('all');
   const { completedLessons, isCompleted, progressPercent } = useTajweedStore();
-
-  const filtered = useMemo(() => {
-    if (level === 'all') return TAJWEED_LESSONS;
-    return TAJWEED_LESSONS.filter((l) => l.level === level);
-  }, [level]);
 
   const progress = progressPercent(TAJWEED_LESSONS.length) / 100;
   const completedCount = completedLessons.length;
   const totalCount = TAJWEED_LESSONS.length;
 
-  // تحديد المرحلة الحالية بناءً على نسبة الإكمال
-  const currentStage = progress < 0.33 ? 'مبتدئ' : progress < 0.66 ? 'متوسط' : 'متقدم';
-  const remainingInStage = Math.max(0, Math.ceil(totalCount * (progress < 0.33 ? 0.33 : progress < 0.66 ? 0.66 : 1)) - completedCount);
-
   return (
     <Screen>
-      <AppHeader onBack={() => router.back()} title={tr('tajweed.title')} subtitle={tr('tajweed.subtitle')} />
+      <AppHeader onBack={() => router.back()} title="أحكام التجويد" subtitle={TAJWEED_BOOK.subtitle} />
 
-      {/* بطاقة المسار */}
-      <LinearGradient
-        colors={['#6B4FBB', '#4B3490']}
-        style={[styles.heroCard, { borderRadius: t.radius.xl }]}
-      >
+      {/* بطاقة الكتاب + التقدّم */}
+      <LinearGradient colors={['#0A3D38', '#0F5C52']} style={[styles.heroCard, { borderRadius: t.radius.xl }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
           <View style={[styles.heroIcon, { backgroundColor: 'rgba(255,255,255,0.18)' }]}>
             <GraduationCap size={26} color="#fff" />
           </View>
           <View style={{ flex: 1 }}>
-            <Text variant="h2" color="#fff">مسارك التعليمي</Text>
+            <Text variant="h2" color="#fff">{TAJWEED_BOOK.bookTitle}</Text>
             <Text variant="bodySm" color="rgba(255,255,255,0.85)" style={{ marginTop: 2 }}>
-              المرحلة: {currentStage}{remainingInStage > 0 ? ` · ${remainingInStage} دروس متبقية للترقية` : ' · أكملت المرحلة!'}
+              {totalCount} درسًا · برواية حفص عن عاصم
             </Text>
           </View>
         </View>
@@ -61,59 +48,50 @@ export default function TajweedScreen() {
         </View>
       </LinearGradient>
 
-      {/* فلتر المستوى */}
-      <View style={{ flexDirection: 'row', gap: 8, marginTop: t.spacing.lg }}>
-        <Chip label="الكل"     active={level === 'all'}          onPress={() => setLevel('all')} />
-        {TAJWEED_LEVELS.map((l) => (
-          <Chip
-            key={l.id}
-            label={l.titleAr}
-            active={level === l.id}
-            onPress={() => setLevel(l.id)}
-            color={l.color}
-          />
-        ))}
-      </View>
+      {/* الدروس مجمّعة بالفئات مع الحفاظ على ترتيب الكتاب */}
+      {TAJWEED_CATEGORIES.map((cat) => {
+        const lessons = TAJWEED_LESSONS.filter((l) => l.category === cat);
+        if (lessons.length === 0) return null;
+        return (
+          <View key={cat} style={{ marginTop: t.spacing.xl }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: t.spacing.sm }}>
+              <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: t.colors.accent }} />
+              <Text variant="subtitle" color={t.colors.accentDeep}>{cat}</Text>
+            </View>
 
-      {/* قائمة الدروس */}
-      <View style={{ gap: t.spacing.sm, marginTop: t.spacing.lg }}>
-        {filtered.map((lesson) => {
-          const lvl = TAJWEED_LEVELS.find((l) => l.id === lesson.level)!;
-          const done = isCompleted(lesson.id);
-          return (
-            <Card key={lesson.id} onPress={() => router.push(`/tajweed/${lesson.id}`)} padding={t.spacing.lg} elevation="xs">
-              <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
-                <View style={[styles.lessonIcon, { backgroundColor: lvl.color + '22' }]}>
-                  {done ? (
-                    <CheckCircle2 size={20} color={lvl.color} />
-                  ) : (
-                    <BookOpen size={20} color={lvl.color} />
-                  )}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text variant="subtitle">{lesson.title}</Text>
-                    <View style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, backgroundColor: lvl.color + '20' }}>
-                      <Text variant="caption" color={lvl.color}>{lvl.titleAr}</Text>
+            <View style={{ gap: t.spacing.sm }}>
+              {lessons.map((lesson) => {
+                const done = isCompleted(lesson.id);
+                return (
+                  <Card key={lesson.id} onPress={() => router.push(`/tajweed/${lesson.id}`)} padding={t.spacing.lg} elevation="xs">
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                      <View style={[styles.lessonIcon, { backgroundColor: t.colors.accent + '1A' }]}>
+                        {done ? <CheckCircle2 size={20} color={t.colors.success} /> : <BookOpen size={20} color={t.colors.accentDeep} />}
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text variant="subtitle">{lesson.title}</Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 }}>
+                          <FileText size={11} color={t.colors.textTertiary} />
+                          <Text variant="caption" color={t.colors.textTertiary}>
+                            {lesson.pages.length > 1
+                              ? `صفحات ${lesson.pages[0]}–${lesson.pages[lesson.pages.length - 1]}`
+                              : `صفحة ${lesson.pages[0]}`}
+                          </Text>
+                        </View>
+                      </View>
+                      <ChevronLeft size={18} color={t.colors.textTertiary} />
                     </View>
-                  </View>
-                  <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 4 }} numberOfLines={2}>
-                    {lesson.summary}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 8 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <Clock size={11} color={t.colors.textTertiary} />
-                      <Text variant="caption" color={t.colors.textTertiary}>{lesson.estimatedMinutes} د</Text>
-                    </View>
-                    <Text variant="caption" color={t.colors.textTertiary}>· {lesson.category}</Text>
-                  </View>
-                </View>
-                <ChevronLeft size={18} color={t.colors.textTertiary} />
-              </View>
-            </Card>
-          );
-        })}
-      </View>
+                  </Card>
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
+
+      <Text variant="caption" color={t.colors.textTertiary} style={{ textAlign: 'center', marginTop: t.spacing.xl }}>
+        المحتوى من كتاب «{TAJWEED_BOOK.bookTitle}» — الصور المعروضة هي صفحات الكتاب الأصلية.
+      </Text>
     </Screen>
   );
 }

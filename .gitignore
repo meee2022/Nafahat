@@ -33,3 +33,6 @@ Thumbs.db
 *.pdf
 _pdf_dump.txt
 _pdf_meta.txt
+
+# import packages
+*.zip

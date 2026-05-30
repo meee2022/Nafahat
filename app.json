@@ -68,7 +68,14 @@
         }
       ],
       "expo-status-bar",
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "يستخدم التطبيق موقعك لحساب مواقيت الصلاة واتجاه القبلة بدقة."
+        }
+      ],
+      "./plugins/withForceRtl.js"
     ],
     "experiments": {
       "typedRoutes": false

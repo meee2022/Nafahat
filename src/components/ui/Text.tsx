@@ -37,12 +37,22 @@ export const Text: React.FC<Props> = ({
   const baseFontSize = (v.fontSize ?? 14) * t.fontScale;
   const hasCustomFont = flat.fontSize != null;
   const finalFontSize = hasCustomFont ? (flat.fontSize as number) : baseFontSize;
-  const finalLineHeight =
+  let finalLineHeight =
     flat.lineHeight != null
-      ? flat.lineHeight
+      ? (flat.lineHeight as number)
       : hasCustomFont
         ? Math.round(finalFontSize * 1.45)
         : (v.lineHeight ?? 20) * t.fontScale;
+
+  // 🩹 الحل الجذري لقصّ/خروج النص العربي خارج الكرت:
+  //    الحروف العربية + التشكيل + الحروف النازلة تحتاج ارتفاع سطر أكبر.
+  //    نضمن أن أي نص عربي يأخذ على الأقل fontSize×1.6 (وأكبر للخطوط القرآنية)،
+  //    فلا يتداخل ولا يطلع خارج حدود حاويته في أي شاشة.
+  if (isArabic) {
+    const isQuranFont = typeof flat.fontFamily === 'string' && /Amiri|Quran|Uthman/i.test(flat.fontFamily);
+    const minMultiplier = isQuranFont ? 1.85 : 1.6;
+    finalLineHeight = Math.max(finalLineHeight, Math.round(finalFontSize * minMultiplier));
+  }
 
   return (
     <RNText

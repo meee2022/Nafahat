@@ -141,9 +141,13 @@ const MushafQpcPageImpl: React.FC<Props> = ({
       }}
     >
       {pageData.lines.map((line, idx) => {
-        // Detect if this is the last line of a Surah (followed by a surah header or bismillah)
+        // علامة "تمّت السورة" تظهر فقط بعد سطر فيه آيات فعلية (word/end) ويليه
+        // عنوان سورة جديدة (surah_header). كده ما تظهرش بالغلط تحت اسم السورة
+        // الجديدة (لأن سطر العنوان يليه بسملة).
         const nextLine = pageData.lines[idx + 1];
-        const isLastOfSurah = !!(nextLine && nextLine.words.some(w => w.type === 'surah_header' || w.type === 'bismillah'));
+        const lineHasAyah = line.words.some(w => w.type === 'word' || w.type === 'end');
+        const nextStartsNewSurah = !!(nextLine && nextLine.words.some(w => w.type === 'surah_header'));
+        const isLastOfSurah = lineHasAyah && nextStartsNewSurah;
 
         return (
           <React.Fragment key={line.line}>

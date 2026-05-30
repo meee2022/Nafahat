@@ -5,6 +5,7 @@ import { getSurahAudioUrl } from '@data/reciters';
 import { getSurahById } from '@data/surahs';
 import { loadAndPlay, setPlaying, setSpeed as setSpeedAv, seekTo, unload, fadeOutAndStop, cancelFade } from '@services/audioPlayer';
 import { getAyahStartTimeMs } from '@services/verseSync';
+import type { SurahTimings } from '@services/audioTimings';
 
 const PREFS_KEY = '@nafahat/audio/prefs';
 
@@ -27,6 +28,8 @@ interface NowPlaying {
   ayahs?: { number: number; text: string }[];
   /** الآية اللي نبدأ منها (لو undefined → من أول السورة). */
   startAtAyah?: number;
+  /** توقيتات دقيقة لكل آية (لو متوفرة) — تُستخدم للـ seek الدقيق بدل التقدير. */
+  timings?: SurahTimings | null;
 }
 
 const SKIP_STEP_MS = 10_000;
@@ -83,7 +86,10 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   sleepRemainingMs: null,
 
   async play(n) {
-    const url = getSurahAudioUrl(n.reciter.id, n.surahId);
+    // 🎯 للقفز الدقيق للآية: لو عندنا توقيتات quran.com نستخدم ملف صوتها المطابق
+    //    (نفس التسجيل اللي التوقيتات متظبوطة عليه) بدل mp3quran — فالقفز والتظليل
+    //    يبقوا دقيقين بالملّي ثانية بدل تقدير يقع على الآية الغلط.
+    const url = n.timings?.audioUrl || getSurahAudioUrl(n.reciter.id, n.surahId);
     if (!url) {
       set({ error: 'لم يُعثر على رابط الصوت' });
       return;
@@ -100,7 +106,7 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
     // 🎯 لو محدّد آية بدء + معه قائمة الآيات → احسب موضع البداية من الـ duration
     const computeStartMs = (startAyah && startAyah > 1 && ayahsForSeek.length > 0)
-      ? (durationMs: number) => getAyahStartTimeMs(startAyah, durationMs, ayahsForSeek, n.surahId)
+      ? (durationMs: number) => getAyahStartTimeMs(startAyah, durationMs, ayahsForSeek, n.surahId, n.timings)
       : undefined;
 
     const onStatus = (st: { isPlaying: boolean; positionMs: number; durationMs: number; didJustFinish: boolean }) => {

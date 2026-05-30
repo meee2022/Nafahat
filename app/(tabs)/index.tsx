@@ -319,7 +319,7 @@ export default function HomeScreen() {
               return (
                 <View key={pKey} style={[styles.timeItem, isActive && { backgroundColor: t.colors.primary }]}>
                   <Text style={[styles.timeName, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{PRAYER_NAMES_AR[pKey]}</Text>
-                  <Text style={[styles.timeValue, isActive && { color: '#FFF' }]} numberOfLines={1}>
+                  <Text style={[styles.timeValue, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                     {todayPrayers[pKey]}
                   </Text>
                 </View>
@@ -549,9 +549,10 @@ const styles = StyleSheet.create({
   timeItem: {
     alignItems: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 6,
+    paddingHorizontal: 2,
     borderRadius: 10,
     flex: 1,
+    minWidth: 0,
   },
   timeName: {
     fontSize: 11,
@@ -561,6 +562,7 @@ const styles = StyleSheet.create({
   timeValue: {
     fontSize: 13,
     fontWeight: '800',
+    fontVariant: ['tabular-nums'],
   },
   gridContainer: {
     flexDirection: 'row',

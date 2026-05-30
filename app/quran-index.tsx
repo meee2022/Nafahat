@@ -298,9 +298,13 @@ const JuzHizbCard: React.FC<{ number: number; title: string; kind: 'juz' | 'hizb
           <Text style={{
             marginTop: 8,
             fontSize: 20,
+            lineHeight: 34,
+            paddingVertical: 2,
+            textAlign: 'center',
+            includeFontPadding: true,
             color: t.colors.primaryDark,
             fontFamily: t.fontFamilies.arabicQuran,
-          }}>
+          } as any}>
             {title}
           </Text>
         </View>

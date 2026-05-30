@@ -15,7 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LruCache } from '@/utils/lruCache';
 
 const API_BASE = 'https://api.qurancdn.com/api/qdc';
-const CACHE_PREFIX = '@nafahat/timings/';
+const CACHE_PREFIX = '@nafahat/timings/v2/';
 /**
  * مُعرّف العفاسي على Quran.com - fallback لو القارئ مش معروف.
  */
@@ -50,6 +50,8 @@ export interface SurahTimings {
   totalDurationMs: number;
   /** آيات السورة بترتيب التلاوة. */
   verses: VerseTiming[];
+  /** 🎯 رابط ملف الصوت اللي التوقيتات متظبوطة عليه بالظبط (للقفز الدقيق). */
+  audioUrl?: string;
 }
 
 // ─────────────────────────────────────────────
@@ -157,6 +159,7 @@ async function loadInternal(surahId: number, recitationId: number): Promise<Sura
       surahId,
       totalDurationMs: Number(file.duration ?? 0),
       verses,
+      audioUrl: typeof file.audio_url === 'string' ? file.audio_url : undefined,
     };
 
     memCache.set(key, result);

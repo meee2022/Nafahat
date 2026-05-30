@@ -94,11 +94,16 @@ export const SurahListItem: React.FC<Props> = ({ surah, onPress, isLastRead }) =
         <View style={{ flex: 1, marginStart: 16 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Text
+              numberOfLines={1}
               style={{
                 fontFamily: t.fontFamilies.arabicQuran,
                 fontSize: 24,
+                lineHeight: 40,
+                paddingVertical: 2,
+                letterSpacing: 0,
+                includeFontPadding: true,
                 color: t.colors.primaryDark,
-              }}
+              } as any}
             >
               سورة {surah.nameAr}
             </Text>

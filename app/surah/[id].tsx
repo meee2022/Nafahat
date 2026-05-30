@@ -13,8 +13,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Play, Pause, AlertCircle, RotateCcw, X, CheckCircle2,
-  Menu, ArrowLeft, Languages, X as XIcon,
+  Menu, ArrowLeft, Languages, X as XIcon, ChevronsLeft, ChevronsRight,
 } from 'lucide-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
@@ -149,6 +150,23 @@ export default function SurahDetail() {
   const [wbwInfo, setWbwInfo] = useState<{ arabic: string; english: string; translit: string } | null>(null);
   const [wbwLoading, setWbwLoading] = useState(false);
 
+  // 💡 تلميح تقليب الصفحات — يظهر أول مرّة فقط ثم يُحفَظ أنه شوهد
+  const [showPageHint, setShowPageHint] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const seen = await AsyncStorage.getItem('@nafahat/mushaf/pageHintSeen');
+        if (alive && !seen) {
+          setShowPageHint(true);
+          AsyncStorage.setItem('@nafahat/mushaf/pageHintSeen', '1').catch(() => {});
+          setTimeout(() => { if (alive) setShowPageHint(false); }, 4500);
+        }
+      } catch {}
+    })();
+    return () => { alive = false; };
+  }, []);
+
   // 📄 تجميع الآيات حسب رقم الصفحة (المصحف الحقيقي)
   const pages = useMemo(() => {
     if (!ayahs || ayahs.length === 0) return null;
@@ -219,6 +237,10 @@ export default function SurahDetail() {
       setCurrentPageIdx((i) => i + 1);
       setSelectedAyah(null);
       if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } else if (currentPage && currentPage.page < 604) {
+      // 📖 آخر صفحة في السورة → كمّل للسورة التالية تلقائياً (تصفّح متواصل للمصحف)
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      executePageJump(currentPage.page + 1);
     }
   };
   const goToPrevPage = () => {
@@ -226,6 +248,10 @@ export default function SurahDetail() {
       setCurrentPageIdx((i) => i - 1);
       setSelectedAyah(null);
       if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } else if (currentPage && currentPage.page > 1) {
+      // 📖 أول صفحة في السورة → ارجع للسورة السابقة تلقائياً
+      if (Platform.OS !== 'web') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      executePageJump(currentPage.page - 1);
     }
   };
 
@@ -352,6 +378,7 @@ export default function SurahDetail() {
         surahName: surah.nameAr,
         ayahs: ayahs ?? [],
         startAtAyah: firstAyahOfPage,
+        timings,
       });
     }
 
@@ -412,8 +439,9 @@ export default function SurahDetail() {
       ayahNumber: ayahNum,
       ayahs: ayahs,
       startAtAyah: ayahNum,
+      timings,
     });
-  }, [activeReciter, ayahs, play, surah]);
+  }, [activeReciter, ayahs, play, surah, timings]);
 
   // وضع QPC دائماً يستخدم الإطار الزخرفي
   const useDecoFrame = true;
@@ -482,25 +510,29 @@ export default function SurahDetail() {
         />
       ) : null}
 
-      {/* منطقتا اللمس للتنقّل بين الصفحات.
-          المصحف يُقرأ من اليمين: اللمس على يسار الشاشة فيزيائياً → الصفحة التالية،
-          واليمين → السابقة. نحسب الجانب بناءً على I18nManager لأن React Native
-          يعكس left/right تلقائياً في وضع RTL — فنضمن ثبات الموضع الفيزيائي. */}
+      {/* منطقتا اللمس للتنقّل بين الصفحات — مواضع فيزيائية ثابتة (مستقلّة عن RTL):
+          نفرض اتجاه الصف LTR، فالعنصر الأول دائماً على اليسار الفيزيائي والأخير على
+          اليمين الفيزيائي مهما كانت حالة I18nManager.
+          • اليمين الفيزيائي → الصفحة التالية (2 ← 3)
+          • اليسار الفيزيائي → الصفحة السابقة (2 → 1) */}
       {pages && pages.length > 1 ? (
-        <>
-          {/* الجانب الأيسر فيزيائياً → التالية */}
-          <Pressable
-            onPress={goToNextPage}
-            disabled={currentPageIdx === totalPages - 1}
-            style={[styles.tapZoneEdge, I18nManager.isRTL ? { right: 0 } : { left: 0 }]}
-          />
-          {/* الجانب الأيمن فيزيائياً → السابقة */}
+        <View
+          pointerEvents="box-none"
+          style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', direction: 'ltr' } as any}
+        >
+          {/* يسار فيزيائياً → السابقة */}
           <Pressable
             onPress={goToPrevPage}
             disabled={currentPageIdx === 0}
-            style={[styles.tapZoneEdge, I18nManager.isRTL ? { left: 0 } : { right: 0 }]}
+            style={styles.tapZoneEdge}
           />
-        </>
+          {/* يمين فيزيائياً → التالية */}
+          <Pressable
+            onPress={goToNextPage}
+            disabled={currentPageIdx === totalPages - 1}
+            style={styles.tapZoneEdge}
+          />
+        </View>
       ) : null}
 
       {/* Bottom Sheet: تفسير */}
@@ -527,7 +559,7 @@ export default function SurahDetail() {
               if (targetMs > 0) seek(targetMs);
               if (!isPlaying) toggle();
             } else {
-              play({ reciter: activeReciter, surahId: surah.id, surahName: surah.nameAr, ayahNumber: selectedAyah, ayahs: ayahs ?? [], startAtAyah: selectedAyah });
+              play({ reciter: activeReciter, surahId: surah.id, surahName: surah.nameAr, ayahNumber: selectedAyah, ayahs: ayahs ?? [], startAtAyah: selectedAyah, timings });
             }
           }}
         />
@@ -631,6 +663,32 @@ export default function SurahDetail() {
               {pageContentNode}
             </View>
           )}
+
+          {/* 💡 تلميح تقليب الصفحات (أول مرّة فقط) */}
+          {showPageHint && pages && pages.length > 1 ? (
+            <Pressable
+              onPress={() => setShowPageHint(false)}
+              pointerEvents="box-only"
+              style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,24,21,0.55)', zIndex: 200 }}
+            >
+              {/* صف مفروض LTR: يسار = السابقة، يمين = التالية */}
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingHorizontal: 24, direction: 'ltr' } as any}>
+                <View style={{ alignItems: 'center' }}>
+                  <ChevronsLeft size={40} color={MUSHAF.gold} />
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>السابقة</Text>
+                </View>
+                <View style={{ alignItems: 'center' }}>
+                  <ChevronsRight size={40} color={MUSHAF.gold} />
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>التالية</Text>
+                </View>
+              </View>
+              <View style={{ marginTop: 28, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 14 }}>
+                <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700', textAlign: 'center', lineHeight: 24 }}>
+                  اسحب الصفحة يمين/يسار أو اضغط الحافة لتقليب الصفحات
+                </Text>
+              </View>
+            </Pressable>
+          ) : null}
 
           {/* 🌐 Word-by-word translation banner — يطفو فوق المصحف لما WBW mode شغّال */}
           {wbwMode ? (
@@ -805,6 +863,8 @@ export default function SurahDetail() {
                           surahName: surah.nameAr,
                           ayahs: ayahs ?? [],
                           startAtAyah: startFrom,
+                          // لا نمرّر timings هنا: القارئ المختار (item) قد يختلف عن القارئ
+                          // النشط الذي حُمِّلت توقيتاته — فنتجنّب تشغيل صوت قارئ خاطئ.
                         });
                       }
                     }}
@@ -1085,10 +1145,8 @@ const styles = StyleSheet.create({
   // 👆 منطقة اللمس للتنقّل بين الصفحات (شفافة - بدون أزرار مرئية).
   //    الجانب (left/right) يُطبَّق inline بناءً على I18nManager لثبات الموضع الفيزيائي.
   tapZoneEdge: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 60,
+    width: 64,
+    alignSelf: 'stretch',
     zIndex: 100,
     // للديباغ: backgroundColor: 'rgba(0, 255, 0, 0.1)',
   },

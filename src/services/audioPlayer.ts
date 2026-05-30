@@ -62,6 +62,8 @@ export async function loadAndPlay(
   if (myVersion !== loadRequestVersion) return;
 
   await unload();
+  // 🔇 أوقف أي صوت كلمة (one-shot) شغّال حتى لا يتداخل صوتان
+  teardownOneShot();
   if (myVersion !== loadRequestVersion) return;
 
   // إنشاء المشغّل (متزامن في expo-audio) مع فاصل تحديث الحالة 250ms
@@ -185,14 +187,22 @@ export async function cancelFade(): Promise<void> {
 
 let oneShotPlayer: AudioPlayer | null = null;
 let oneShotSub: { remove: () => void } | null = null;
+let oneShotVersion = 0;
 
 export async function playOneShot(uri: string): Promise<void> {
+  const myVersion = ++oneShotVersion;
   await ensureAudioMode();
+  if (myVersion !== oneShotVersion) return;
+
+  // 🔇 منع تشغيل صوتين معاً: أوقف المشغّل الرئيسي + أي one-shot سابق
+  try { currentPlayer?.pause(); } catch {}
   teardown(oneShotPlayer, oneShotSub);
   oneShotPlayer = null;
   oneShotSub = null;
+
   try {
     const player = createAudioPlayer({ uri }, 300);
+    if (myVersion !== oneShotVersion) { try { player.remove(); } catch {} return; }
     oneShotPlayer = player;
     oneShotSub = player.addListener('playbackStatusUpdate', (st: AudioStatus) => {
       if (st.isLoaded && st.didJustFinish) {
@@ -202,4 +212,12 @@ export async function playOneShot(uri: string): Promise<void> {
     });
     player.play();
   } catch {}
+}
+
+/** يوقف ويحرّر أي one-shot (صوت كلمة) شغّال. */
+function teardownOneShot() {
+  oneShotVersion++;
+  teardown(oneShotPlayer, oneShotSub);
+  oneShotPlayer = null;
+  oneShotSub = null;
 }

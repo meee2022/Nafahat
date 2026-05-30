@@ -13,9 +13,10 @@
  * Identity: أخضر primary + ذهبي accent (هوية Nafahat الرسمية).
  */
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, TextInput, FlatList } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, TextInput, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { MapPin, Search, Check, ChevronLeft } from 'lucide-react-native';
+import { MapPin, Search, Check, ChevronLeft, Navigation } from 'lucide-react-native';
+import * as Location from 'expo-location';
 import { useTheme } from '@theme/index';
 import { Screen, AppHeader, Text } from '@components/ui';
 import { useSettingsStore } from '@store/index';
@@ -29,6 +30,37 @@ export default function LocationScreen() {
 
   const [query, setQuery] = useState('');
   const [countryFilter, setCountryFilter] = useState<string | null>(null);
+  const [detecting, setDetecting] = useState(false);
+
+  // 📍 اكتشاف الموقع تلقائياً عبر GPS
+  const handleDetect = async () => {
+    if (detecting) return;
+    try {
+      setDetecting(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('الإذن مرفوض', 'لاكتشاف مدينتك تلقائياً، فعّل إذن الموقع من الإعدادات.');
+        return;
+      }
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = pos.coords;
+      let cityAr = 'موقعي الحالي';
+      let cityEn = 'My Location';
+      try {
+        const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
+        const name = geo[0]?.city || geo[0]?.region || geo[0]?.subregion;
+        if (name) { cityAr = name; cityEn = name; }
+      } catch {}
+      // توقيت الجهاز الحالي بالساعات (مثلاً قطر = +3)
+      const timezone = -new Date().getTimezoneOffset() / 60;
+      setLocation({ cityAr, cityEn, latitude, longitude, timezone });
+      router.back();
+    } catch {
+      Alert.alert('تعذّر تحديد الموقع', 'تأكّد من تفعيل خدمة الموقع (GPS)، أو اختر مدينتك يدوياً.');
+    } finally {
+      setDetecting(false);
+    }
+  };
 
   // 🔍 الفلترة: بحث نصّي + filter بالدولة
   const filteredCities = useMemo(() => {
@@ -82,6 +114,27 @@ export default function LocationScreen() {
           </View>
           <Text style={{ color: t.colors.textTertiary, fontSize: 11 }}>UTC{currentLocation.timezone >= 0 ? '+' : ''}{currentLocation.timezone}</Text>
         </View>
+
+        {/* 📍 زر اكتشاف الموقع تلقائياً (GPS) */}
+        <Pressable
+          onPress={handleDetect}
+          disabled={detecting}
+          style={({ pressed }) => [
+            styles.detectBtn,
+            { backgroundColor: t.colors.primary, borderColor: t.colors.accent, opacity: pressed || detecting ? 0.85 : 1 },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="اكتشف موقعي تلقائياً"
+        >
+          {detecting ? (
+            <ActivityIndicator size="small" color={t.colors.accent} />
+          ) : (
+            <Navigation size={18} color={t.colors.accent} />
+          )}
+          <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '800', marginHorizontal: 8 }}>
+            {detecting ? 'جاري تحديد موقعك...' : 'اكتشف موقعي تلقائياً'}
+          </Text>
+        </Pressable>
 
         {/* 🔍 شريط البحث */}
         <View style={[styles.searchBox, { backgroundColor: t.colors.surface, borderColor: t.colors.border }]}>
@@ -222,6 +275,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,
+  },
+  detectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 13,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginTop: 10,
   },
   searchBox: {
     flexDirection: 'row',

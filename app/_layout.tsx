@@ -37,23 +37,13 @@ import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
 // عند الإقلاع نبدأ بـ RTL (لغة افتراضية عربية). languageStore يحدّث الاتجاه
 // لاحقاً بناءً على اختيار المستخدم المحفوظ.
 //
-// ⚠️ مشكلة أول تشغيل: على iOS/Android لا يُطبَّق forceRTL إلا بعد إعادة تحميل
-//    الحزمة — فأول فتح بعد التثبيت يظهر LTR والأيقونات معكوسة، ثم يُصلَح عند
-//    إعادة الفتح. الحل: نعيد التحميل مرة واحدة فوراً في الإنتاج عند اكتشاف
-//    أن RTL لم يُطبَّق بعد. forceRTL يُحفَظ في تخزين النظام فلا يتكرّر مستقبلاً.
+// ملاحظة: على أول تشغيل بعد التثبيت قد يظهر الاتجاه LTR للحظة ثم يُضبط عند
+//    إعادة فتح التطبيق (forceRTL يُحفَظ في تخزين النظام). تجنّبنا إعادة التحميل
+//    التلقائية عبر expo-updates لأنها كانت تتسبّب في كراش/حلقة إقلاع في نسخ release.
 if (!I18nManager.isRTL) {
   try {
     I18nManager.allowRTL(true);
     I18nManager.forceRTL(true);
-    // في الإنتاج فقط (لا في dev/Expo Go حيث قد لا يُحفَظ الإعداد فيحدث loop)،
-    // وعلى الموبايل فقط (الويب يضبط الاتجاه عبر DOM أدناه بلا إعادة تحميل).
-    if (!__DEV__ && Platform.OS !== 'web') {
-      // تحميل expo-updates ديناميكياً لتفادي كسر الويب لو لم يكن متاحاً.
-      const Updates = require('expo-updates');
-      if (Updates?.reloadAsync) {
-        Updates.reloadAsync().catch(() => {});
-      }
-    }
   } catch {}
 }
 

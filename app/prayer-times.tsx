@@ -484,8 +484,7 @@ export default function PrayerTimesScreen() {
         <View style={[styles.noteCard, { backgroundColor: t.colors.accent + '08', borderColor: t.colors.accent + '30' }]}>
           <Star size={14} color={t.colors.accent} />
           <Text style={{ flex: 1, fontSize: 11, color: t.colors.textSecondary, marginStart: 8, lineHeight: 18 }}>
-            المواقيت محسوبة بطريقة <Text style={{ fontWeight: '700', color: t.colors.accentDeep }}>{METHODS.find((m) => m.id === method)?.nameAr}</Text>.
-            ستتم إضافة كشف موقعك التلقائي قريباً.
+            المواقيت محسوبة بطريقة <Text style={{ fontWeight: '700', color: t.colors.accentDeep }}>{METHODS.find((m) => m.id === method)?.nameAr}</Text> حسب موقعك <Text style={{ fontWeight: '700', color: t.colors.accentDeep }}>{location.cityAr}</Text>. اضغط على الموقع لتغييره أو لاكتشافه تلقائياً.
           </Text>
         </View>
       </ScrollView>

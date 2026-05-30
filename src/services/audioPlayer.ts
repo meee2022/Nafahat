@@ -78,32 +78,42 @@ export async function loadAndPlay(
   }
   currentPlayer = player;
 
-  // poll للـ duration ثم seek لو مطلوب
+  // 🎯 محاولة seek سريعة قبل بدء الصوت (لو المدّة جاهزة بسرعة - ملف مخزّن مثلاً)
+  let seekDone = false;
   if (computeStartMs) {
-    let durationSec = 0;
-    for (let i = 0; i < 12; i++) {
+    for (let i = 0; i < 8; i++) {
       if (myVersion !== loadRequestVersion) { teardown(player, null); return; }
       if (player.isLoaded && (player.duration ?? 0) > 0) {
-        durationSec = player.duration;
+        const durSec = player.duration;
+        const targetSec = computeStartMs(durSec * 1000) / 1000;
+        if (targetSec > 0 && targetSec < durSec) {
+          try { await player.seekTo(targetSec); } catch {}
+        }
+        seekDone = true;
         break;
       }
       await new Promise((r) => setTimeout(r, 100));
-    }
-    if (durationSec > 0) {
-      const targetMs = computeStartMs(durationSec * 1000);
-      const targetSec = targetMs / 1000;
-      if (targetSec > 0 && targetSec < durationSec) {
-        try { await player.seekTo(targetSec); } catch {}
-      }
     }
   }
 
   if (myVersion !== loadRequestVersion) { teardown(player, null); return; }
 
   // listener لتحديث الحالة (تحويل الثواني → ms)
+  // 🔑 لو لسه ما عملناش seek (المدّة اتأخرت لأن الملف بيتحمّل من النت)،
+  //    نعمله أول ما المدّة تتعرف هنا — فالقفز للآية يحصل دايماً مش من أول السورة.
   currentSub = player.addListener('playbackStatusUpdate', (st: AudioStatus) => {
     if (myVersion !== loadRequestVersion) return;
     if (!st.isLoaded) return;
+
+    if (!seekDone && computeStartMs && (st.duration ?? 0) > 0) {
+      seekDone = true;
+      const durSec = st.duration as number;
+      const targetSec = computeStartMs(durSec * 1000) / 1000;
+      if (targetSec > 0 && targetSec < durSec) {
+        try { player.seekTo(targetSec); } catch {}
+      }
+    }
+
     onStatus?.({
       isPlaying: st.playing,
       positionMs: Math.round((st.currentTime ?? 0) * 1000),

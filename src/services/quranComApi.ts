@@ -12,8 +12,22 @@
 
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Font from 'expo-font';
+import * as LegacyFS from 'expo-file-system/legacy';
 
 const CDN_BASE = 'https://cdn.jsdelivr.net/npm/quran-qcf4@1.0.3';
+
+/**
+ * 🔤 مصدر خطوط TTF للموبايل (React Native لا يدعم woff2).
+ * الخطوط محوَّلة من woff2 → ttf ومرفوعة على فرع `fonts` في مستودع المشروع،
+ * و jsDelivr يخدمها كـ CDN. تُحمَّل حسب الصفحة وتُخزَّن محلياً للقراءة أوفلاين.
+ */
+const TTF_CDN_BASE = 'https://cdn.jsdelivr.net/gh/meee2022/Nafahat@fonts';
+
+function getQpcTtfUrl(fontName: string): string {
+  const suffix = fontName === 'QCF4_QBSML' ? '' : '_W';
+  return `${TTF_CDN_BASE}/${fontName}${suffix}.ttf`;
+}
 
 /** Prefix لـ AsyncStorage keys - مفيد للحذف الجماعي عند مسح الكاش. */
 const PAGE_CACHE_PREFIX = '@nafahat/qpcPage/';
@@ -151,47 +165,66 @@ const loadedFonts = new Set<string>();
 const loadingFonts = new Map<string, Promise<void>>();
 
 /**
- * يحمّل خطاً واحداً في الـ DOM (Web). على native يعتمد على expo-font (إعداد منفصل).
+ * يحمّل خطاً واحداً:
+ *  - Web: عبر @font-face في الـ DOM (woff2).
+ *  - Native: يحمّل نسخة TTF من jsDelivr، يخزّنها في الكاش، ثم يسجّلها عبر expo-font.
  */
 export function loadQpcFont(fontName: string): Promise<void> {
-  if (Platform.OS !== 'web') return Promise.resolve();
   if (loadedFonts.has(fontName)) return Promise.resolve();
   if (loadingFonts.has(fontName)) return loadingFonts.get(fontName)!;
 
+  const promise = (Platform.OS === 'web' ? loadQpcFontWeb(fontName) : loadQpcFontNative(fontName))
+    .then(() => { loadedFonts.add(fontName); });
+
+  loadingFonts.set(fontName, promise);
+  promise.catch(() => {}).finally(() => loadingFonts.delete(fontName));
+  return promise;
+}
+
+/** Web: حقن @font-face في الـ DOM. */
+async function loadQpcFontWeb(fontName: string): Promise<void> {
+  if (typeof document === 'undefined') return;
   const family = getQpcFontFamily(fontName);
   const url    = getQpcFontUrl(fontName);
 
-  const promise = (async () => {
-    if (typeof document === 'undefined') return;
-
-    const css = `
-      @font-face {
-        font-family: '${family}';
-        src: url('${url}') format('woff2');
-        font-weight: normal;
-        font-style: normal;
-        font-display: swap;
-      }
-    `;
-    const style = document.createElement('style');
-    style.dataset.qpcFont = family;
-    style.appendChild(document.createTextNode(css));
-    document.head.appendChild(style);
-
-    if (typeof (document as any).fonts?.load === 'function') {
-      try {
-        await (document as any).fonts.load(`16px '${family}'`);
-      } catch {}
-    } else {
-      await new Promise((r) => setTimeout(r, 400));
+  const css = `
+    @font-face {
+      font-family: '${family}';
+      src: url('${url}') format('woff2');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
     }
+  `;
+  const style = document.createElement('style');
+  style.dataset.qpcFont = family;
+  style.appendChild(document.createTextNode(css));
+  document.head.appendChild(style);
 
-    loadedFonts.add(fontName);
-  })();
+  if (typeof (document as any).fonts?.load === 'function') {
+    try { await (document as any).fonts.load(`16px '${family}'`); } catch {}
+  } else {
+    await new Promise((r) => setTimeout(r, 400));
+  }
+}
 
-  loadingFonts.set(fontName, promise);
-  promise.finally(() => loadingFonts.delete(fontName));
-  return promise;
+/** Native: حمّل TTF من jsDelivr (مع كاش محلي) ثم سجّله عبر expo-font. */
+async function loadQpcFontNative(fontName: string): Promise<void> {
+  const family = getQpcFontFamily(fontName);
+  const url    = getQpcTtfUrl(fontName);
+  const dir     = (LegacyFS.cacheDirectory ?? '') + 'qpc-fonts/';
+  const localUri = dir + fontName + '.ttf';
+
+  try {
+    const info = await LegacyFS.getInfoAsync(localUri);
+    if (!info.exists || ((info as any).size ?? 0) < 10_000) {
+      try { await LegacyFS.makeDirectoryAsync(dir, { intermediates: true }); } catch {}
+      await LegacyFS.downloadAsync(url, localUri);
+    }
+    await Font.loadAsync({ [family]: localUri });
+  } catch {
+    try { await Font.loadAsync({ [family]: url }); } catch {}
+  }
 }
 
 /**

@@ -65,7 +65,11 @@ export const QuranicBlock: React.FC<Props> = ({ body, source, ayahNumbers, fontS
                   // Native: flexWrap row-reverse للالتفاف
                   Platform.OS === 'web'
                     ? ({ display: 'block' as any, ...({ textAlign: 'justify' } as any) })
-                    : { flexDirection: 'row-reverse', flexWrap: 'wrap', alignItems: 'center' },
+                    // 🎯 Native: التطبيق يفرض I18nManager.forceRTL(true) عالمياً، و RN
+                    // يقلب row↔row-reverse تلقائياً في وضع RTL. لذلك نستخدم 'row' العادي
+                    // (يُعرَض يمين→يسار) + نثبّت direction:'rtl' لضمان الترتيب الصحيح
+                    // مهما كانت حالة I18nManager، فلا تظهر السورة معكوسة.
+                    : { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', direction: 'rtl' },
                   groupIdx < ayahGroups.length - 1 && { marginBottom: 14 },
                 ]}
               >

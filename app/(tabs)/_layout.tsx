@@ -16,7 +16,7 @@ import {
  * ارتفاع منطقة المحتوى (أيقونة + نص) بدون الـ safe area.
  * 56px = حجم Touch target مريح لكل المنصات.
  */
-const TAB_CONTENT_H = 56;
+const TAB_CONTENT_H = 60;
 
 export default function TabsLayout() {
   const t = useTheme();
@@ -35,14 +35,15 @@ export default function TabsLayout() {
           tabBarInactiveTintColor: t.colors.textTertiary,
           tabBarItemStyle: {
             flex: 1,
-            height: TAB_CONTENT_H,
+            // لا height ثابتة — العنصر يملأ منطقة المحتوى بالكامل فلا يفيض العنوان لتحت
+            paddingVertical: 0,
           },
           tabBarStyle: {
             backgroundColor: t.colors.surface,
             borderTopColor: t.colors.border,
             borderTopWidth: StyleSheet.hairlineWidth,
             height: tabBarHeight,
-            paddingTop: 6,
+            paddingTop: 0,
             paddingBottom: insets.bottom,
             shadowColor: t.colors.shadowColor,
             shadowOffset: { width: 0, height: -4 },
@@ -274,15 +275,15 @@ const TabItem: React.FC<{ icon: IconName; labelKey: TranslationKey; focused: boo
 const styles = StyleSheet.create({
   itemWrap: {
     flex: 1,
+    height: TAB_CONTENT_H,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 4,
+    justifyContent: 'center',
     // لا width ثابتة — بيتمدد مع الشاشة
   },
   iconBox: {
     width: 44,
-    height: 34,
-    borderRadius: 17,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
   },

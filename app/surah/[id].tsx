@@ -467,7 +467,8 @@ export default function SurahDetail() {
         </View>
       ) : null}
 
-      {/* 🎯 وضع QPC الثابت */}
+      {/* 🎯 مصحف المدينة QPC — تخطيط سطر-بسطر مطابق للمصحف المطبوع على كل المنصّات.
+          الخطوط: woff2 على الويب، و TTF تُحمَّل من jsDelivr وتُخزَّن محلياً على الموبايل. */}
       {currentPage ? (
         <MushafQpcPage
           pageNumber={currentPage.page}
@@ -750,7 +751,7 @@ export default function SurahDetail() {
       {/* Safe-area bottom */}
       <View style={{ height: insets.bottom, backgroundColor: MUSHAF.pageWarm }} />
 
-      {/* ───── قائمة الآيات للتفسير (في وضع الصور) ───── */}
+      {/* ───── قائمة الآيات للوصول السريع للتفسير ───── */}
       {currentPage ? (
         <AyahListSheet
           visible={showAyahList}

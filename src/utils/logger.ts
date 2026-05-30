@@ -37,11 +37,16 @@ const isDev = (typeof __DEV__ !== 'undefined') ? __DEV__ : (process.env.NODE_ENV
  */
 let SentryLib: any = null;
 let sentryReady = false;
+// 🚫 معطّل مؤقتاً: نسخة @sentry/react-native الحالية تتعارض مع الـ New Architecture
+//    في SDK 56 وتسبّب كراش عند بدء التطبيق ("App react context shouldn't be created
+//    before"). لإعادة التفعيل لاحقاً: اضبط org/project وحدّث Sentry، ثم أعد plugin
+//    @sentry/react-native في app.json واجعل SENTRY_ENABLED=true.
+const SENTRY_ENABLED = false;
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   SentryLib = require('@sentry/react-native');
   const dsn = (process.env.EXPO_PUBLIC_SENTRY_DSN ?? '').trim();
-  if (dsn && SentryLib?.init) {
+  if (SENTRY_ENABLED && dsn && SentryLib?.init) {
     SentryLib.init({
       dsn,
       tracesSampleRate: 0.2,

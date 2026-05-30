@@ -73,13 +73,16 @@ export default function PrayerTimesScreen() {
     return () => clearInterval(id);
   }, []);
 
+  // 📍 موقع المستخدم الفعلي من الإعدادات (نفس مصدر الشاشة الرئيسية) — مش مكة الثابتة
+  const location = useSettingsStore((s) => s.location);
+
   const times = useMemo(() => calculatePrayerTimes({
     date: now,
-    latitude:  DEFAULT_LOCATION.latitude,
-    longitude: DEFAULT_LOCATION.longitude,
-    timezone:  DEFAULT_LOCATION.timezone,
+    latitude:  location.latitude,
+    longitude: location.longitude,
+    timezone:  location.timezone,
     method,
-  }), [now, method]);
+  }), [now, method, location]);
 
   const next = useMemo(() => nextPrayer(times, now), [times, now]);
 
@@ -118,11 +121,8 @@ export default function PrayerTimesScreen() {
   });
 
   const handleLocationChange = () => {
-    Alert.alert(
-      'الموقع الجغرافي',
-      `الموقع الحالي: ${DEFAULT_LOCATION.cityNameAr}\n\nستتم إضافة كشف الموقع التلقائي عبر GPS قريباً.`,
-      [{ text: 'حسناً' }],
-    );
+    // افتح شاشة الموقع (اختيار يدوي أو GPS تلقائي)
+    router.push('/location');
   };
 
   return (
@@ -397,7 +397,7 @@ export default function PrayerTimesScreen() {
             >
               <MapPin size={13} color="rgba(251,247,234,0.85)" />
               <Text style={{ fontSize: 12, color: 'rgba(251,247,234,0.85)', fontWeight: '600' }}>
-                {DEFAULT_LOCATION.cityNameAr}
+                {location.cityAr}
               </Text>
             </Pressable>
             <Text style={{ fontSize: 11, color: 'rgba(251,247,234,0.75)' }}>{todayDate}</Text>

@@ -15,14 +15,14 @@ import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
  * تم إصلاحه باستخدام مصادر mp3quran.net الرسمية للأذان.
  */
 const ADHAN_SOURCES = {
-  /** الحرم المكي - الشيخ علي ملّا (الأذان الأصلي من مكة). */
-  makkah:  'https://server8.mp3quran.net/Adhan_Makkah.mp3',
-  /** الحرم النبوي - أذان المدينة. */
-  madinah: 'https://server8.mp3quran.net/Adhan_Madina.mp3',
+  /** أذان كامل بصوت نديّ (CDN aladhan الموثوق). */
+  makkah:  'https://cdn.aladhan.com/audio/adhans/a1.mp3',
+  /** أذان كامل - صوت مختلف. */
+  madinah: 'https://cdn.aladhan.com/audio/adhans/a4.mp3',
   /** عبد الباسط عبد الصمد - أذان قديم مشهور. */
   abdulbaset: 'https://www.islamcan.com/audio/adhan/azan2.mp3',
-  /** أذان قصير قياسي - الخيار الافتراضي. */
-  default: 'https://www.islamcan.com/audio/adhan/azan2.mp3',
+  /** أذان قياسي - الخيار الافتراضي. */
+  default: 'https://cdn.aladhan.com/audio/adhans/a2.mp3',
 } as const;
 
 export type AdhanVoice = keyof typeof ADHAN_SOURCES;

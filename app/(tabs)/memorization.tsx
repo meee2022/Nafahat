@@ -134,6 +134,27 @@ export default function MemorizationScreen() {
             <View style={styles.heroStatDivider} />
             <HeroStat icon={<RotateCcw size={14} color="#FBF7EA" />}    label="مراجعة"   value={arabicNumber(planProgress.due)} />
           </View>
+
+          {/* زر إنشاء/تغيير الخطة — كان مفقوداً فالمستخدم ما يقدرش يغيّر خطته */}
+          <Pressable
+            onPress={() => router.push('/memo-create')}
+            style={({ pressed }) => ({
+              marginTop: 16,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              backgroundColor: 'rgba(255,255,255,0.16)',
+              borderRadius: 12,
+              paddingVertical: 11,
+              opacity: pressed ? 0.8 : 1,
+            })}
+            accessibilityRole="button"
+            accessibilityLabel="إنشاء خطة حفظ جديدة"
+          >
+            <Plus size={15} color="#FBF7EA" />
+            <Text style={{ color: '#FBF7EA', fontSize: 13, fontWeight: '800' }}>إنشاء خطة جديدة</Text>
+          </Pressable>
         </LinearGradient>
       ) : !showTemplates ? (
         <Card padding={t.spacing.xl} elevation="sm" style={{ alignItems: 'center' }} bordered>
@@ -270,7 +291,26 @@ export default function MemorizationScreen() {
                 </View>
               ) : null}
 
-              {todayTasks.due.length === 0 && todayTasks.new.length === 0 && (
+              {/* 🧠 مهام قيد الحفظ — كانت مش بتظهر فيتطلع التبويب فاضي */}
+              {todayTasks.inProgress.length > 0 ? (
+                <View>
+                  <SectionRow icon={<Brain size={16} color={t.colors.accent} />} title="قيد الحفظ" />
+                  {todayTasks.inProgress.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      surahId={task.surahId}
+                      range={`${arabicNumber(task.ayahFrom)} - ${arabicNumber(task.ayahTo)}`}
+                      status="قيد الحفظ"
+                      strength={task.strength}
+                      onStartSession={() => router.push({ pathname: '/memo-session', params: { taskId: task.id } })}
+                      onDone={(s) => markTaskMemorized(task.id, s)}
+                      hint="أكمل حفظ هذا المقطع"
+                    />
+                  ))}
+                </View>
+              ) : null}
+
+              {todayTasks.due.length === 0 && todayTasks.new.length === 0 && todayTasks.inProgress.length === 0 && (
                 <Card padding={t.spacing.xl} elevation="xs" style={{ alignItems: 'center' }}>
                   <Trophy size={36} color={t.colors.accent} />
                   <Text variant="subtitle" style={{ marginTop: 12 }}>أحسنت! لا توجد مهام لليوم</Text>

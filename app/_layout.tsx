@@ -346,7 +346,7 @@ function SplashView() {
 
       {/* Central Shamsa Medallion */}
       <Animated.View style={[styles.shamsaContainer, cartoucheStyle]}>
-        <Svg width={260} height={260} viewBox="0 0 200 200">
+        <Svg width={190} height={190} viewBox="0 0 200 200">
           <Defs>
             <RadialGradient id="shamsaInnerGlow" cx="50%" cy="50%" rx="50%" ry="50%">
               <Stop offset="0%" stopColor="rgba(212, 181, 112, 0.22)" />
@@ -433,7 +433,7 @@ function SplashView() {
       </Animated.View>
 
       {/* Tagline with elegant diamond rule */}
-      <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', marginTop: 14, gap: 14 }, taglineStyle]}>
+      <Animated.View style={[{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 8 }, taglineStyle]}>
         <View style={styles.taglineRule} />
         <Text style={{ color: '#D4B570', fontSize: 14, fontWeight: 'bold' }}>❖</Text>
         <Text style={styles.brandTagline}>صُحبة مع القرآن</Text>
@@ -498,7 +498,7 @@ const AstrolabeSpinner: React.FC<{
   antiSpinRot: Animated.AnimatedInterpolation<string | number>;
 }> = ({ spinRot, antiSpinRot }) => {
   return (
-    <View style={{ height: 60, width: 60, alignItems: 'center', justifyContent: 'center', marginTop: 44 }}>
+    <View style={{ height: 50, width: 50, alignItems: 'center', justifyContent: 'center', marginTop: 22 }}>
       {/* Outer Astrolabe Rim (Stator/Slow Clockwise) */}
       <Animated.View style={{ position: 'absolute', transform: [{ rotate: spinRot }] }}>
         <Svg width={56} height={56} viewBox="0 0 60 60">
@@ -608,16 +608,19 @@ const styles = StyleSheet.create({
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
   bgPattern: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   bgMandalaContainer: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', opacity: 0.8 },
-  shamsaContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
+  shamsaContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   brandName: {
-    fontSize: 52,
+    fontSize: 42,
+    lineHeight: 62,
+    paddingHorizontal: 28,
+    includeFontPadding: true,
     fontFamily: 'IBMPlexSansArabic_700Bold',
     color: '#FFFDF9',
     textShadowColor: 'rgba(212, 181, 112, 0.35)',
     textShadowOffset: { width: 0, height: 4 },
     textShadowRadius: 15,
     textAlign: 'center',
-  },
+  } as any,
   brandTagline: {
     fontSize: 14,
     color: '#D4B570',
@@ -626,7 +629,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   taglineRule: {
-    width: 40, height: 1,
+    width: 22, height: 1,
     backgroundColor: 'rgba(212, 181, 112, 0.35)',
   },
   taglineDot: {

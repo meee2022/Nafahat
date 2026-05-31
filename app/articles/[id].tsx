@@ -431,6 +431,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     fontWeight: '500',
     fontStyle: 'italic',
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
 
   // Body
@@ -440,11 +442,15 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
     letterSpacing: 0.3,
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   bodyText: {
     fontSize: 15,
     lineHeight: 28,
     fontWeight: '500',
+    textAlign: 'right',
+    writingDirection: 'rtl',
   },
   bulletRow: {
     flexDirection: 'row',

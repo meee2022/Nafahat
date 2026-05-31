@@ -69,6 +69,9 @@ export const Text: React.FC<Props> = ({
         style,
         // يُطبَّق أخيراً لضمان تناسق الحجم/الارتفاع وتفادي القصّ:
         { fontSize: finalFontSize, lineHeight: finalLineHeight },
+        // 🎯 محاذاة قاطعة: نحترم أي textAlign صريح من الـ style (توسيط متعمَّد مثلاً)
+        //    وإلا نفرض اليمين — يُطبَّق أخيراً فلا يُلغى بالخطأ في أي شاشة.
+        { textAlign: (flat.textAlign as TextStyle['textAlign']) ?? align, writingDirection: 'rtl' as const },
         // تصفير letterSpacing للعربية لمنع تفكّك الحروف:
         isArabic ? { letterSpacing: 0 } : null,
       ]}

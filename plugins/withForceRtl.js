@@ -13,6 +13,8 @@ const CALL_KT = [
   '    val i18nUtil = I18nUtil.getInstance()',
   '    i18nUtil.allowRTL(applicationContext, true)',
   '    i18nUtil.forceRTL(applicationContext, true)',
+  '    // إيقاف قلب left/right حتى تبقى textAlign:right يمين فيزيائياً',
+  '    i18nUtil.swapLeftAndRightInRTL(applicationContext, false)',
 ].join('\n');
 
 const withForceRtl = (config) =>
@@ -26,6 +28,7 @@ const withForceRtl = (config) =>
         '    I18nUtil i18nUtil = I18nUtil.getInstance();',
         '    i18nUtil.allowRTL(getApplicationContext(), true);',
         '    i18nUtil.forceRTL(getApplicationContext(), true);',
+        '    i18nUtil.swapLeftAndRightInRTL(getApplicationContext(), false);',
       ].join('\n');
       if (!src.includes(IMPORT_JAVA)) {
         src = src.replace(/(package .*;\n)/, `$1\n${IMPORT_JAVA}\n`);

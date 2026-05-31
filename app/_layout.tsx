@@ -44,6 +44,12 @@ if (!I18nManager.isRTL) {
     I18nManager.forceRTL(true);
   } catch {}
 }
+// 🎯 إيقاف قلب left/right في RTL: لأن swap المفعّل افتراضياً يحوّل
+//    textAlign:'right' إلى يسار فيزيائياً (فيظهر النص محاذاته شمال رغم RTL).
+//    بإيقافه: 'right' = يمين فيزيائي = محاذاة صحيحة، وflexDirection يظل RTL.
+try {
+  I18nManager.swapLeftAndRightInRTL(false);
+} catch {}
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   try {

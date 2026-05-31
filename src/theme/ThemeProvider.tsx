@@ -85,12 +85,12 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [fontScale, setFontScaleState] = useState<FontScale>('md');
   const [highContrast, setHighContrastState] = useState<boolean>(false);
 
-  // تفعيل RTL مرة واحدة
+  // التطبيق يعتمد محاذاة RTL يدوية على أساس isRTL=false — نُبقي النظام LTR.
   useEffect(() => {
-    if (!I18nManager.isRTL) {
+    if (I18nManager.isRTL) {
       try {
-        I18nManager.allowRTL(true);
-        I18nManager.forceRTL(true);
+        I18nManager.allowRTL(false);
+        I18nManager.forceRTL(false);
       } catch {}
     }
   }, []);

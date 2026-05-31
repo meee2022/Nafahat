@@ -33,11 +33,13 @@ function applyDirection(lang: LanguageCode): boolean {
     return false;
   }
 
-  const wasRtl = I18nManager.isRTL;
-  if (wasRtl !== rtl) {
+  // التطبيق يعتمد محاذاة RTL يدوية على أساس isRTL=false، لذلك نُبقي النظام LTR
+  //    دائماً (فرض RTL على مستوى النظام يقلب الحيل اليدوية بالعكس).
+  void rtl;
+  if (I18nManager.isRTL) {
     try {
-      I18nManager.allowRTL(rtl);
-      I18nManager.forceRTL(rtl);
+      I18nManager.allowRTL(false);
+      I18nManager.forceRTL(false);
     } catch {}
     return true;
   }

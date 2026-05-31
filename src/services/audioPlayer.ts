@@ -38,6 +38,9 @@ async function ensureAudioMode() {
 
 function teardown(player: AudioPlayer | null, sub: { remove: () => void } | null) {
   try { sub?.remove(); } catch {}
+  // 🔇 أوقف التشغيل فوراً قبل التحرير — remove() وحده قد لا يوقف الصوت فوراً
+  //    فيحصل تداخل "صوت فوق صوت". pause ثم remove يضمن التوقف الفوري.
+  try { player?.pause(); } catch {}
   try { player?.remove(); } catch {}
 }
 

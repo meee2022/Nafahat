@@ -35,17 +35,14 @@ import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
 // عند الإقلاع نبدأ بـ RTL (لغة افتراضية عربية). languageStore يحدّث الاتجاه
-// لاحقاً بناءً على اختيار المستخدم المحفوظ.
-//
-// ملاحظة: على أول تشغيل بعد التثبيت قد يظهر الاتجاه LTR للحظة ثم يُضبط عند
-//    إعادة فتح التطبيق (forceRTL يُحفَظ في تخزين النظام). تجنّبنا إعادة التحميل
-//    التلقائية عبر expo-updates لأنها كانت تتسبّب في كراش/حلقة إقلاع في نسخ release.
-if (!I18nManager.isRTL) {
-  try {
-    I18nManager.allowRTL(true);
-    I18nManager.forceRTL(true);
-  } catch {}
-}
+// 🔑 التطبيق مُصمَّم على أساس isRTL=false (LTR كقاعدة) مع محاذاة RTL يدوية
+//    (textAlign:right + writingDirection:rtl + flex-end + row-reverse في المكوّنات).
+//    لذلك نُجبر isRTL=false صراحةً — فرض RTL على مستوى النظام كان يقلب كل الحيل
+//    اليدوية بالعكس (double-flip) فتظهر العناوين على الشمال. نُلغي أي forceRTL محفوظ.
+try {
+  I18nManager.allowRTL(false);
+  I18nManager.forceRTL(false);
+} catch {}
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   try {

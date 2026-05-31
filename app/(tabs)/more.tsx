@@ -198,6 +198,8 @@ const styles = StyleSheet.create({
   brandingSub: {
     color: 'rgba(251,247,234,0.78)',
     fontSize: 12,
+    alignSelf: 'stretch',
+    textAlign: 'right',
   },
   group: {
     marginTop: 4,

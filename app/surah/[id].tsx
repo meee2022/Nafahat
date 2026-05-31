@@ -156,10 +156,10 @@ export default function SurahDetail() {
     let alive = true;
     (async () => {
       try {
-        const seen = await AsyncStorage.getItem('@nafahat/mushaf/pageHintSeen');
+        const seen = await AsyncStorage.getItem('@nafahat/mushaf/pageHintSeen_v2');
         if (alive && !seen) {
           setShowPageHint(true);
-          AsyncStorage.setItem('@nafahat/mushaf/pageHintSeen', '1').catch(() => {});
+          AsyncStorage.setItem('@nafahat/mushaf/pageHintSeen_v2', '1').catch(() => {});
           setTimeout(() => { if (alive) setShowPageHint(false); }, 4500);
         }
       } catch {}
@@ -512,24 +512,25 @@ export default function SurahDetail() {
 
       {/* منطقتا اللمس للتنقّل بين الصفحات — مواضع فيزيائية ثابتة (مستقلّة عن RTL):
           نفرض اتجاه الصف LTR، فالعنصر الأول دائماً على اليسار الفيزيائي والأخير على
-          اليمين الفيزيائي مهما كانت حالة I18nManager.
-          • اليمين الفيزيائي → الصفحة التالية (2 ← 3)
-          • اليسار الفيزيائي → الصفحة السابقة (2 → 1) */}
+          اليمين الفيزيائي مهما كانت حالة I18nManager. (مثل تقليب المصحف الورقي:
+          الصفحة التالية تأتي من جهة اليسار)
+          • اليسار الفيزيائي → الصفحة التالية (2 → 3)
+          • اليمين الفيزيائي → الصفحة السابقة (2 → 1) */}
       {pages && pages.length > 1 ? (
         <View
           pointerEvents="box-none"
           style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', direction: 'ltr' } as any}
         >
-          {/* يسار فيزيائياً → السابقة */}
-          <Pressable
-            onPress={goToPrevPage}
-            disabled={currentPageIdx === 0}
-            style={styles.tapZoneEdge}
-          />
-          {/* يمين فيزيائياً → التالية */}
+          {/* يسار فيزيائياً → التالية */}
           <Pressable
             onPress={goToNextPage}
             disabled={currentPageIdx === totalPages - 1}
+            style={styles.tapZoneEdge}
+          />
+          {/* يمين فيزيائياً → السابقة */}
+          <Pressable
+            onPress={goToPrevPage}
+            disabled={currentPageIdx === 0}
             style={styles.tapZoneEdge}
           />
         </View>
@@ -671,15 +672,15 @@ export default function SurahDetail() {
               pointerEvents="box-only"
               style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,24,21,0.55)', zIndex: 200 }}
             >
-              {/* صف مفروض LTR: يسار = السابقة، يمين = التالية */}
+              {/* صف مفروض LTR: يسار = التالية، يمين = السابقة (مثل المصحف الورقي) */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingHorizontal: 24, direction: 'ltr' } as any}>
                 <View style={{ alignItems: 'center' }}>
                   <ChevronsLeft size={40} color={MUSHAF.gold} />
-                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>السابقة</Text>
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>التالية</Text>
                 </View>
                 <View style={{ alignItems: 'center' }}>
                   <ChevronsRight size={40} color={MUSHAF.gold} />
-                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>التالية</Text>
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>السابقة</Text>
                 </View>
               </View>
               <View style={{ marginTop: 28, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 14 }}>

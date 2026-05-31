@@ -22,6 +22,8 @@ import { ThemeProvider, useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore, useAudioStore, useArticlesStore } from '@store/index';
 import { useLanguageStore } from '@store/languageStore';
+import { calculatePrayerTimes } from '@services/prayerTimes';
+import { startAdhanScheduler, stopAdhanScheduler } from '@services/adhanScheduler';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
 import { useAppInfo } from '@store/appConfigStore';
@@ -173,6 +175,27 @@ function AppGate() {
       });
     }
   }, [hydrated, hasOnboarded, authStatus, segments, signInAsGuest]);
+
+  // 🕌 جدولة الأذان عالمياً — تشتغل طول ما التطبيق مفتوح (مش مربوطة بشاشة الأذان)
+  //    فلو فعّل المستخدم الأذان التلقائي، يُؤذَّن في وقته طول ما التطبيق مفتوح.
+  const autoAdhanEnabled = useSettingsStore((s) => s.autoAdhanEnabled);
+  const adhanVoice = useSettingsStore((s) => s.adhanVoice);
+  const adhanLocation = useSettingsStore((s) => s.location);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (autoAdhanEnabled) {
+      const times = calculatePrayerTimes({
+        date: new Date(),
+        latitude: adhanLocation.latitude,
+        longitude: adhanLocation.longitude,
+        timezone: adhanLocation.timezone,
+        method: 'Makkah',
+      });
+      startAdhanScheduler(times, adhanVoice as any);
+    } else {
+      stopAdhanScheduler();
+    }
+  }, [hydrated, autoAdhanEnabled, adhanVoice, adhanLocation]);
 
   if (!hydrated || !fontsLoaded) return <SplashView />;
 

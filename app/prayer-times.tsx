@@ -96,12 +96,13 @@ export default function PrayerTimesScreen() {
   const setIqamaEnabled = useSettingsStore((s) => s.setIqamaEnabled);
   const setIqamaOffsetMin = useSettingsStore((s) => s.setIqamaOffsetMin);
   useEffect(() => {
+    // الجدولة تُدار عالمياً في _layout؛ هنا فقط نحدّث الحالة فوراً عند التغيير.
+    // لا نوقفها عند الخروج من الشاشة (كان bug يوقف الأذان بمجرد مغادرة الصفحة).
     if (autoAdhanEnabled) {
       startAdhanScheduler(times, adhanVoice);
     } else {
       stopAdhanScheduler();
     }
-    return () => stopAdhanScheduler();
   }, [autoAdhanEnabled, adhanVoice]);
 
   // حدّث المواقيت في المُجدول عند تغيير المنطقة أو الطريقة

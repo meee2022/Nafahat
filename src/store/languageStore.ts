@@ -33,13 +33,12 @@ function applyDirection(lang: LanguageCode): boolean {
     return false;
   }
 
-  // التطبيق يعتمد محاذاة RTL يدوية على أساس isRTL=false، لذلك نُبقي النظام LTR
-  //    دائماً (فرض RTL على مستوى النظام يقلب الحيل اليدوية بالعكس).
+  // فرض RTL لازم لقراءة النص العربي صحيحاً على Android (Android يتجاهل writingDirection).
   void rtl;
-  if (I18nManager.isRTL) {
+  if (!I18nManager.isRTL) {
     try {
-      I18nManager.allowRTL(false);
-      I18nManager.forceRTL(false);
+      I18nManager.allowRTL(true);
+      I18nManager.forceRTL(true);
     } catch {}
     return true;
   }

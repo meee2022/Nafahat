@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   heroBranding: {
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     marginTop: 10,
   },
   brandingTitle: {

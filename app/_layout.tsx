@@ -35,14 +35,15 @@ import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
 // عند الإقلاع نبدأ بـ RTL (لغة افتراضية عربية). languageStore يحدّث الاتجاه
-// 🔑 التطبيق مُصمَّم على أساس isRTL=false (LTR كقاعدة) مع محاذاة RTL يدوية
-//    (textAlign:right + writingDirection:rtl + flex-end + row-reverse في المكوّنات).
-//    لذلك نُجبر isRTL=false صراحةً — فرض RTL على مستوى النظام كان يقلب كل الحيل
-//    اليدوية بالعكس (double-flip) فتظهر العناوين على الشمال. نُلغي أي forceRTL محفوظ.
-try {
-  I18nManager.allowRTL(false);
-  I18nManager.forceRTL(false);
-} catch {}
+// 🔑 Android يتجاهل writingDirection، فاتجاه النص العربي يتبع I18nManager.isRTL.
+//    لذلك يجب فرض RTL=true ليُقرأ النص العربي بالاتجاه الصحيح (يمين←يسار).
+//    المحاذاة على مستوى الـ flex مضبوطة بشكل صحيح للـ RTL في معظم المكوّنات.
+if (!I18nManager.isRTL) {
+  try {
+    I18nManager.allowRTL(true);
+    I18nManager.forceRTL(true);
+  } catch {}
+}
 
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
   try {

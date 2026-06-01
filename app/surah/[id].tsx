@@ -516,7 +516,10 @@ export default function SurahDetail() {
           الصفحة التالية تأتي من جهة اليسار)
           • اليسار الفيزيائي → الصفحة التالية (2 → 3)
           • اليمين الفيزيائي → الصفحة السابقة (2 → 1) */}
-      {pages && pages.length > 1 ? (
+      {/* 📖 مناطق التقليب تظهر دائماً (حتى للسور ذات الصفحة الواحدة مثل الفاتحة)
+          ليعمل التصفّح المتواصل عبر السور. التعطيل فقط عند حدّي المصحف المطلقين
+          (صفحة 1 = أول الفاتحة، صفحة 604 = آخر الناس). */}
+      {pages && pages.length >= 1 && currentPage ? (
         <View
           pointerEvents="box-none"
           style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', direction: 'ltr' } as any}
@@ -524,13 +527,13 @@ export default function SurahDetail() {
           {/* يسار فيزيائياً → التالية */}
           <Pressable
             onPress={goToNextPage}
-            disabled={currentPageIdx === totalPages - 1}
+            disabled={currentPage.page >= 604}
             style={styles.tapZoneEdge}
           />
           {/* يمين فيزيائياً → السابقة */}
           <Pressable
             onPress={goToPrevPage}
-            disabled={currentPageIdx === 0}
+            disabled={currentPage.page <= 1}
             style={styles.tapZoneEdge}
           />
         </View>

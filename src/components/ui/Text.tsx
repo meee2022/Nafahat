@@ -69,6 +69,12 @@ export const Text: React.FC<Props> = ({
         style,
         // يُطبَّق أخيراً لضمان تناسق الحجم/الارتفاع وتفادي القصّ:
         { fontSize: finalFontSize, lineHeight: finalLineHeight },
+        // 🩹 منع خروج النص العربي خارج حدود الكرت على أندرويد:
+        //    includeFontPadding الافتراضي (true) يضيف حشواً فوق/تحت السطر يجعل
+        //    الحروف تبدو طالعة خارج الحاوية الضيقة؛ إيقافه + توسيط رأسي يجعل
+        //    الحروف تتمركز داخل صندوق السطر تماماً. مع lineHeight السخي أعلاه
+        //    لا يُقَصّ التشكيل. (الخاصيتان أندرويد فقط، تُتجاهلان على iOS/Web.)
+        { includeFontPadding: false, textAlignVertical: 'center' as const },
         // 🎯 محاذاة قاطعة ومحصّنة ضد swapLeftAndRightInRTL:
         //    المشكلة: في Expo Go / New Arch يبقى swapLeftAndRightInRTL مفعّلاً،
         //    فيقلب textAlign:'right' إلى 'left' فيظهر الكلام العربي محاذًى يساراً.

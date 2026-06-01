@@ -13,6 +13,7 @@ import {
   scheduleDaily, cancelReminder, DEFAULT_REMINDERS,
 } from '@services/notifications';
 import { useT } from '@store/languageStore';
+import { useSettingsStore } from '@store/index';
 
 interface NotificationItem {
   id: string;
@@ -52,9 +53,10 @@ export default function NotificationsScreen() {
   const tr = useT();
   const router = useRouter();
   const [permission, setPermission] = React.useState<boolean | null>(null);
-  const [settings, setSettings] = React.useState<Record<string, boolean>>(
-    Object.fromEntries(SETTINGS.map((s) => [s.key, s.defaultOn]))
-  );
+  // 🔒 الحالة محفوظة دائماً في الـstore (مش useState محلّي) فلا ترجع للوضع
+  //    الافتراضي لما المستخدم يطلع من الشاشة ويرجع.
+  const settings = useSettingsStore((s) => s.notifToggles);
+  const setNotifToggle = useSettingsStore((s) => s.setNotifToggle);
 
   const supported = isNotificationsSupported();
 
@@ -74,7 +76,7 @@ export default function NotificationsScreen() {
   }, [supported, permission]);
 
   const handleToggle = async (key: string, value: boolean) => {
-    setSettings((p) => ({ ...p, [key]: value }));
+    setNotifToggle(key, value);
 
     const reminder = REMINDER_MAP[key];
     if (!reminder) return;
@@ -85,7 +87,7 @@ export default function NotificationsScreen() {
         const granted = await requestPermission();
         setPermission(granted);
         if (!granted) {
-          setSettings((p) => ({ ...p, [key]: false }));
+          setNotifToggle(key, false);
           return;
         }
       }
@@ -229,7 +231,7 @@ export default function NotificationsScreen() {
                 <Text variant="caption" color={t.colors.textTertiary}>{tr(s.descKey)}</Text>
               </View>
               <Switch
-                value={settings[s.key]}
+                value={settings[s.key] ?? s.defaultOn}
                 onValueChange={(v) => handleToggle(s.key, v)}
                 trackColor={{ false: t.colors.borderStrong, true: t.colors.primary }}
                 thumbColor="#fff"

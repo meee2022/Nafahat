@@ -47,7 +47,11 @@ interface SettingsState {
   /** عدد الدقائق بين الأذان والإقامة. */
   iqamaOffsetMin: number;
 
+  /** حالة مفاتيح التذكيرات في شاشة الإشعارات (wird/memo/review/adhkar) — تُحفَظ دائماً. */
+  notifToggles: Record<string, boolean>;
+
   setNotifications: (v: boolean) => void;
+  setNotifToggle: (key: string, v: boolean) => void;
   setAutoAdhan: (v: boolean) => void;
   setAdhanVoice: (v: 'makkah' | 'madinah' | 'abdulbaset' | 'default') => void;
   setIqamaEnabled: (v: boolean) => void;
@@ -91,6 +95,7 @@ const DEFAULT = {
   adhanVoice: 'makkah' as 'makkah' | 'madinah' | 'abdulbaset' | 'default',
   iqamaEnabled: false,              // 🕌 تنبيه الإقامة (معطّل افتراضياً)
   iqamaOffsetMin: 10,               // ⏱️ 10 دقائق بين الأذان والإقامة افتراضياً
+  notifToggles: { wird: true, memo: true, review: true, adhkar: false } as Record<string, boolean>,
 };
 
 const persist = (s: Partial<SettingsState>) => {
@@ -109,6 +114,7 @@ const persist = (s: Partial<SettingsState>) => {
     adhanVoice: s.adhanVoice,
     iqamaEnabled: s.iqamaEnabled,
     iqamaOffsetMin: s.iqamaOffsetMin,
+    notifToggles: s.notifToggles,
   };
   AsyncStorage.setItem(KEY, JSON.stringify(data)).catch(() => {});
 };
@@ -118,6 +124,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
 
   setNotifications(v) {
     set({ notificationsEnabled: v });
+    persist(get());
+  },
+  setNotifToggle(key, v) {
+    set({ notifToggles: { ...get().notifToggles, [key]: v } });
     persist(get());
   },
   setAutoSaveTasmee(v) {
@@ -184,6 +194,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
         if (!parsed.mushafMode) {
           parsed.mushafMode = 'qpc';
+        }
+        // مستخدم قديم قبل إضافة notifToggles: استخدم الافتراضي حتى لا يصبح undefined.
+        if (!parsed.notifToggles || typeof parsed.notifToggles !== 'object') {
+          parsed.notifToggles = DEFAULT.notifToggles;
         }
 
         set(parsed);

@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   heroBranding: {
-    alignItems: 'flex-start',
+    alignItems: 'stretch',
     marginTop: 10,
   },
   brandingTitle: {
@@ -186,6 +186,7 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: '800',
     letterSpacing: 0.4,
+    textAlign: 'right',
   },
   brandingRule: {
     width: 56,
@@ -194,11 +195,11 @@ const styles = StyleSheet.create({
     borderRadius: 1,
     marginTop: 8,
     marginBottom: 8,
+    alignSelf: 'flex-end',
   },
   brandingSub: {
     color: 'rgba(251,247,234,0.78)',
     fontSize: 12,
-    alignSelf: 'stretch',
     textAlign: 'right',
   },
   group: {

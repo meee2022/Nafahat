@@ -12,7 +12,12 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nafahat.app"
+      "bundleIdentifier": "com.nafahat.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ]
+      }
     },
     "android": {
       "adaptiveIcon": {

@@ -24,6 +24,7 @@ import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehS
 import { useLanguageStore } from '@store/languageStore';
 import { calculatePrayerTimes } from '@services/prayerTimes';
 import { startAdhanScheduler, stopAdhanScheduler } from '@services/adhanScheduler';
+import { schedulePrayerNotifications, cancelAllPrayerNotifications } from '@services/prayerNotifications';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
 import { useAppInfo } from '@store/appConfigStore';
@@ -192,8 +193,12 @@ function AppGate() {
         method: 'Makkah',
       });
       startAdhanScheduler(times, adhanVoice as any);
+      // 🔔 نجدول إشعارات الصلاة كمان (تظهر بشعار التطبيق + صوت وتعمل حتى لو
+      //    التطبيق مقفول) — فلا يعتمد التنبيه على فتح شاشة المواقيت يدوياً.
+      schedulePrayerNotifications(times).catch(() => {});
     } else {
       stopAdhanScheduler();
+      cancelAllPrayerNotifications().catch(() => {});
     }
   }, [hydrated, autoAdhanEnabled, adhanVoice, adhanLocation]);
 

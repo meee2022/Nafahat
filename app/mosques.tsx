@@ -1,14 +1,16 @@
 /**
- * شاشة المساجد القريبة - تتطلّب الموقع الجغرافي.
- * النسخة الحالية تعرض حالة "تفعيل الموقع" + بيانات نموذجية لبعض المساجد.
+ * شاشة المساجد القريبة — بيانات حيّة حقيقية.
  *
- * للنسخة الحية: نحتاج expo-location لجلب الإحداثيات + Google Places API أو OSM
- * للحصول على المساجد القريبة.
+ * تستخدم expo-location لجلب إحداثيات المستخدم الفعلية، ثم تستعلم عن أقرب
+ * المساجد من OpenStreetMap عبر Overpass API (مجاني، بدون مفتاح). تُحسب
+ * المسافات الحقيقية (Haversine) وتُرتَّب من الأقرب للأبعد. في قطر تظهر
+ * مساجد قطر، وفي أي بلد آخر تظهر مساجده — حسب موقعك الفعلي.
  */
-import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, Linking, Platform } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, StyleSheet, Pressable, Linking, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowRight, MapPin, Navigation, Clock, ChevronLeft } from 'lucide-react-native';
+import * as Location from 'expo-location';
+import { ArrowRight, MapPin, Navigation, Clock, ChevronLeft, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card, Button, EmptyState } from '@components/ui';
 import { OrnamentalRule } from '@components/ornaments';
@@ -22,22 +24,128 @@ interface Mosque {
   distanceKm: number;
   walkMinutes: number;
   address: string;
-  nextPrayer?: string;
-  nextPrayerTime?: string;
+  lat: number;
+  lon: number;
 }
 
-const SAMPLE: Mosque[] = [
-  { id: 'm1', name: 'الجامع الكبير',   distanceKm: 0.3, walkMinutes: 4,  address: 'شارع الملك فيصل',     nextPrayer: 'العصر',   nextPrayerTime: '٣:٤٨' },
-  { id: 'm2', name: 'مسجد النور',      distanceKm: 0.6, walkMinutes: 8,  address: 'حيّ السلام',          nextPrayer: 'المغرب',  nextPrayerTime: '٦:١٢' },
-  { id: 'm3', name: 'مسجد الفتح',      distanceKm: 1.2, walkMinutes: 15, address: 'شارع الجمهورية',     nextPrayer: 'العشاء',  nextPrayerTime: '٧:٤٠' },
-  { id: 'm4', name: 'مسجد الإمام علي', distanceKm: 1.8, walkMinutes: 22, address: 'حيّ الزهور' },
-];
+type Status = 'idle' | 'loading' | 'denied' | 'error' | 'empty' | 'ok';
+
+// مسافة Haversine بالكيلومتر بين نقطتين
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default function MosquesScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
-  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [status, setStatus] = useState<Status>('idle');
+  const [mosques, setMosques] = useState<Mosque[]>([]);
+
+  const loadNearby = useCallback(async () => {
+    try {
+      setStatus('loading');
+
+      // 1) إذن الموقع
+      const { status: perm } = await Location.requestForegroundPermissionsAsync();
+      if (perm !== 'granted') {
+        setStatus('denied');
+        return;
+      }
+
+      // 2) الإحداثيات الفعلية
+      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      const { latitude, longitude } = pos.coords;
+
+      // 3) استعلام Overpass عن دور العبادة الإسلامية ضمن دائرة نصف قطرها ٥ كم
+      const radius = 5000;
+      const query = `[out:json][timeout:25];(node["amenity"="place_of_worship"]["religion"="muslim"](around:${radius},${latitude},${longitude});way["amenity"="place_of_worship"]["religion"="muslim"](around:${radius},${latitude},${longitude});relation["amenity"="place_of_worship"]["religion"="muslim"](around:${radius},${latitude},${longitude}););out center tags;`;
+
+      const endpoints = [
+        'https://overpass-api.de/api/interpreter',
+        'https://overpass.kumi.systems/api/interpreter',
+      ];
+
+      let data: any = null;
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'data=' + encodeURIComponent(query),
+          });
+          if (!res.ok) continue;
+          data = await res.json();
+          break;
+        } catch {
+          // جرّب المزوّد التالي
+        }
+      }
+
+      if (!data || !Array.isArray(data.elements)) {
+        setStatus('error');
+        return;
+      }
+
+      // 4) تحويل + حساب المسافة + ترتيب
+      const list: Mosque[] = data.elements
+        .map((el: any, i: number) => {
+          const elLat = el.lat ?? el.center?.lat;
+          const elLon = el.lon ?? el.center?.lon;
+          if (elLat == null || elLon == null) return null;
+          const tags = el.tags ?? {};
+          const name: string =
+            tags['name:ar'] || tags.name || tags['official_name'] || 'مسجد';
+          const street = tags['addr:street'] || '';
+          const city = tags['addr:city'] || tags['addr:suburb'] || tags['addr:district'] || '';
+          const address = [street, city].filter(Boolean).join('، ') || 'بالقرب منك';
+          const distanceKm = haversineKm(latitude, longitude, elLat, elLon);
+          return {
+            id: String(el.id ?? i),
+            name,
+            address,
+            lat: elLat,
+            lon: elLon,
+            distanceKm: Math.round(distanceKm * 10) / 10,
+            walkMinutes: Math.max(1, Math.round(distanceKm * 12)), // ~٥ كم/س
+          } as Mosque;
+        })
+        .filter(Boolean)
+        .sort((a: Mosque, b: Mosque) => a.distanceKm - b.distanceKm)
+        .slice(0, 20);
+
+      if (list.length === 0) {
+        setStatus('empty');
+        return;
+      }
+
+      setMosques(list);
+      setStatus('ok');
+    } catch {
+      setStatus('error');
+    }
+  }, []);
+
+  const openInMaps = (m: Mosque) => {
+    const q = `${m.lat},${m.lon}`;
+    const label = encodeURIComponent(m.name);
+    const url =
+      Platform.OS === 'ios'
+        ? `maps://?q=${label}&ll=${q}`
+        : Platform.OS === 'android'
+          ? `geo:${q}?q=${q}(${label})`
+          : `https://www.google.com/maps/search/?api=1&query=${q}`;
+    Linking.openURL(url).catch(() => {
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${q}`);
+    });
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
@@ -49,54 +157,72 @@ export default function MosquesScreen() {
           <Text style={[styles.eyebrow, { color: t.colors.accent }]}>{tr('mosques.subtitle')}</Text>
           <Text style={[styles.topTitle, { color: t.colors.textPrimary }]}>{tr('mosques.title')}</Text>
         </View>
-        <View style={[styles.iconBtn, { borderColor: 'transparent' }]} />
+        {status === 'ok' ? (
+          <Pressable onPress={loadNearby} hitSlop={t.hitSlop} style={[styles.iconBtn, { borderColor: t.colors.border }]}>
+            <RefreshCw size={16} color={t.colors.textSecondary} strokeWidth={1.6} />
+          </Pressable>
+        ) : (
+          <View style={[styles.iconBtn, { borderColor: 'transparent' }]} />
+        )}
       </View>
 
       <Screen contentStyle={{ paddingHorizontal: 16, paddingTop: 18 }}>
-        {!locationEnabled ? (
+        {status === 'loading' ? (
+          <Card padding={t.spacing.xl} elevation="sm" bordered>
+            <View style={{ alignItems: 'center', paddingVertical: 20 }}>
+              <ActivityIndicator size="large" color={t.colors.accent} />
+              <Text variant="bodySm" color={t.colors.textSecondary} align="center" style={{ marginTop: 16 }}>
+                جارٍ تحديد موقعك والبحث عن أقرب المساجد…
+              </Text>
+            </View>
+          </Card>
+        ) : status === 'idle' ? (
           <Card padding={t.spacing.xl} elevation="sm" bordered>
             <View style={{ alignItems: 'center' }}>
               <IllMosques size={84} />
               <Text variant="h3" style={{ marginTop: 16 }}>فعّل الموقع لإيجاد المساجد</Text>
               <Text variant="bodySm" color={t.colors.textSecondary} align="center" style={{ marginTop: 8, maxWidth: 280, lineHeight: 22 }}>
-                نحتاج للوصول لموقعك الجغرافي لعرض المساجد القريبة منك مع المسافة وأوقات الصلاة.
+                نحتاج للوصول لموقعك الجغرافي لعرض المساجد القريبة منك فعلاً مع المسافة الحقيقية.
               </Text>
-              <Button label="السماح بالموقع" iconRight={<Navigation size={14} color={t.colors.onPrimary} />} onPress={() => setLocationEnabled(true)} style={{ marginTop: 18 }} />
+              <Button label="السماح بالموقع" iconRight={<Navigation size={14} color={t.colors.onPrimary} />} onPress={loadNearby} style={{ marginTop: 18 }} />
             </View>
           </Card>
+        ) : status === 'denied' ? (
+          <EmptyState
+            title="تم رفض إذن الموقع"
+            description="لتفعيل الموقع: افتح إعدادات الجهاز ← التطبيقات ← نَفَحات ← الأذونات ← الموقع، ثم أعد المحاولة."
+            actionLabel="إعادة المحاولة"
+            onAction={loadNearby}
+          />
+        ) : status === 'error' ? (
+          <EmptyState
+            title="تعذّر جلب المساجد"
+            description="تأكد من اتصالك بالإنترنت وحاول مرة أخرى."
+            actionLabel="إعادة المحاولة"
+            onAction={loadNearby}
+          />
+        ) : status === 'empty' ? (
+          <EmptyState
+            title="لا توجد مساجد قريبة"
+            description="لم نعثر على مساجد ضمن ٥ كم من موقعك في قاعدة بيانات الخرائط."
+            actionLabel="إعادة المحاولة"
+            onAction={loadNearby}
+          />
         ) : (
           <>
             {/* رأس قائمة */}
             <View style={styles.listHead}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.eyebrow, { color: t.colors.accent }]}>أقرب المساجد</Text>
-                <Text style={[styles.listTitle, { color: t.colors.textPrimary }]}>{arabicNumber(SAMPLE.length)} مساجد</Text>
+                <Text style={[styles.listTitle, { color: t.colors.textPrimary }]}>{arabicNumber(mosques.length)} مساجد</Text>
               </View>
               <OrnamentalRule width={80} color={t.colors.accent} variant="rosette" />
             </View>
 
             {/* قائمة المساجد */}
             <View style={{ gap: 12, marginTop: 8 }}>
-              {SAMPLE.map((m, idx) => (
-                <Card
-                  key={m.id}
-                  padding={t.spacing.lg}
-                  elevation="xs"
-                  bordered
-                  onPress={() => {
-                    // فتح خرائط (Google Maps - web أو deeplink على Native)
-                    const q = encodeURIComponent(`${m.name}, ${m.address}`);
-                    const url = Platform.OS === 'ios'
-                      ? `maps://?q=${q}`
-                      : Platform.OS === 'android'
-                        ? `geo:0,0?q=${q}`
-                        : `https://www.google.com/maps/search/?api=1&query=${q}`;
-                    Linking.openURL(url).catch(() => {
-                      // fallback لـ Google Maps web دائماً
-                      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${q}`);
-                    });
-                  }}
-                >
+              {mosques.map((m, idx) => (
+                <Card key={m.id} padding={t.spacing.lg} elevation="xs" bordered onPress={() => openInMaps(m)}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
                     <View style={[styles.indexBox, { borderColor: t.colors.accent, backgroundColor: t.colors.accent + '12' }]}>
                       <Text style={{ fontSize: 20, fontWeight: '800', color: t.colors.accent, lineHeight: 24 }}>
@@ -126,17 +252,6 @@ export default function MosquesScreen() {
                           </Text>
                         </View>
                       </View>
-
-                      {m.nextPrayer ? (
-                        <View style={[styles.nextPrayer, { backgroundColor: t.colors.success + '14', borderColor: t.colors.success + '50' }]}>
-                          <Text variant="caption" color={t.colors.success} style={{ fontWeight: '700' }}>
-                            {m.nextPrayer}
-                          </Text>
-                          <Text variant="caption" color={t.colors.success} style={{ fontWeight: '700' }}>
-                            {m.nextPrayerTime}
-                          </Text>
-                        </View>
-                      ) : null}
                     </View>
 
                     <ChevronLeft size={16} color={t.colors.textTertiary} />
@@ -147,7 +262,7 @@ export default function MosquesScreen() {
 
             <Card padding={t.spacing.md} elevation="xs" style={{ marginTop: 18 }}>
               <Text variant="caption" color={t.colors.textTertiary} align="center" style={{ lineHeight: 18 }}>
-                تظهر المسافات حسب موقعك الحالي. اضغط على المسجد للحصول على الاتجاهات.
+                مساجد حقيقية حسب موقعك الحالي من OpenStreetMap. اضغط على المسجد للحصول على الاتجاهات.
               </Text>
             </Card>
           </>

@@ -6,7 +6,7 @@
  *  - لاحقاً يمكن تحميل أصوات أذان متعدّدة (Makkah / Madinah / مشاري...)
  *    وحفظها في expo-file-system لتشغيلها أوفلاين.
  */
-import { createAudioPlayer, type AudioPlayer } from 'expo-audio';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 
 /**
  * 🕌 مصادر الأذان الحقيقية (ليست تلاوة قرآنية!).
@@ -31,6 +31,21 @@ let currentAdhan: AudioPlayer | null = null;
 /** علامة version لمنع التداخل بين استدعاءات playAdhan المتتالية بسرعة. */
 let adhanRequestVersion = 0;
 
+/** يضبط وضع الصوت مرة واحدة حتى يصدر الأذان صوتاً حتى في الوضع الصامت. */
+let adhanAudioModeReady = false;
+async function ensureAdhanAudioMode(): Promise<void> {
+  if (adhanAudioModeReady) return;
+  try {
+    await setAudioModeAsync({
+      playsInSilentMode: true,       // يصدر صوتاً حتى لو الجوال صامت (iOS)
+      shouldPlayInBackground: true,  // يكمل لو قُفلت الشاشة أثناء الأذان
+      interruptionMode: 'doNotMix',
+      interruptionModeAndroid: 'doNotMix',
+    });
+  } catch {}
+  adhanAudioModeReady = true;
+}
+
 /**
  * يُشغّل صوت أذان كامل.
  * يُرجع true إذا بدأ التشغيل بنجاح.
@@ -38,6 +53,9 @@ let adhanRequestVersion = 0;
 export async function playAdhan(voice: AdhanVoice = 'default'): Promise<boolean> {
   const myVersion = ++adhanRequestVersion;
   try {
+    await ensureAdhanAudioMode();
+    if (myVersion !== adhanRequestVersion) return false;
+
     // أوقف أي أذان سابق
     if (currentAdhan) {
       try { currentAdhan.remove(); } catch {}

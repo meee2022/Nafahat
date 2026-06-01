@@ -69,9 +69,18 @@ export const Text: React.FC<Props> = ({
         style,
         // يُطبَّق أخيراً لضمان تناسق الحجم/الارتفاع وتفادي القصّ:
         { fontSize: finalFontSize, lineHeight: finalLineHeight },
-        // 🎯 محاذاة قاطعة: نحترم أي textAlign صريح من الـ style (توسيط متعمَّد مثلاً)
-        //    وإلا نفرض اليمين — يُطبَّق أخيراً فلا يُلغى بالخطأ في أي شاشة.
-        { textAlign: (flat.textAlign as TextStyle['textAlign']) ?? align, writingDirection: 'rtl' as const },
+        // 🎯 محاذاة قاطعة ومحصّنة ضد swapLeftAndRightInRTL:
+        //    المشكلة: في Expo Go / New Arch يبقى swapLeftAndRightInRTL مفعّلاً،
+        //    فيقلب textAlign:'right' إلى 'left' فيظهر الكلام العربي محاذًى يساراً.
+        //    الحل الجذري: للنص العربي نستخدم 'auto' (محاذاة حسب اتجاه المحتوى نفسه)
+        //    بدل 'right' الصريحة — 'auto' لا تتأثر بالـ swap والعربي يتحاذى يميناً
+        //    في كل البيئات (Expo Go والـ APK). نحترم أي توسيط/يسار صريح كما هو.
+        (() => {
+          const desired = (flat.textAlign as TextStyle['textAlign']) ?? align;
+          const resolved: TextStyle['textAlign'] =
+            isArabic && (desired === 'right' || desired == null) ? 'auto' : desired;
+          return { textAlign: resolved, writingDirection: 'rtl' as const };
+        })(),
         // تصفير letterSpacing للعربية لمنع تفكّك الحروف:
         isArabic ? { letterSpacing: 0 } : null,
       ]}

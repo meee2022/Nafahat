@@ -22,7 +22,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0A1815"
+        "backgroundColor": "#065236"
       },
       "package": "com.nafahat.app",
       "permissions": [

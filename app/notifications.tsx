@@ -113,7 +113,7 @@ export default function NotificationsScreen() {
       <Screen contentStyle={{ paddingHorizontal: 16, paddingTop: 18 }}>
         {/* حالة الإذن */}
         {!supported ? (
-          <Card padding={14} elevation="xs" bordered background={t.colors.warning + '14'} style={{ marginBottom: 18 }}>
+          <Card padding={14} elevation="none" bordered background={t.colors.warning + '14'} style={{ marginBottom: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <AlertCircle size={18} color={t.colors.warning} />
               <Text variant="bodySm" color={t.colors.warning} style={{ flex: 1 }}>
@@ -122,7 +122,7 @@ export default function NotificationsScreen() {
             </View>
           </Card>
         ) : permission === false ? (
-          <Card padding={14} elevation="xs" bordered background={t.colors.error + '14'} style={{ marginBottom: 18 }}>
+          <Card padding={14} elevation="none" bordered background={t.colors.error + '14'} style={{ marginBottom: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <AlertCircle size={18} color={t.colors.error} />
               <Text variant="bodySm" color={t.colors.error} style={{ flex: 1 }}>
@@ -131,7 +131,7 @@ export default function NotificationsScreen() {
             </View>
           </Card>
         ) : permission === true ? (
-          <Card padding={14} elevation="xs" bordered background={t.colors.success + '10'} style={{ marginBottom: 18 }}>
+          <Card padding={14} elevation="none" bordered background={t.colors.success + '10'} style={{ marginBottom: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Check size={18} color={t.colors.success} />
               <Text variant="bodySm" color={t.colors.success} style={{ flex: 1, fontWeight: '600' }}>
@@ -159,7 +159,7 @@ export default function NotificationsScreen() {
               accessibilityLabel={`${n.title} - ${n.desc}`}
               style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
             >
-              <Card padding={14} elevation="xs" bordered background={n.read ? undefined : t.colors.accent + '06'}>
+              <Card padding={14} elevation={n.read ? 'xs' : 'none'} bordered background={n.read ? undefined : t.colors.accent + '06'}>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
                   <View style={[styles.notifIcon, { backgroundColor: n.color + '14', borderColor: n.color }]}>
                     {React.cloneElement(n.icon as any, { color: n.color })}
@@ -196,7 +196,7 @@ export default function NotificationsScreen() {
           accessibilityLabel="إعدادات الأذان وتنبيهات الصلاة والإقامة"
           style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}
         >
-          <Card padding={14} elevation="xs" bordered background={t.colors.accent + '08'}>
+          <Card padding={14} elevation="none" bordered background={t.colors.accent + '08'}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
               <View style={[styles.notifIcon, { backgroundColor: t.colors.accent + '14', borderColor: t.colors.accent }]}>
                 <Volume2 size={18} color={t.colors.accent} />

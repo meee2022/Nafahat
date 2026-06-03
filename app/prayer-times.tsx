@@ -63,7 +63,10 @@ export default function PrayerTimesScreen() {
   const [method, setMethod] = useState<CalculationMethod>('Makkah');
   const [showMethodPicker, setShowMethodPicker] = useState(false);
   const [now, setNow] = useState(new Date());
-  const [notifEnabled, setNotifEnabled] = useState(false);
+  // 🔒 حالة تنبيهات الصلاة محفوظة دائماً في الـstore (مش useState محلّي) فلا
+  //    ترجع "مقفولة" بمجرد الخروج من الشاشة والرجوع.
+  const notifEnabled = useSettingsStore((s) => s.notificationsEnabled);
+  const setNotifEnabled = useSettingsStore((s) => s.setNotifications);
   const [adhanPlaying, setAdhanPlaying] = useState(false);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
 

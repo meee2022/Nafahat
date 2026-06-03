@@ -17,7 +17,7 @@ const SWIFT_CALLS = [
   '    // فرض RTL أصلياً من أوّل فتحة (نَفَحات تطبيق عربي بالكامل)',
   '    RCTI18nUtil.sharedInstance().allowRTL(true)',
   '    RCTI18nUtil.sharedInstance().forceRTL(true)',
-  '    RCTI18nUtil.sharedInstance().swapLeftAndRightInRTL(false)',
+  '    RCTI18nUtil.sharedInstance().swapLeftAndRight(inRTL: false)',
 ].join('\n');
 
 const OBJC_CALLS = [

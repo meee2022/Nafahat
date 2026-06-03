@@ -16,7 +16,8 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,7 +28,11 @@
       "package": "com.nafahat.app",
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
       ]
     },
     "web": {
@@ -87,7 +92,8 @@
           "locationAlwaysAndWhenInUsePermission": "يستخدم التطبيق موقعك لحساب مواقيت الصلاة واتجاه القبلة بدقة."
         }
       ],
-      "./plugins/withForceRtl.js"
+      "./plugins/withForceRtl.js",
+      "./plugins/withForceRtlIos.js"
     ],
     "experiments": {
       "typedRoutes": false

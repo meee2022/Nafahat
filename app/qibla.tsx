@@ -13,6 +13,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, Modal, Animated, useWindowDimensions } from 'react-native';
 import { Magnetometer } from 'expo-sensors';
+import * as Location from 'expo-location';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import Svg, { Path, Circle, G, Line, Rect, Defs, RadialGradient, Stop } from 'react-native-svg';
@@ -55,66 +56,71 @@ export default function QiblaScreen() {
   const [isAligned, setIsAligned] = useState(false);
 
   useEffect(() => {
-    let subscription: any = null;
+    let headingSub: any = null;
+    let magSub: any = null;
+    let cancelled = false;
 
-    const subscribe = async () => {
+    // 🎯 يطبّق اتجاهاً خاماً: ينعّمه للعرض + يحسب المحاذاة بثبات (بلا وميض).
+    const applyHeading = (rawHeading: number) => {
+      if (cancelled || rawHeading == null || isNaN(rawHeading)) return;
+
+      // تنعيم منخفض التردّد لثبات حركة البوصلة
+      setHeading((prev) => {
+        let diff = rawHeading - prev;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        const next = prev + diff * 0.2; // عامل تنعيم
+        return (next + 360) % 360;
+      });
+
+      // المحاذاة من نفس الاتجاه المستقر (يمنع وميض الأخضر)
+      let diffToKaaba = bearing - rawHeading;
+      diffToKaaba = ((diffToKaaba + 180) % 360) - 180;
+      const aligned = Math.abs(diffToKaaba) < 5;
+      setIsAligned((prev) => {
+        if (aligned && !prev) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+        }
+        return aligned;
+      });
+    };
+
+    const start = async () => {
+      // ✅ الأفضل (خصوصاً iOS): اتجاه expo-location المُنعّم والمصحّح من النظام.
       try {
-        const isAvailable = await Magnetometer.isAvailableAsync();
-        if (!isAvailable) {
-          setHasSensor(false);
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          headingSub = await Location.watchHeadingAsync((h) => {
+            // trueHeading يصحّح الانحراف المغناطيسي (يطابق bearing الجغرافي الحقيقي)
+            const hdg = (h.trueHeading != null && h.trueHeading >= 0) ? h.trueHeading : h.magHeading;
+            applyHeading(hdg);
+          });
           return;
         }
+      } catch {}
 
-        Magnetometer.setUpdateInterval(60); // 60ms for buttery smooth compass rendering
-
-        subscription = Magnetometer.addListener((data) => {
+      // 🔁 fallback: Magnetometer لو تعذّر اتجاه الموقع
+      try {
+        const ok = await Magnetometer.isAvailableAsync();
+        if (!ok) { setHasSensor(false); return; }
+        Magnetometer.setUpdateInterval(60);
+        magSub = Magnetometer.addListener((data) => {
           if (!data || data.x === undefined || data.y === undefined) return;
-
-          // Calculate real compass heading (top of phone relative to Magnetic North)
-          // Using Math.atan2(-x, y) yields the mathematically correct device orientation
-          let rawHeading = Math.atan2(-data.x, data.y) * (180 / Math.PI);
-          if (rawHeading < 0) {
-            rawHeading += 360;
-          }
-
-          // Low-pass filter to smooth out high-frequency sensor noise & hand tremors
-          setHeading((prev) => {
-            let diff = rawHeading - prev;
-            // Handle 360 degrees wrap-around boundary cases
-            if (diff > 180) diff -= 360;
-            if (diff < -180) diff += 360;
-            return Math.round(prev + diff * 0.15); // 0.15 is the damping factor
-          });
-
-          // Check alignment with Kaaba direction (Qibla)
-          let diffToKaaba = bearing - rawHeading;
-          diffToKaaba = ((diffToKaaba + 180) % 360) - 180;
-          if (diffToKaaba < -180) diffToKaaba += 360;
-
-          const aligned = Math.abs(diffToKaaba) < 6; // 6 degrees alignment threshold
-          if (aligned) {
-            setIsAligned((prev) => {
-              if (!prev) {
-                // Trigger a light haptic tap only when entering the aligned state
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-              }
-              return true;
-            });
-          } else {
-            setIsAligned(false);
-          }
+          let raw = Math.atan2(-data.x, data.y) * (180 / Math.PI);
+          if (raw < 0) raw += 360;
+          applyHeading(raw);
         });
-      } catch (err) {
+      } catch {
         setHasSensor(false);
       }
     };
 
-    subscribe();
+    start();
 
     return () => {
-      if (subscription) {
-        subscription.remove();
-      }
+      cancelled = true;
+      try { headingSub?.remove?.(); } catch {}
+      try { magSub?.remove?.(); } catch {}
     };
   }, [bearing]);
 

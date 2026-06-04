@@ -183,6 +183,8 @@ function AppGate() {
   const autoAdhanEnabled = useSettingsStore((s) => s.autoAdhanEnabled);
   const adhanVoice = useSettingsStore((s) => s.adhanVoice);
   const adhanLocation = useSettingsStore((s) => s.location);
+  const prayerAdjustments = useSettingsStore((s) => s.prayerAdjustments);
+  const adjustmentsKey = JSON.stringify(prayerAdjustments);
   useEffect(() => {
     if (!hydrated) return;
     if (autoAdhanEnabled) {
@@ -192,6 +194,7 @@ function AppGate() {
         longitude: adhanLocation.longitude,
         timezone: adhanLocation.timezone,
         method: 'Makkah',
+        adjustments: prayerAdjustments,
       });
       startAdhanScheduler(times, adhanVoice as any);
       // 🔔 نجدول إشعارات الصلاة كمان (تظهر بشعار التطبيق + صوت وتعمل حتى لو
@@ -201,7 +204,8 @@ function AppGate() {
       stopAdhanScheduler();
       cancelAllPrayerNotifications().catch(() => {});
     }
-  }, [hydrated, autoAdhanEnabled, adhanVoice, adhanLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, autoAdhanEnabled, adhanVoice, adhanLocation, adjustmentsKey]);
 
   // 📿 الأذكار الدورية — تُجدول عند الإقلاع لو مفعّلة (تعمل حتى لو التطبيق مقفول).
   const dhikrEnabled = useSettingsStore((s) => s.dhikrEnabled);

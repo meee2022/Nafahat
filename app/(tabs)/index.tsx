@@ -91,15 +91,17 @@ export default function HomeScreen() {
 
   const isToday = useMemo(() => isSameDay(selectedDate, now), [selectedDate, now]);
 
+  const prayerAdjustments = useSettingsStore((s) => s.prayerAdjustments);
   const todayPrayers = useMemo(() => {
     return calculatePrayerTimes({
       date: selectedDate,
       latitude: location.latitude,
       longitude: location.longitude,
       timezone: location.timezone,
-      method: 'Makkah'
+      method: 'Makkah',
+      adjustments: prayerAdjustments,
     });
-  }, [selectedDate, location]);
+  }, [selectedDate, location, prayerAdjustments]);
 
   const nextP = useMemo(() => nextPrayer(todayPrayers, now), [todayPrayers, now]);
 

@@ -88,13 +88,15 @@ export default function DailyScreen() {
   const now = new Date();
   const isToday = useMemo(() => isSameDay(selectedDate, now), [selectedDate, now]);
 
+  const prayerAdjustments = useSettingsStore((s) => s.prayerAdjustments);
   const todayPrayers = useMemo(() => calculatePrayerTimes({
     date: selectedDate,
     latitude: location.latitude,
     longitude: location.longitude,
     timezone: location.timezone,
     method: 'Makkah',
-  }), [selectedDate, location]);
+    adjustments: prayerAdjustments,
+  }), [selectedDate, location, prayerAdjustments]);
 
   const nextP = useMemo(() => nextPrayer(todayPrayers, now), [todayPrayers, now]);
 

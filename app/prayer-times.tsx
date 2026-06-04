@@ -69,6 +69,7 @@ export default function PrayerTimesScreen() {
   const setNotifEnabled = useSettingsStore((s) => s.setNotifications);
   const [adhanPlaying, setAdhanPlaying] = useState(false);
   const [showVoicePicker, setShowVoicePicker] = useState(false);
+  const [showAdjust, setShowAdjust] = useState(false);
 
   // تحديث الوقت كل دقيقة (لإعادة حساب الـ countdown)
   useEffect(() => {
@@ -78,6 +79,9 @@ export default function PrayerTimesScreen() {
 
   // 📍 موقع المستخدم الفعلي من الإعدادات (نفس مصدر الشاشة الرئيسية) — مش مكة الثابتة
   const location = useSettingsStore((s) => s.location);
+  // ⏱️ تعديلات يدوية لكل صلاة (لمطابقة أذان المنطقة بدقّة)
+  const prayerAdjustments = useSettingsStore((s) => s.prayerAdjustments);
+  const setPrayerAdjustment = useSettingsStore((s) => s.setPrayerAdjustment);
 
   const times = useMemo(() => calculatePrayerTimes({
     date: now,
@@ -85,7 +89,8 @@ export default function PrayerTimesScreen() {
     longitude: location.longitude,
     timezone:  location.timezone,
     method,
-  }), [now, method, location]);
+    adjustments: prayerAdjustments,
+  }), [now, method, location, prayerAdjustments]);
 
   const next = useMemo(() => nextPrayer(times, now), [times, now]);
 
@@ -112,6 +117,16 @@ export default function PrayerTimesScreen() {
   useEffect(() => {
     if (autoAdhanEnabled) updateAdhanTimes(times);
   }, [times, autoAdhanEnabled]);
+
+  // ⏱️ أعد جدولة إشعارات الصلاة عند تغيير التعديلات اليدوية (لو التنبيهات مفعّلة)
+  //    نربطها بقيم التعديلات فقط (مش times التي تتغيّر كل دقيقة) لتفادي إعادة جدولة متكرّرة.
+  const adjustmentsKey = JSON.stringify(prayerAdjustments);
+  useEffect(() => {
+    if (notifEnabled) {
+      schedulePrayerNotifications(times, { iqamaEnabled, iqamaOffsetMin }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adjustmentsKey]);
 
   const formatCountdown = (mins: number): string => {
     const h = Math.floor(mins / 60);
@@ -447,6 +462,70 @@ export default function PrayerTimesScreen() {
           })}
         </Card>
 
+        {/* ⏱️ ضبط دقيق للمواقيت — لمطابقة أذان المنطقة/المسجد بالظبط */}
+        <Pressable
+          onPress={() => setShowAdjust((v) => !v)}
+          style={({ pressed }) => [styles.adjustHeader, { borderColor: t.colors.border, opacity: pressed ? 0.85 : 1 }]}
+        >
+          <Clock size={16} color={t.colors.accent} />
+          <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: t.colors.textPrimary, marginStart: 8 }}>
+            ضبط دقيق للمواقيت
+          </Text>
+          <Text style={{ fontSize: 11, color: t.colors.textTertiary, marginEnd: 6 }}>طابِق أذان منطقتك</Text>
+          <ChevronDown size={18} color={t.colors.textSecondary} style={{ transform: [{ rotate: showAdjust ? '180deg' : '0deg' }] }} />
+        </Pressable>
+
+        {showAdjust ? (
+          <Card padding={0} elevation="xs" bordered style={{ marginTop: 8 }}>
+            {(['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const).map((name, i) => {
+              const val = prayerAdjustments[name] ?? 0;
+              const valLabel = val === 0 ? '٠' : (val > 0 ? `+${val}` : `${val}`);
+              return (
+                <View
+                  key={name}
+                  style={[
+                    styles.adjustRow,
+                    { borderBottomColor: t.colors.divider, borderBottomWidth: i < 4 ? StyleSheet.hairlineWidth : 0 },
+                  ]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textPrimary }}>
+                      {PRAYER_NAMES_AR[name]}
+                    </Text>
+                    <Text style={{ fontSize: 12, fontWeight: '800', color: t.colors.accent, marginTop: 2, letterSpacing: 0.5 }}>
+                      {times[name]}
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row-reverse', alignItems: 'center', gap: 10 }}>
+                    <Pressable
+                      onPress={() => setPrayerAdjustment(name, val - 1)}
+                      hitSlop={8}
+                      style={[styles.adjustBtn, { borderColor: t.colors.border, backgroundColor: t.colors.surfaceAlt }]}
+                    >
+                      <Text style={{ fontSize: 20, fontWeight: '800', color: t.colors.textPrimary }}>−</Text>
+                    </Pressable>
+                    <Text style={{ minWidth: 46, textAlign: 'center', fontSize: 13, fontWeight: '800', color: val === 0 ? t.colors.textTertiary : t.colors.textPrimary }}>
+                      {valLabel} د
+                    </Text>
+                    <Pressable
+                      onPress={() => setPrayerAdjustment(name, val + 1)}
+                      hitSlop={8}
+                      style={[styles.adjustBtn, { borderColor: t.colors.border, backgroundColor: t.colors.surfaceAlt }]}
+                    >
+                      <Text style={{ fontSize: 18, fontWeight: '800', color: t.colors.textPrimary }}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              );
+            })}
+            <View style={{ padding: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: t.colors.divider }}>
+              <Text style={{ fontSize: 11, color: t.colors.textTertiary, textAlign: 'center', lineHeight: 18 }}>
+                اضبط كل صلاة بالدقائق حتى تطابق أذان مسجدك تماماً. يُحفَظ تلقائياً.
+              </Text>
+            </View>
+          </Card>
+        ) : null}
+
         {/* اختيار الطريقة */}
         {showMethodPicker ? (
           <Card padding={0} elevation="xs" bordered style={{ marginTop: 16 }}>
@@ -579,5 +658,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'flex-start',
     padding: 12, marginTop: 18,
     borderRadius: 12, borderWidth: 1,
+  },
+
+  adjustHeader: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 12,
+    marginTop: 16, borderRadius: 12, borderWidth: 1,
+  },
+  adjustRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, paddingVertical: 12,
+  },
+  adjustBtn: {
+    width: 38, height: 38, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1,
   },
 });

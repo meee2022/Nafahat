@@ -118,6 +118,8 @@ export interface PrayerCalcParams {
   method?: CalculationMethod;
   /** للعصر: 1 = شافعي (افتراضي)، 2 = حنفي */
   asrFactor?: 1 | 2;
+  /** تعديلات يدوية بالدقائق لكل صلاة (لمطابقة أذان المنطقة/المسجد بدقّة). */
+  adjustments?: Partial<Record<PrayerName, number>>;
 }
 
 /** يحسب مواقيت الصلوات الستة للموقع المحدد. */
@@ -145,13 +147,17 @@ export function calculatePrayerTimes(params: PrayerCalcParams): PrayerTimes {
     ishaTime = sunAngleTime(method.isha as number, 18 / 24, jd, lat, 'cw');
   }
 
+  // ⏱️ تعديلات يدوية بالدقائق (تحويلها لساعات عشرية وإضافتها قبل التنسيق).
+  const adj = params.adjustments ?? {};
+  const m = (n?: number) => (n ?? 0) / 60;
+
   return {
-    fajr:    formatTime(fajr, tz),
-    sunrise: formatTime(sunrise, tz),
-    dhuhr:   formatTime(dhuhr, tz),
-    asr:     formatTime(asr, tz),
-    maghrib: formatTime(maghrib, tz),
-    isha:    formatTime(ishaTime, tz),
+    fajr:    formatTime(fajr + m(adj.fajr), tz),
+    sunrise: formatTime(sunrise + m(adj.sunrise), tz),
+    dhuhr:   formatTime(dhuhr + m(adj.dhuhr), tz),
+    asr:     formatTime(asr + m(adj.asr), tz),
+    maghrib: formatTime(maghrib + m(adj.maghrib), tz),
+    isha:    formatTime(ishaTime + m(adj.isha), tz),
   };
 }
 

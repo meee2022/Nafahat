@@ -54,10 +54,14 @@ interface SettingsState {
   dhikrEnabled: boolean;
   dhikrIntervalHours: number;
 
+  /** ⏱️ تعديلات يدوية بالدقائق لكل صلاة (لمطابقة أذان المنطقة بدقّة). */
+  prayerAdjustments: Record<'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha', number>;
+
   setNotifications: (v: boolean) => void;
   setNotifToggle: (key: string, v: boolean) => void;
   setDhikrEnabled: (v: boolean) => void;
   setDhikrIntervalHours: (h: number) => void;
+  setPrayerAdjustment: (prayer: 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha', minutes: number) => void;
   setAutoAdhan: (v: boolean) => void;
   setAdhanVoice: (v: 'makkah' | 'madinah' | 'abdulbaset' | 'default') => void;
   setIqamaEnabled: (v: boolean) => void;
@@ -104,6 +108,7 @@ const DEFAULT = {
   notifToggles: { wird: true, memo: true, review: true, adhkar: false } as Record<string, boolean>,
   dhikrEnabled: false,          // 📿 الأذكار الدورية (معطّلة افتراضياً — اختيارية)
   dhikrIntervalHours: 2,        // ⏱️ كل ساعتين افتراضياً
+  prayerAdjustments: { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 } as Record<'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha', number>,
 };
 
 const persist = (s: Partial<SettingsState>) => {
@@ -125,6 +130,7 @@ const persist = (s: Partial<SettingsState>) => {
     notifToggles: s.notifToggles,
     dhikrEnabled: s.dhikrEnabled,
     dhikrIntervalHours: s.dhikrIntervalHours,
+    prayerAdjustments: s.prayerAdjustments,
   };
   AsyncStorage.setItem(KEY, JSON.stringify(data)).catch(() => {});
 };
@@ -146,6 +152,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setDhikrIntervalHours(h) {
     set({ dhikrIntervalHours: h });
+    persist(get());
+  },
+  setPrayerAdjustment(prayer, minutes) {
+    // نحدّها بين -30 و +30 دقيقة لتفادي القيم الشاذّة.
+    const clamped = Math.max(-30, Math.min(30, Math.round(minutes)));
+    set({ prayerAdjustments: { ...get().prayerAdjustments, [prayer]: clamped } });
     persist(get());
   },
   setAutoSaveTasmee(v) {

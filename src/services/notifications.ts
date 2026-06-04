@@ -22,15 +22,20 @@ try {
 if (Notifications) {
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        // SDK 52 (متوافق قديم)
-        shouldShowAlert: true,
-        // SDK 53+ (مطلوب لعرض التنبيه في المقدّمة على iOS الحديث)
-        shouldShowBanner: true,
-        shouldShowList: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
+      handleNotification: async (notification) => {
+        // 🔇 إشعار الصلاة في المقدّمة: المُجدول يشغّل الأذان الكامل، فنكتم صوت
+        //    الإشعار لتفادي تشغيل صوتين معاً.
+        const isPrayer = notification?.request?.content?.data?.type === 'prayer';
+        return {
+          // SDK 52 (متوافق قديم)
+          shouldShowAlert: true,
+          // SDK 53+ (مطلوب لعرض التنبيه في المقدّمة على iOS الحديث)
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: !isPrayer,
+          shouldSetBadge: false,
+        };
+      },
     });
   } catch {}
 }

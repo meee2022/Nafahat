@@ -28,14 +28,20 @@ try {
 // تهيئة كيف تظهر الإشعارات لما التطبيق مفتوح
 if (notificationsReady && Notifications?.setNotificationHandler) {
   Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      // SDK 53+ API: shouldShowBanner / shouldShowList
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
+    handleNotification: async (notification: any) => {
+      // 🔇 إشعار الصلاة في المقدّمة: المُجدول يشغّل الأذان الكامل، فنكتم صوت
+      //    الإشعار (٢٨ث) لتفادي تشغيل صوتين معاً. في الخلفية لا يعمل هذا المعالج
+      //    أصلاً فيُشغَّل صوت adhan.wav من الإشعار.
+      const isPrayer = notification?.request?.content?.data?.type === 'prayer';
+      return {
+        shouldShowAlert: true,
+        shouldPlaySound: !isPrayer,
+        shouldSetBadge: false,
+        // SDK 53+ API: shouldShowBanner / shouldShowList
+        shouldShowBanner: true,
+        shouldShowList: true,
+      };
+    },
   });
 }
 

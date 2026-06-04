@@ -92,6 +92,14 @@
           "locationAlwaysAndWhenInUsePermission": "يستخدم التطبيق موقعك لحساب مواقيت الصلاة واتجاه القبلة بدقة."
         }
       ],
+      [
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/adhan.wav"
+          ]
+        }
+      ],
       "./plugins/withForceRtl.js",
       "./plugins/withForceRtlIos.js"
     ],

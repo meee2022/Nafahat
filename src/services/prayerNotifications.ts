@@ -35,6 +35,24 @@ export const isAvailable = (): boolean => {
   return !!Notifications;
 };
 
+/**
+ * 🔊 ينشئ قناة "الأذان" على أندرويد بصوت الأذان المدمج.
+ * على أندرويد، صوت الإشعار يأتي من القناة (مش من محتوى الإشعار) — فلازم
+ * نعرّف القناة بصوت adhan.wav حتى يُسمَع الأذان والتطبيق مقفول.
+ */
+async function ensureAdhanChannel(): Promise<void> {
+  if (isWeb || !isAvailable() || Platform.OS !== 'android') return;
+  try {
+    await Notifications.setNotificationChannelAsync('adhan', {
+      name: 'الأذان',
+      importance: Notifications.AndroidImportance.HIGH,
+      sound: 'adhan.wav',
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#0F4A41',
+    });
+  } catch {}
+}
+
 /** يحوّل "HH:MM" → { hour, minute } */
 function parseTime(t: string): { hour: number; minute: number } {
   const [h, m] = t.split(':').map(Number);
@@ -154,14 +172,15 @@ export async function sendTestNotification(): Promise<boolean> {
   if (isWeb || !isAvailable()) return false;
   const granted = await ensurePermission();
   if (!granted) return false;
+  await ensureAdhanChannel();
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
         title: '🕌 نَفَحات',
-        body: 'تم تفعيل تنبيهات الصلاة بنجاح ✅ — ستصلك في أوقاتها بإذن الله.',
-        sound: 'default',
+        body: 'تم تفعيل تنبيهات الصلاة بنجاح ✅ — هذا صوت الأذان الذي سيصلك في أوقاته.',
+        sound: 'adhan.wav',
       },
-      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3 },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3, channelId: 'adhan' },
     });
     return true;
   } catch {
@@ -210,6 +229,9 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
   const granted = await ensurePermission();
   if (!granted) return;
 
+  // 🔊 قناة الأذان (أندرويد) — لازمة ليُشغَّل صوت الأذان حتى والتطبيق مقفول.
+  await ensureAdhanChannel();
+
   // ألغِ السابق
   await cancelAllPrayerNotifications();
 
@@ -222,10 +244,11 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
         content: {
           title: `🕌 ${p.nameAr}`,
           body: `حان وقت أذان ${p.nameAr}`,
-          sound: 'default',
+          // 🔊 صوت أذان مدمج (يعمل والتطبيق مقفول) — على أندرويد يأتي من القناة.
+          sound: 'adhan.wav',
           data: { type: 'prayer', prayer: p.key },
         },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: 'adhan' },
       });
     } catch {}
 

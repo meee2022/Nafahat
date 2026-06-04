@@ -18,6 +18,7 @@ import { useTasbeehStore, useStatsStore } from '@store/index';
 import { arabicNumber } from '@data/surahs';
 import { OrnamentalRule } from '@components/ornaments';
 import { useT } from '@store/languageStore';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 export default function TasbeehScreen() {
   const t = useTheme();
@@ -358,7 +359,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: TOP_BAR_PAD,
     paddingBottom: 14,
     gap: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,

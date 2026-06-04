@@ -13,6 +13,7 @@ import { Screen, Text, Card, Button } from '@components/ui';
 import { OrnamentalRule } from '@components/ornaments';
 import { arabicNumber } from '@data/surahs';
 import { useT } from '@store/languageStore';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 // نصاب الذهب التقريبي بالدولار (85 جرام × ~70$)
 const NISAB_USD = 5950;
@@ -171,7 +172,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: TOP_BAR_PAD,
     paddingBottom: 14,
     gap: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,

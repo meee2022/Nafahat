@@ -13,6 +13,7 @@ import { Screen, Text, Card } from '@components/ui';
 import { OrnamentalRule } from '@components/ornaments';
 import { arabicNumber } from '@data/surahs';
 import { useT } from '@store/languageStore';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 const HIJRI_MONTHS = [
   'محرّم', 'صفر', 'ربيع الأول', 'ربيع الآخر',
@@ -185,7 +186,7 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 14,
+    paddingHorizontal: 16, paddingTop: TOP_BAR_PAD, paddingBottom: 14,
     gap: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },

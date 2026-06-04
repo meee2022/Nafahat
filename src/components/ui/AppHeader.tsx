@@ -3,6 +3,7 @@ import { View, Pressable, StyleSheet } from 'react-native';
 import { ChevronRight, Search, Settings } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from './Text';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 interface Props {
   title?: string;
@@ -121,7 +122,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     minHeight: 52,
-    paddingTop: 4,
+    // 📏 يحترم الـ safe area (الشقّ/Dynamic Island) فلا يطلع زر الرجوع تحت الساعة.
+    paddingTop: TOP_BAR_PAD,
   },
   left:   { minWidth: 44, alignItems: 'flex-start' },
   right:  { minWidth: 44, alignItems: 'flex-end' },

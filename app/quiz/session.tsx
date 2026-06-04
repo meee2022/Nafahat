@@ -10,6 +10,7 @@
  * ✅ زر "بدء جديد" vs "العودة للقائمة" بوظيفتين مختلفتين
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 import {
   View, StyleSheet, Pressable, ScrollView, ActivityIndicator,
   TextInput, Vibration, Platform,
@@ -858,7 +859,7 @@ const ReviewCard: React.FC<{
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingTop: 50, paddingBottom: 12,
+    paddingHorizontal: 14, paddingTop: TOP_BAR_PAD, paddingBottom: 12,
     gap: 8, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

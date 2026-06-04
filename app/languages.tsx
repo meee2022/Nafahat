@@ -9,6 +9,7 @@ import { useTheme } from '@theme/index';
 import { Card } from '@components/ui';
 import { useLanguageStore, useT } from '@store/languageStore';
 import { LANGUAGES, getLanguageCompleteness } from '@/i18n/index';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 export default function LanguagesScreen() {
   const t = useTheme();
@@ -132,7 +133,7 @@ export default function LanguagesScreen() {
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 14,
+    paddingHorizontal: 16, paddingTop: TOP_BAR_PAD, paddingBottom: 14,
     gap: 12, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

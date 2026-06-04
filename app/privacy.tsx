@@ -8,6 +8,7 @@ import { ArrowRight, Shield, Lock, Eye, EyeOff, Database, Cloud, Bell } from 'lu
 import { useTheme } from '@theme/index';
 import { Text, Card } from '@components/ui';
 import { useAppInfo, getCopyrightYearFromInfo } from '@store/appConfigStore';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 export default function PrivacyScreen() {
   const t = useTheme();
@@ -248,7 +249,7 @@ const Bullet: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 14,
+    paddingHorizontal: 16, paddingTop: TOP_BAR_PAD, paddingBottom: 14,
     gap: 12, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

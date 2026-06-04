@@ -24,6 +24,7 @@ import { View, StyleSheet, Pressable, ScrollView, Share } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 import {
   ArrowRight, Bookmark, Heart, Share2, Copy, Eye, Clock, Calendar,
   ChevronLeft, AlertCircle,
@@ -354,7 +355,7 @@ const styles = StyleSheet.create({
 
   // Hero
   hero: {
-    paddingTop: 50,
+    paddingTop: TOP_BAR_PAD,
     paddingBottom: 26,
     paddingHorizontal: 16,
     borderBottomLeftRadius: 32,

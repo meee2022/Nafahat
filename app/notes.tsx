@@ -12,6 +12,7 @@ import { useReadingStore } from '@store/index';
 import { arabicNumber, getSurahById, SURAHS } from '@data/surahs';
 import { useT } from '@store/languageStore';
 import { getDailyPrompt } from '@data/reflectionPrompts';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 export default function NotesScreen() {
   const t = useTheme();
@@ -285,7 +286,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 14,
+    paddingHorizontal: 16, paddingTop: TOP_BAR_PAD, paddingBottom: 14,
     gap: 12, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

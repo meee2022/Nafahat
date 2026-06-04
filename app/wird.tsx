@@ -12,6 +12,7 @@ import { OrnamentalRule } from '@components/ornaments';
 import { useReadingStore, useStatsStore, useWirdStore } from '@store/index';
 import { arabicNumber, SURAHS } from '@data/surahs';
 import { useT } from '@store/languageStore';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 export default function WirdScreen() {
   const t = useTheme();
@@ -210,7 +211,7 @@ const StatBox: React.FC<{ label: string; value: string; color: string }> = ({ la
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 14,
+    paddingHorizontal: 16, paddingTop: TOP_BAR_PAD, paddingBottom: 14,
     gap: 12, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

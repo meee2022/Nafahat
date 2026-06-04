@@ -30,7 +30,7 @@ export default function DuasScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
-      <View style={{ paddingHorizontal: t.spacing.lg, paddingTop: 12 }}>
+      <View style={{ paddingHorizontal: t.spacing.lg }}>
         <AppHeader onBack={() => router.back()} title={tr('duas.title')} subtitle={tr('duas.subtitle')} />
 
         {/* الفئات */}

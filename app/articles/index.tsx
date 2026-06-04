@@ -22,6 +22,7 @@ import { View, StyleSheet, Pressable, ScrollView, TextInput, FlatList, Share } f
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 import {
   Search, ArrowRight, Bookmark, Heart, Share2, Eye, Clock, Calendar,
   Sparkles, ChevronLeft, BookOpen,
@@ -406,7 +407,7 @@ const ArticleCard: React.FC<{
 const styles = StyleSheet.create({
   // ── Hero ──
   hero: {
-    paddingTop: 50,
+    paddingTop: TOP_BAR_PAD,
     paddingBottom: 18,
     paddingHorizontal: 16,
     borderBottomLeftRadius: 28,

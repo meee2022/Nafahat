@@ -6,6 +6,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, Share, LayoutChangeEvent, GestureResponderEvent, AlertButton, Alert } from 'react-native';
 import { useRouter, useRootNavigationState } from 'expo-router';
 import Svg, { Path, Circle, Defs, Pattern, Rect, LinearGradient as SvgGradient, Stop, G } from 'react-native-svg';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 import {
   ChevronDown, Play, Pause, SkipBack, SkipForward, Repeat,
   Repeat1, Timer, Gauge, Heart, Download, Share2, ListMusic, AlertCircle, X,
@@ -384,7 +385,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 50,
+    paddingTop: TOP_BAR_PAD,
     paddingBottom: 12,
     gap: 12,
   },

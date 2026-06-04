@@ -17,6 +17,7 @@ import { Screen, Text, Card, Button } from '@components/ui';
 import { useMemoStore } from '@store/index';
 import { SURAHS, arabicNumber } from '@data/surahs';
 import { OrnamentalRule } from '@components/ornaments';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 const DAILY_AMOUNTS = [3, 5, 7, 10, 15, 20];
 const DAYS_OPTIONS = [3, 5, 6, 7];
@@ -378,7 +379,7 @@ export default function MemoCreateScreen() {
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 14,
+    paddingHorizontal: 16, paddingTop: TOP_BAR_PAD, paddingBottom: 14,
     gap: 12, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

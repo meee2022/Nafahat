@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { View, StyleSheet, ScrollView, Pressable, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 import {
   ArrowRight, BookOpen, Brain, Clock, Heart, Flame, Calendar,
   Trophy, CheckCircle2, Sparkles, AlertCircle, RotateCcw, ChevronLeft
@@ -375,7 +376,7 @@ const LegendItem: React.FC<{ dotColor: string; label: string; count: number }> =
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingTop: 50, paddingBottom: 12,
+    paddingHorizontal: 14, paddingTop: TOP_BAR_PAD, paddingBottom: 12,
     gap: 8, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

@@ -16,6 +16,7 @@ import { OrnamentalRule } from '@components/ornaments';
 import { PremiumGate } from '@components/common';
 import { useSettingsStore } from '@store/index';
 import { restorePurchases } from '@services/premium';
+import { TOP_BAR_PAD } from '@utils/safeArea';
 
 const PREMIUM_FEATURES = [
   '٢٤ قارئ كامل بدون قيود',
@@ -176,7 +177,7 @@ export default function PremiumScreen() {
 const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 50, paddingBottom: 14,
+    paddingHorizontal: 16, paddingTop: TOP_BAR_PAD, paddingBottom: 14,
     gap: 12, borderBottomWidth: StyleSheet.hairlineWidth,
   },
   iconBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

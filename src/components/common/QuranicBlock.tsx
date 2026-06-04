@@ -41,10 +41,13 @@ export const QuranicBlock: React.FC<Props> = ({ body, source, ayahNumbers, fontS
     ? '"KFGQPC Uthmanic Hafs", "Scheherazade New", "Amiri Quran", serif'
     : t.fontFamilies.arabicQuran;
 
-  const parchment = '#FBF5E3';
+  // 🌙 ألوان متأقلمة مع الثيم: في الوضع الداكن خلفية داكنة + نص فاتح كريمي
+  //    (بدل الورق الكريمي الثابت الذي كان يظهر أبيض وسط الأذكار الداكنة).
+  const isDark = t.mode === 'dark';
+  const parchment = isDark ? '#0F1C15' : '#FBF5E3';
   const gold = t.colors.accent;
   const goldDeep = t.colors.accentDeep;
-  const ink = '#1A0A00';
+  const ink = isDark ? '#F4EAD2' : '#1A0A00';
 
   const ayahGroups = useMemo(() => parseQuranicBody(body), [body]);
 

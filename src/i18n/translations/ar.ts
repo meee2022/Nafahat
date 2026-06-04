@@ -66,11 +66,11 @@ export const ar = {
   // ============== Tabs ==============
   'tabs.home':         'الرئيسية',
   'tabs.mushaf':       'المصحف',
-  'tabs.memorization': 'الحفظ',
+  'tabs.memorization': 'حفظي',
   'tabs.listen':       'الاستماع',
   'tabs.daily':        'اليومي',
   'tabs.library':      'المكتبة',
-  'tabs.more':         'المزيد',
+  'tabs.more':         'اكتشف',
   'tabs.account':      'حسابي',
 
   // ============== Home sections ==============

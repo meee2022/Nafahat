@@ -9,7 +9,7 @@ import { useResponsive } from '@hooks/useResponsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Bell, Search, MapPin, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { Bell, Search, MapPin, ChevronLeft, ChevronRight, BookOpen, Headphones, Brain } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { IllMushaf, IllAdhkar, IllTasbeeh, IllQibla, IllMosques, IllCalendar, IllDuas, IllTajweed, IllKhatma, IllZakat, IllStats, IllMemo, IllAudio, IllHadith, IllNotes, IllAchievements, IllArticles } from '@components/illustrations';
@@ -327,6 +327,40 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* ⭐ ترحيب سريع — المصحف والاستماع والحفظ كأبطال الواجهة الأولى */}
+        <View style={styles.quickStartRow}>
+          <Pressable
+            onPress={() => router.push('/(tabs)/mushaf')}
+            accessibilityRole="button"
+            accessibilityLabel="اقرأ المصحف"
+            style={({ pressed }) => [styles.quickCard, { backgroundColor: t.colors.primary, borderColor: t.colors.accent, opacity: pressed ? 0.9 : 1 }]}
+          >
+            <BookOpen size={24} color={t.colors.accent} strokeWidth={1.8} />
+            <Text style={[styles.quickLabel, { color: '#FFF' }]}>اقرأ</Text>
+            <Text style={[styles.quickSub, { color: 'rgba(255,255,255,0.7)' }]}>المصحف</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/reciters')}
+            accessibilityRole="button"
+            accessibilityLabel="استمع للقرّاء"
+            style={({ pressed }) => [styles.quickCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold, opacity: pressed ? 0.9 : 1 }]}
+          >
+            <Headphones size={24} color={t.colors.accent} strokeWidth={1.8} />
+            <Text style={[styles.quickLabel, { color: t.colors.textPrimary }]}>اسمع</Text>
+            <Text style={[styles.quickSub, { color: t.colors.textTertiary }]}>القرّاء</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => router.push('/(tabs)/memorization')}
+            accessibilityRole="button"
+            accessibilityLabel="احفظ القرآن"
+            style={({ pressed }) => [styles.quickCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold, opacity: pressed ? 0.9 : 1 }]}
+          >
+            <Brain size={24} color={t.colors.accent} strokeWidth={1.8} />
+            <Text style={[styles.quickLabel, { color: t.colors.textPrimary }]}>احفظ</Text>
+            <Text style={[styles.quickSub, { color: t.colors.textTertiary }]}>خطّتي</Text>
+          </Pressable>
+        </View>
+
         {/* بطاقة "مهمة اليوم" - ديناميكية حسب الوقت + حالة المستخدم */}
         <View style={{ marginTop: 8 }}>
           <DailyAction />
@@ -516,6 +550,29 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     opacity: 0.7,
+  },
+  quickStartRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 16,
+  },
+  quickCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+  },
+  quickLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  quickSub: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   prayerStrip: {
     marginHorizontal: 16,

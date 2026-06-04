@@ -127,7 +127,7 @@ export default function MoreScreen() {
           <View pointerEvents="none" style={styles.heroFrame} />
 
           <View style={styles.heroBranding}>
-            <Text style={styles.brandingTitle}>المزيد</Text>
+            <Text style={styles.brandingTitle}>اكتشف</Text>
             <View style={styles.brandingRule} />
             <Text style={styles.brandingSub}>كلّ الأقسام والأدوات في مكان واحد</Text>
           </View>

@@ -78,7 +78,13 @@ export default function MemorizationScreen() {
 
   return (
     <Screen>
-      <AppHeader title={tr('memo.title')} subtitle={tr('memo.subtitle')} />
+      {/* زر رجوع يظهر فقط لو الصفحة مفتوحة بـpush (من المراجعة مثلاً) — وكتبويب
+          عادي لا يظهر لأن الشريط السفلي هو وسيلة التنقّل. فلا يبقى المستخدم عالقاً. */}
+      <AppHeader
+        title={tr('memo.title')}
+        subtitle={tr('memo.subtitle')}
+        onBack={router.canGoBack() ? () => router.back() : undefined}
+      />
 
       {/* 🔥 Heat-map النشاط آخر 14 يوم */}
       <View style={{ marginBottom: t.spacing.md }}>

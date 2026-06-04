@@ -56,8 +56,10 @@ export async function playAdhan(voice: AdhanVoice = 'default'): Promise<boolean>
     await ensureAdhanAudioMode();
     if (myVersion !== adhanRequestVersion) return false;
 
-    // أوقف أي أذان سابق
+    // أوقف أي أذان سابق — pause قبل remove لأن remove وحده لا يوقف الصوت
+    //    فوراً (فيحصل تداخل "صوتين" عند معاينة أذان آخر).
     if (currentAdhan) {
+      try { currentAdhan.pause(); } catch {}
       try { currentAdhan.remove(); } catch {}
       currentAdhan = null;
     }
@@ -80,6 +82,7 @@ export async function playAdhan(voice: AdhanVoice = 'default'): Promise<boolean>
 /** يوقف الأذان الجاري. */
 export async function stopAdhan(): Promise<void> {
   if (!currentAdhan) return;
+  try { currentAdhan.pause(); } catch {}
   try { currentAdhan.remove(); } catch {}
   currentAdhan = null;
 }

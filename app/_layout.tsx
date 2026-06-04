@@ -25,6 +25,7 @@ import { useLanguageStore } from '@store/languageStore';
 import { calculatePrayerTimes } from '@services/prayerTimes';
 import { startAdhanScheduler, stopAdhanScheduler } from '@services/adhanScheduler';
 import { schedulePrayerNotifications, cancelAllPrayerNotifications } from '@services/prayerNotifications';
+import { scheduleDhikrReminders, cancelDhikrReminders } from '@services/dhikrReminders';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
 import { useAppInfo } from '@store/appConfigStore';
@@ -201,6 +202,18 @@ function AppGate() {
       cancelAllPrayerNotifications().catch(() => {});
     }
   }, [hydrated, autoAdhanEnabled, adhanVoice, adhanLocation]);
+
+  // 📿 الأذكار الدورية — تُجدول عند الإقلاع لو مفعّلة (تعمل حتى لو التطبيق مقفول).
+  const dhikrEnabled = useSettingsStore((s) => s.dhikrEnabled);
+  const dhikrIntervalHours = useSettingsStore((s) => s.dhikrIntervalHours);
+  useEffect(() => {
+    if (!hydrated) return;
+    if (dhikrEnabled) {
+      scheduleDhikrReminders(dhikrIntervalHours).catch(() => {});
+    } else {
+      cancelDhikrReminders().catch(() => {});
+    }
+  }, [hydrated, dhikrEnabled, dhikrIntervalHours]);
 
   if (!hydrated || !fontsLoaded) return <SplashView />;
 

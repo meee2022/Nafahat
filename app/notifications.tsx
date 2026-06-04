@@ -4,7 +4,7 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, Pressable, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
-import { ArrowRight, BellRing, BookOpen, Brain, Sunrise, Moon, AlertCircle, Check, Volume2, ChevronLeft } from 'lucide-react-native';
+import { ArrowRight, BellRing, BookOpen, Brain, Sunrise, Moon, AlertCircle, Check, Volume2, ChevronLeft, Repeat } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card } from '@components/ui';
 import { OrnamentalRule } from '@components/ornaments';
@@ -14,6 +14,7 @@ import {
 } from '@services/notifications';
 import { useT } from '@store/languageStore';
 import { useSettingsStore } from '@store/index';
+import { scheduleDhikrReminders, cancelDhikrReminders } from '@services/dhikrReminders';
 
 interface NotificationItem {
   id: string;
@@ -57,6 +58,31 @@ export default function NotificationsScreen() {
   //    الافتراضي لما المستخدم يطلع من الشاشة ويرجع.
   const settings = useSettingsStore((s) => s.notifToggles);
   const setNotifToggle = useSettingsStore((s) => s.setNotifToggle);
+
+  // 📿 الأذكار الدورية
+  const dhikrEnabled = useSettingsStore((s) => s.dhikrEnabled);
+  const dhikrIntervalHours = useSettingsStore((s) => s.dhikrIntervalHours);
+  const setDhikrEnabled = useSettingsStore((s) => s.setDhikrEnabled);
+  const setDhikrIntervalHours = useSettingsStore((s) => s.setDhikrIntervalHours);
+
+  const handleDhikrToggle = async (v: boolean) => {
+    setDhikrEnabled(v);
+    if (v) {
+      if (permission !== true) {
+        const granted = await requestPermission();
+        setPermission(granted);
+        if (!granted) { setDhikrEnabled(false); return; }
+      }
+      await scheduleDhikrReminders(dhikrIntervalHours);
+    } else {
+      await cancelDhikrReminders();
+    }
+  };
+
+  const handleDhikrInterval = async (h: number) => {
+    setDhikrIntervalHours(h);
+    if (dhikrEnabled) await scheduleDhikrReminders(h);
+  };
 
   const supported = isNotificationsSupported();
 
@@ -212,6 +238,61 @@ export default function NotificationsScreen() {
           </Card>
         </Pressable>
 
+        {/* 📿 الأذكار الدورية */}
+        <View style={styles.sectionHead}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.eyebrow, { color: t.colors.accent }]}>ذِكر مستمر</Text>
+            <Text style={[styles.sectionTitle, { color: t.colors.textPrimary }]}>الأذكار الدورية</Text>
+          </View>
+        </View>
+
+        <Card padding={14} elevation="none" bordered>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={[styles.notifIcon, { backgroundColor: t.colors.accent + '14', borderColor: t.colors.accent }]}>
+              <Repeat size={18} color={t.colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text variant="subtitle">تذكير بالأذكار كل فترة</Text>
+              <Text variant="bodySm" color={t.colors.textSecondary} style={{ marginTop: 2 }}>
+                ذِكر متنوّع على مدار اليوم (٨ ص – ١٠ م)
+              </Text>
+            </View>
+            <Switch
+              value={dhikrEnabled}
+              onValueChange={handleDhikrToggle}
+              trackColor={{ false: t.colors.borderStrong, true: t.colors.primary }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          {dhikrEnabled ? (
+            <View style={{ flexDirection: 'row-reverse', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
+              {[1, 2, 3, 4].map((h) => {
+                const active = dhikrIntervalHours === h;
+                const label = h === 1 ? 'كل ساعة' : h === 2 ? 'كل ساعتين' : `كل ${h} ساعات`;
+                return (
+                  <Pressable
+                    key={h}
+                    onPress={() => handleDhikrInterval(h)}
+                    style={({ pressed }) => [
+                      styles.intervalChip,
+                      {
+                        backgroundColor: active ? t.colors.primary : t.colors.surfaceAlt,
+                        borderColor: active ? t.colors.primary : t.colors.border,
+                        opacity: pressed ? 0.85 : 1,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: active ? '#fff' : t.colors.textSecondary }}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          ) : null}
+        </Card>
+
         {/* الإعدادات */}
         <View style={styles.sectionHead}>
           <View style={{ flex: 1 }}>
@@ -271,5 +352,9 @@ const styles = StyleSheet.create({
   settingIcon: {
     width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
+  },
+  intervalChip: {
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 999, borderWidth: 1,
   },
 });

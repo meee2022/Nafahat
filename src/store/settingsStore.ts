@@ -50,8 +50,14 @@ interface SettingsState {
   /** حالة مفاتيح التذكيرات في شاشة الإشعارات (wird/memo/review/adhkar) — تُحفَظ دائماً. */
   notifToggles: Record<string, boolean>;
 
+  /** 📿 الأذكار الدورية: تفعيلها + الفاصل الزمني بالساعات. */
+  dhikrEnabled: boolean;
+  dhikrIntervalHours: number;
+
   setNotifications: (v: boolean) => void;
   setNotifToggle: (key: string, v: boolean) => void;
+  setDhikrEnabled: (v: boolean) => void;
+  setDhikrIntervalHours: (h: number) => void;
   setAutoAdhan: (v: boolean) => void;
   setAdhanVoice: (v: 'makkah' | 'madinah' | 'abdulbaset' | 'default') => void;
   setIqamaEnabled: (v: boolean) => void;
@@ -96,6 +102,8 @@ const DEFAULT = {
   iqamaEnabled: false,              // 🕌 تنبيه الإقامة (معطّل افتراضياً)
   iqamaOffsetMin: 10,               // ⏱️ 10 دقائق بين الأذان والإقامة افتراضياً
   notifToggles: { wird: true, memo: true, review: true, adhkar: false } as Record<string, boolean>,
+  dhikrEnabled: false,          // 📿 الأذكار الدورية (معطّلة افتراضياً — اختيارية)
+  dhikrIntervalHours: 2,        // ⏱️ كل ساعتين افتراضياً
 };
 
 const persist = (s: Partial<SettingsState>) => {
@@ -115,6 +123,8 @@ const persist = (s: Partial<SettingsState>) => {
     iqamaEnabled: s.iqamaEnabled,
     iqamaOffsetMin: s.iqamaOffsetMin,
     notifToggles: s.notifToggles,
+    dhikrEnabled: s.dhikrEnabled,
+    dhikrIntervalHours: s.dhikrIntervalHours,
   };
   AsyncStorage.setItem(KEY, JSON.stringify(data)).catch(() => {});
 };
@@ -128,6 +138,14 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setNotifToggle(key, v) {
     set({ notifToggles: { ...get().notifToggles, [key]: v } });
+    persist(get());
+  },
+  setDhikrEnabled(v) {
+    set({ dhikrEnabled: v });
+    persist(get());
+  },
+  setDhikrIntervalHours(h) {
+    set({ dhikrIntervalHours: h });
     persist(get());
   },
   setAutoSaveTasmee(v) {

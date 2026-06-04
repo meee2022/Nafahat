@@ -23,7 +23,11 @@ if (Notifications) {
   try {
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
+        // SDK 52 (متوافق قديم)
         shouldShowAlert: true,
+        // SDK 53+ (مطلوب لعرض التنبيه في المقدّمة على iOS الحديث)
+        shouldShowBanner: true,
+        shouldShowList: true,
         shouldPlaySound: true,
         shouldSetBadge: false,
       }),
@@ -73,10 +77,12 @@ export async function scheduleDaily(cfg: DailyReminderConfig): Promise<void> {
         body: cfg.body,
         sound: true,
       },
+      // 🩹 SDK 56: صيغة الـtrigger اليومي تتطلّب type صريحاً، وإلا تفشل الجدولة
+      //    صمتاً (خصوصاً على iOS) فلا يصل أي إشعار.
       trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
         hour: cfg.hour,
         minute: cfg.minute,
-        repeats: true,
       },
     });
   } catch {}

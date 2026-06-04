@@ -100,8 +100,8 @@ export async function scheduleLocalReminder(
     const id = await Notifications.scheduleNotificationAsync({
       content: { title, body, sound: 'default' },
       trigger: repeating
-        ? { seconds: triggerSeconds, repeats: true }
-        : { seconds: Math.max(1, triggerSeconds) },
+        ? { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: triggerSeconds, repeats: true }
+        : { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: Math.max(1, triggerSeconds) },
     });
     return id;
   } catch (e) {
@@ -123,7 +123,7 @@ export async function scheduleDailyReminder(
   try {
     const id = await Notifications.scheduleNotificationAsync({
       content: { title, body, sound: 'default' },
-      trigger: { hour, minute, repeats: true },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
     });
     return id;
   } catch (e) {

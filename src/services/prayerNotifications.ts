@@ -146,6 +146,29 @@ async function scheduleWeb(times: PrayerTimes, opts: ScheduleOptions): Promise<v
 
 // ============== الواجهة العامّة ==============
 
+/**
+ * 🔔 يرسل إشعاراً تجريبياً فورياً (بعد ٣ ثوانٍ) ليتأكّد المستخدم أن الإشعارات
+ * تعمل فعلاً — لأن إشعارات الصلاة مجدولة لأوقاتها فلا تظهر فور التفعيل.
+ */
+export async function sendTestNotification(): Promise<boolean> {
+  if (isWeb || !isAvailable()) return false;
+  const granted = await ensurePermission();
+  if (!granted) return false;
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: '🕌 نَفَحات',
+        body: 'تم تفعيل تنبيهات الصلاة بنجاح ✅ — ستصلك في أوقاتها بإذن الله.',
+        sound: 'default',
+      },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3 },
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** يطلب إذن الإشعارات إن لم يكن مُمنحاً. */
 export async function ensurePermission(): Promise<boolean> {
   if (isWeb) return ensureWebPermission();
@@ -202,7 +225,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
           sound: 'default',
           data: { type: 'prayer', prayer: p.key },
         },
-        trigger: { hour, minute, repeats: true },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute },
       });
     } catch {}
 
@@ -218,7 +241,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
             sound: 'default',
             data: { type: 'iqama', prayer: p.key },
           },
-          trigger: { hour: iq.hour, minute: iq.minute, repeats: true },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: iq.hour, minute: iq.minute },
         });
       } catch {}
     }
@@ -235,7 +258,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
         sound: 'default',
         data: { type: 'adhkar', category: 'morning' },
       },
-      trigger: { hour: morningTime.hour, minute: morningTime.minute, repeats: true },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: morningTime.hour, minute: morningTime.minute },
     });
   } catch {}
 
@@ -250,7 +273,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
         sound: 'default',
         data: { type: 'adhkar', category: 'evening' },
       },
-      trigger: { hour: eveningTime.hour, minute: eveningTime.minute, repeats: true },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: eveningTime.hour, minute: eveningTime.minute },
     });
   } catch {}
 
@@ -265,7 +288,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
         sound: 'default',
         data: { type: 'ayah-of-day' },
       },
-      trigger: { hour: ayahTime.hour, minute: ayahTime.minute, repeats: true },
+      trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: ayahTime.hour, minute: ayahTime.minute },
     });
   } catch {}
 }

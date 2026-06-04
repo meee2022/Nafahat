@@ -14,7 +14,7 @@ import { Card, Button } from '@components/ui';
 import {
   calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName, CalculationMethod,
 } from '@services/prayerTimes';
-import { schedulePrayerNotifications, cancelAllPrayerNotifications, isAvailable as notifAvailable } from '@services/prayerNotifications';
+import { schedulePrayerNotifications, cancelAllPrayerNotifications, isAvailable as notifAvailable, sendTestNotification } from '@services/prayerNotifications';
 import { playAdhan, stopAdhan } from '@services/adhan';
 import { startAdhanScheduler, stopAdhanScheduler, updateAdhanTimes } from '@services/adhanScheduler';
 import { useSettingsStore } from '@store/index';
@@ -169,9 +169,11 @@ export default function PrayerTimesScreen() {
                   } else {
                     await schedulePrayerNotifications(times, { iqamaEnabled, iqamaOffsetMin });
                     setNotifEnabled(true);
+                    // 🔔 إشعار تجريبي فوري ليتأكّد المستخدم أنها تعمل
+                    await sendTestNotification();
                     Alert.alert('✓ تم', iqamaEnabled
-                      ? `٥ صلوات + إقامة (بعد ${iqamaOffsetMin} د) + ٣ أذكار جُدْوِلَت يومياً.`
-                      : '٥ صلوات + ٣ أذكار جُدْوِلَت يومياً.');
+                      ? `٥ صلوات + إقامة (بعد ${iqamaOffsetMin} د) + ٣ أذكار جُدْوِلَت يومياً.\n\nسيصلك إشعار تجريبي خلال ثوانٍ ✅`
+                      : '٥ صلوات + ٣ أذكار جُدْوِلَت يومياً.\n\nسيصلك إشعار تجريبي خلال ثوانٍ ✅');
                   }
                 }}
                 style={({ pressed }) => [

@@ -66,7 +66,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "السماح للتطبيق بالوصول إلى الميكروفون لتسجيل التسميع."
+          "microphonePermission": "نَفَحات يستخدم الميكروفون لتسجيل تلاوتك في ميزة التسميع لتستمع لنفسك وتراجع حفظك. لا يُرفع التسجيل لأي خادم. Nafahat uses the microphone only to record your Qur'an recitation in the Tasmee' (self-listening) feature; recordings stay on your device and are never uploaded."
         }
       ],
       [
@@ -89,7 +89,8 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "يستخدم التطبيق موقعك لحساب مواقيت الصلاة واتجاه القبلة بدقة."
+          "locationWhenInUsePermission": "نَفَحات يستخدم موقعك لحساب مواقيت الصلاة واتجاه القبلة وإيجاد المساجد القريبة بدقّة. Nafahat uses your location to calculate accurate prayer times, Qibla direction, and to find nearby mosques.",
+          "locationAlwaysAndWhenInUsePermission": "نَفَحات يستخدم موقعك لحساب مواقيت الصلاة واتجاه القبلة وإيجاد المساجد القريبة بدقّة. Nafahat uses your location to calculate accurate prayer times, Qibla direction, and to find nearby mosques."
         }
       ],
       [

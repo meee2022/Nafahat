@@ -499,8 +499,11 @@ export default function PrayerTimesScreen() {
 }
 
 // مكوّن Text محلي
+// 🩹 محاذاة العربي يمين محصّنة ضد swapLeftAndRightInRTL — نفس نهج @components/ui/Text:
+//    textAlign:'auto' (حسب اتجاه المحتوى) فيتحاذى العربي يميناً في كل البيئات.
+//    تُطبَّق كافتراضي قابل للتجاوز بأي style صريح (مثل التوسيط).
 const Text: React.FC<any> = ({ style, ...rest }) => {
-  return <RNText style={style} {...rest} />;
+  return <RNText style={[{ textAlign: 'auto', writingDirection: 'rtl' }, style]} {...rest} />;
 };
 import { Text as RNText } from 'react-native';
 

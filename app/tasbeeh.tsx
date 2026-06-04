@@ -5,11 +5,13 @@
  * - حلقات تظهر التقدم
  * - زخارف محيطة بنبضات
  */
-import React from 'react';
-import { View, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, StyleSheet, Pressable, useWindowDimensions, Modal } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as Haptics from 'expo-haptics';
+import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import Svg, { Path, Circle, G, Defs, RadialGradient, Stop, Line } from 'react-native-svg';
-import { ArrowRight, RotateCcw, Vibrate, Volume2, Settings2 } from 'lucide-react-native';
+import { ArrowRight, RotateCcw, Vibrate, Volume2, VolumeX, Settings2, Check, X } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text } from '@components/ui';
 import { useTasbeehStore, useStatsStore } from '@store/index';
@@ -23,17 +25,45 @@ export default function TasbeehScreen() {
   const router = useRouter();
   const { width } = useWindowDimensions();
   const SIZE = Math.min(width - 48, 340);
-  const { items, selectedId, select, increment, reset, todayCount } = useTasbeehStore();
+  const { items, selectedId, select, increment, reset, setGoal, todayCount } = useTasbeehStore();
   const incrementStats = useStatsStore((s) => s.incrementTasbeeh);
 
   const current = items.find((i) => i.id === selectedId)!;
   const progress = current.goal > 0 ? current.current / current.goal : 0;
   const isComplete = current.current >= current.goal;
 
+  // ⚙️ إعدادات السبحة
+  const [vibrate, setVibrate] = useState(true);
+  const [sound, setSound] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // 🔊 مشغّل صوت النقرة (يُنشأ مرّة واحدة)
+  const tickPlayer = useRef<AudioPlayer | null>(null);
+  if (sound && !tickPlayer.current) {
+    try {
+      setAudioModeAsync({ playsInSilentMode: true }).catch(() => {});
+      tickPlayer.current = createAudioPlayer(require('../assets/sounds/tick.wav'));
+    } catch {}
+  }
+
+  // تحرير مشغّل صوت النقرة عند الخروج من الشاشة
+  useEffect(() => {
+    return () => {
+      try { tickPlayer.current?.remove(); } catch {}
+      tickPlayer.current = null;
+    };
+  }, []);
+
   const handleTap = () => {
     increment();
     incrementStats(1);
+    if (vibrate) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    if (sound && tickPlayer.current) {
+      try { tickPlayer.current.seekTo(0); tickPlayer.current.play(); } catch {}
+    }
   };
+
+  const goalOptions = [33, 99, 100, 500, 1000];
 
   // نجمة 16 بتلة للدائرة المركزية
   const renderStarPattern = () => {
@@ -219,28 +249,104 @@ export default function TasbeehScreen() {
 
         {/* أزرار سفلية */}
         <View style={styles.bottomActions}>
-          <ActionBtn icon={<RotateCcw size={18} color={t.colors.textPrimary} strokeWidth={1.6} />} label={tr('tasbeeh.reset')} onPress={() => reset(selectedId)} />
-          <ActionBtn icon={<Vibrate size={18} color={t.colors.textPrimary} strokeWidth={1.6} />} label={tr('tasbeeh.vibrate')} />
-          <ActionBtn icon={<Volume2 size={18} color={t.colors.textPrimary} strokeWidth={1.6} />} label={tr('tasbeeh.sound')} />
-          <ActionBtn icon={<Settings2 size={18} color={t.colors.textPrimary} strokeWidth={1.6} />} label={tr('tasbeeh.settings')} />
+          <ActionBtn
+            icon={<RotateCcw size={18} color={t.colors.textPrimary} strokeWidth={1.6} />}
+            label={tr('tasbeeh.reset')}
+            onPress={() => { reset(selectedId); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {}); }}
+          />
+          <ActionBtn
+            icon={<Vibrate size={18} color={vibrate ? t.colors.accent : t.colors.textPrimary} strokeWidth={1.6} />}
+            label={tr('tasbeeh.vibrate')}
+            active={vibrate}
+            onPress={() => { setVibrate((v) => !v); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); }}
+          />
+          <ActionBtn
+            icon={sound
+              ? <Volume2 size={18} color={t.colors.accent} strokeWidth={1.6} />
+              : <VolumeX size={18} color={t.colors.textPrimary} strokeWidth={1.6} />}
+            label={tr('tasbeeh.sound')}
+            active={sound}
+            onPress={() => setSound((s) => !s)}
+          />
+          <ActionBtn
+            icon={<Settings2 size={18} color={t.colors.textPrimary} strokeWidth={1.6} />}
+            label={tr('tasbeeh.settings')}
+            onPress={() => setShowSettings(true)}
+          />
         </View>
       </Screen>
+
+      {/* ⚙️ إعدادات السبحة — اختيار الهدف */}
+      <Modal visible={showSettings} transparent animationType="fade" onRequestClose={() => setShowSettings(false)}>
+        <Pressable style={styles.modalOverlay} onPress={() => setShowSettings(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: t.colors.surface, borderColor: t.colors.borderGold }]} onPress={(e) => e.stopPropagation()}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
+              <Text style={{ flex: 1, fontSize: 17, fontWeight: '800', color: t.colors.textPrimary }}>إعدادات السبحة</Text>
+              <Pressable onPress={() => setShowSettings(false)} hitSlop={10}>
+                <X size={20} color={t.colors.textSecondary} />
+              </Pressable>
+            </View>
+
+            <Text style={{ fontSize: 13, fontWeight: '700', color: t.colors.textSecondary, marginBottom: 10 }}>
+              هدف العدّ للذِّكر الحالي
+            </Text>
+            <View style={{ flexDirection: 'row-reverse', flexWrap: 'wrap', gap: 8 }}>
+              {goalOptions.map((g) => {
+                const active = current.goal === g;
+                return (
+                  <Pressable
+                    key={g}
+                    onPress={() => { setGoal(selectedId, g); Haptics.selectionAsync().catch(() => {}); }}
+                    style={[styles.goalChip, { backgroundColor: active ? t.colors.primary : t.colors.surfaceAlt, borderColor: active ? t.colors.primary : t.colors.border }]}
+                  >
+                    <Text style={{ fontSize: 14, fontWeight: '800', color: active ? '#fff' : t.colors.textPrimary }}>
+                      {arabicNumber(g)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <View style={{ height: 1, backgroundColor: t.colors.divider, marginVertical: 16 }} />
+
+            {/* مفاتيح سريعة للاهتزاز والصوت */}
+            <ToggleRow label="الاهتزاز عند العدّ" value={vibrate} onToggle={() => setVibrate((v) => !v)} />
+            <ToggleRow label="صوت النقرة" value={sound} onToggle={() => setSound((s) => !s)} />
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 
-const ActionBtn: React.FC<{ icon: React.ReactNode; label: string; onPress?: () => void }> = ({ icon, label, onPress }) => {
+const ToggleRow: React.FC<{ label: string; value: boolean; onToggle: () => void }> = ({ label, value, onToggle }) => {
+  const t = useTheme();
+  return (
+    <Pressable onPress={onToggle} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10 }}>
+      <Text style={{ flex: 1, fontSize: 14, fontWeight: '600', color: t.colors.textPrimary }}>{label}</Text>
+      <View style={[styles.checkBox, { backgroundColor: value ? t.colors.primary : 'transparent', borderColor: value ? t.colors.primary : t.colors.border }]}>
+        {value ? <Check size={14} color="#fff" strokeWidth={3} /> : null}
+      </View>
+    </Pressable>
+  );
+};
+
+const ActionBtn: React.FC<{ icon: React.ReactNode; label: string; onPress?: () => void; active?: boolean }> = ({ icon, label, onPress, active }) => {
   const t = useTheme();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.actionBtn,
-        { borderColor: t.colors.border, opacity: pressed ? 0.7 : 1 },
+        {
+          borderColor: active ? t.colors.accent : t.colors.border,
+          backgroundColor: active ? t.colors.accent + '12' : 'transparent',
+          opacity: pressed ? 0.7 : 1,
+        },
       ]}
     >
       {icon}
-      <Text style={{ fontSize: 11, fontWeight: '600', color: t.colors.textSecondary, letterSpacing: 1 }}>
+      <Text style={{ fontSize: 11, fontWeight: '600', color: active ? t.colors.accent : t.colors.textSecondary, letterSpacing: 1 }}>
         {label}
       </Text>
     </Pressable>
@@ -356,5 +462,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    paddingHorizontal: 28,
+  },
+  modalCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 20,
+  },
+  goalChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 999,
+    borderWidth: 1,
+    minWidth: 56,
+    alignItems: 'center',
+  },
+  checkBox: {
+    width: 26, height: 26,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

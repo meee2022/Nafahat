@@ -99,7 +99,7 @@ const DEFAULT = {
   lastCloudSyncAt: null as number | null,
   estimatedDownloadsMB: 0,
   location: DEFAULT_LOCATION,
-  isPremium: false,
+  isPremium: true,   // 🆓 التطبيق مجاني بالكامل — كل المميزات مفتوحة دائماً
   mushafMode: 'qpc' as 'image' | 'text' | 'qpc',  // 🎯 QPC الافتراضي: مطابق لمصحف المدينة + تفاعلية كلمة-بكلمة
   autoAdhanEnabled: true,           // 🕌 الأذان التلقائي مفعّل افتراضياً
   adhanVoice: 'makkah' as 'makkah' | 'madinah' | 'abdulbaset' | 'default',
@@ -229,6 +229,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         if (!parsed.notifToggles || typeof parsed.notifToggles !== 'object') {
           parsed.notifToggles = DEFAULT.notifToggles;
         }
+        // 🆓 التطبيق مجاني بالكامل — افرض isPremium=true دائماً مهما كان المحفوظ.
+        parsed.isPremium = true;
 
         set(parsed);
         // إعادة الحفظ بالنسخة الجديدة لتثبيت الميجريشن

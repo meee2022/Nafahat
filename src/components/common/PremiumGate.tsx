@@ -49,7 +49,8 @@ export const PremiumGate: React.FC<Props> = ({
   const isPremium = useSettingsStore((s) => s.isPremium);
   const setPremium = useSettingsStore((s) => s.setPremium);
 
-  if (isPremium) return <>{children}</>;
+  // 🆓 التطبيق مجاني بالكامل — لا يوجد paywall إطلاقاً، كل المميزات مفتوحة للجميع.
+  return <>{children}</>;
 
   // 📊 telemetry hook لاحقاً
   // useEffect(() => { trackPaywallView(feature); }, [feature]);

@@ -158,13 +158,7 @@ export default function AccountScreen() {
       {/* اختصارات */}
       <Text variant="h3" style={{ marginTop: t.spacing.xl, marginBottom: t.spacing.md }}>{tr('account.shortcuts')}</Text>
       <View style={{ gap: t.spacing.sm }}>
-        {/* 💎 Premium subscription entry */}
-        <Row
-          icon={<Sparkles size={18} color={t.colors.accent} />}
-          label="نَفَحات Premium"
-          trailing={undefined}
-          onPress={() => router.push('/premium')}
-        />
+        {/* 🆓 التطبيق مجاني بالكامل — تمّت إزالة إدخال Premium */}
         <Row icon={<Trophy size={18} color={t.colors.accent} />}    label="لوحة الإحصائيات الفخمة" onPress={() => router.push('/analytics')} />
         <Row icon={<Award size={18} color={t.colors.accent} />}    label={tr('account.achievements')} onPress={() => router.push('/achievements')} />
         <Row icon={<BookOpen size={18} color={t.colors.primary} />} label={tr('account.bookmarks')} onPress={() => router.push('/favorites')} />

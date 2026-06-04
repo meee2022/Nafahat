@@ -77,7 +77,6 @@ export default function HomeScreen() {
   const { height: screenHeight } = useWindowDimensions();
   const r = useResponsive();
   const location = useSettingsStore((s) => s.location);
-  const isPremium = useSettingsStore((s) => s.isPremium);
   const authStatus = useAuthStore((s) => s.status);
   const isGuest = authStatus === 'guest' || authStatus === 'unknown';
   const insets = useSafeAreaInsets();
@@ -235,8 +234,6 @@ export default function HomeScreen() {
                   <LogIn size={13} color="#D4B570" strokeWidth={2.2} />
                   <Text style={styles.signInPillText}>تسجيل دخول</Text>
                 </Pressable>
-              ) : isPremium ? (
-                <Text style={styles.premiumBadge}>{tr('home.premiumBadge')}</Text>
               ) : (
                 <Pressable
                   onPress={() => router.push('/cloud-sync')}

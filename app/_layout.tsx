@@ -36,6 +36,11 @@ import { registerForPushNotifications } from '@services/pushNotifications';
 // 🛰️ يستورد logger أولاً عشان Sentry.init() يحصل قبل أي خطأ محتمل في الـ tree
 import { sentryWrap, log, setSentryUser } from '@utils/logger';
 import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
+import * as SplashScreen from 'expo-splash-screen';
+
+// 🕌 أبقِ شاشة البداية (الصورة الكاملة) ظاهرة بدل أن تومض وتختفي فوراً.
+//    نخفيها يدوياً بعد ~٣.٥ ثانية (في AppGate).
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 // ============== اتجاه RTL الافتراضي قبل hydrate اللغة ==============
 // عند الإقلاع نبدأ بـ RTL (لغة افتراضية عربية). languageStore يحدّث الاتجاه
@@ -103,6 +108,15 @@ function AppGate() {
   useAchievementNotifier((title, description) => {
     toast.show({ title, description, type: 'achievement', duration: 5000 });
   });
+
+  // 🕌 أبقِ شاشة البداية (الصورة الكاملة) ظاهرة ~٣.٥ ثانية ثم أخفِها — بدل أن
+  //    تومض وتختفي فوراً. بعدها تظهر شاشة SplashView (إن لزم) ثم التطبيق.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      SplashScreen.hideAsync().catch(() => {});
+    }, 3500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const [fontsLoaded] = useAmiriQuran({
     AmiriQuran_400Regular,

@@ -102,7 +102,8 @@
         }
       ],
       "./plugins/withForceRtl.js",
-      "./plugins/withForceRtlIos.js"
+      "./plugins/withForceRtlIos.js",
+      "./plugins/withRemoveActivityRecognition.js"
     ],
     "experiments": {
       "typedRoutes": false

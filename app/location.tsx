@@ -13,7 +13,7 @@
  * Identity: أخضر primary + ذهبي accent (هوية Nafahat الرسمية).
  */
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, TextInput, FlatList, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Pressable, TextInput, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MapPin, Search, Check, ChevronLeft, Navigation } from 'lucide-react-native';
 import * as Location from 'expo-location';
@@ -150,8 +150,8 @@ export default function LocationScreen() {
         </View>
       </View>
 
-      {/* 🏳️ chips الدول */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.countriesRow}>
+      {/* 🏳️ chips الدول — صفّ يلتفّ (wrap) بدل ScrollView أفقي لضمان ظهور المحتوى في RTL */}
+      <View style={styles.countriesRow}>
         <CountryChip flag="🌐" label="الكل" active={countryFilter === null} onPress={() => setCountryFilter(null)} t={t} />
         {COUNTRIES.map((c) => (
           <CountryChip
@@ -163,7 +163,7 @@ export default function LocationScreen() {
             t={t}
           />
         ))}
-      </ScrollView>
+      </View>
 
       {/* 🔥 الشعبية - تظهر فقط لو مفيش search ومفيش filter */}
       {!query && !countryFilter ? (
@@ -172,7 +172,7 @@ export default function LocationScreen() {
         </View>
       ) : null}
       {!query && !countryFilter ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.popularRow}>
+        <View style={styles.popularRow}>
           {popularCities.map((c) => (
             <Pressable
               key={c.id}
@@ -191,7 +191,7 @@ export default function LocationScreen() {
               {isSelected(c) ? <Check size={12} color={t.colors.accent} /> : null}
             </Pressable>
           ))}
-        </ScrollView>
+        </View>
       ) : null}
 
       {/* 📋 قائمة المدن */}
@@ -304,6 +304,7 @@ const styles = StyleSheet.create({
   },
   countriesRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 12,
@@ -319,6 +320,7 @@ const styles = StyleSheet.create({
   },
   popularRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
     paddingHorizontal: 20,
     paddingVertical: 8,

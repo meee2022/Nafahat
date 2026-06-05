@@ -111,7 +111,7 @@ const FloatingNowPlaying: React.FC<FloatingProps> = ({ tabBarHeight }) => {
           hitSlop={6}
         >
           <View style={[floatStyles.avatar, { backgroundColor: t.colors.primary, borderColor: t.colors.accent }]}>
-            <Text style={{ color: t.colors.accent, fontSize: 12, fontWeight: '800' }}>
+            <Text style={{ color: t.colors.onPrimary, fontSize: 12, fontWeight: '800' }}>
               {current.surahName.slice(0, 2)}
             </Text>
           </View>
@@ -131,8 +131,8 @@ const FloatingNowPlaying: React.FC<FloatingProps> = ({ tabBarHeight }) => {
           style={[floatStyles.playBtn, { backgroundColor: t.colors.primary, borderColor: t.colors.accent }]}
         >
           {isPlaying
-            ? <Pause size={16} color={t.colors.accent} fill={t.colors.accent} />
-            : <Play size={16} color={t.colors.accent} fill={t.colors.accent} style={{ marginLeft: 2 }} />}
+            ? <Pause size={18} color={t.colors.onPrimary} fill={t.colors.onPrimary} />
+            : <Play size={18} color={t.colors.onPrimary} fill={t.colors.onPrimary} style={{ marginLeft: 2 }} />}
         </Pressable>
         <Pressable
           onPress={stop}

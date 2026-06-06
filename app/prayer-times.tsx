@@ -351,10 +351,11 @@ export default function PrayerTimesScreen() {
                   </Text>
                   <Text style={{ fontSize: 10, color: t.colors.textTertiary, marginTop: 1 }}>{v.descAr}</Text>
                 </View>
-                {/* معاينة الصوت */}
+                {/* معاينة الصوت — تختار الصوت وتشغّله معاً */}
                 <Pressable
                   hitSlop={8}
                   onPress={async () => {
+                    setAdhanVoice(v.id);          // ✅ المعاينة تختار الصوت أيضاً
                     const ok = await playAdhan(v.id);
                     setAdhanPlaying(ok);
                     if (!ok) Alert.alert('عذراً', 'تعذّر تشغيل صوت الأذان. تأكّد من الاتصال بالإنترنت.');

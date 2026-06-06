@@ -17,6 +17,14 @@ type PrayerKey = keyof PrayerTimes;
 
 const PRAYER_KEYS: PrayerKey[] = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
 
+const PRAYER_LABELS_AR: Record<string, string> = {
+  fajr: 'الفجر',
+  dhuhr: 'الظهر',
+  asr: 'العصر',
+  maghrib: 'المغرب',
+  isha: 'العشاء',
+};
+
 let intervalId: ReturnType<typeof setInterval> | null = null;
 let lastResetDay = -1;
 const playedToday = new Set<PrayerKey>();
@@ -53,7 +61,7 @@ function checkAndPlay(): void {
     // نافذة دقيقة واحدة بعد الوقت تماماً (لتفادي التشغيل المتأخر جداً)
     if (nowMins === prayerMins) {
       playedToday.add(key);
-      playAdhan(preferredVoice).catch(() => {});
+      playAdhan(preferredVoice, PRAYER_LABELS_AR[key as string]).catch(() => {});
       // نشغّل أذاناً واحداً فقط في الدورة - لو حدث أكثر من صلاة في نفس الدقيقة (نادر)
       // الباقي يُشغَّل في الدورة التالية
       break;

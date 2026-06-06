@@ -7,6 +7,7 @@
  *    وحفظها في expo-file-system لتشغيلها أوفلاين.
  */
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
+import { useAdhanPlaybackStore } from '@store/adhanPlaybackStore';
 
 /**
  * 🕌 مصادر الأذان الحقيقية (ليست تلاوة قرآنية!).
@@ -50,7 +51,10 @@ async function ensureAdhanAudioMode(): Promise<void> {
  * يُشغّل صوت أذان كامل.
  * يُرجع true إذا بدأ التشغيل بنجاح.
  */
-export async function playAdhan(voice: AdhanVoice = 'default'): Promise<boolean> {
+export async function playAdhan(
+  voice: AdhanVoice = 'default',
+  prayerLabel?: string,
+): Promise<boolean> {
   const myVersion = ++adhanRequestVersion;
   try {
     await ensureAdhanAudioMode();
@@ -72,7 +76,17 @@ export async function playAdhan(voice: AdhanVoice = 'default'): Promise<boolean>
       return false;
     }
     currentAdhan = player;
+    // 🔇 لمّا الأذان يخلّص لوحده → نخفي بانر الإسكات تلقائياً
+    try {
+      player.addListener('playbackStatusUpdate', (st: any) => {
+        if (st?.didJustFinish) {
+          stopAdhan().catch(() => {});
+        }
+      });
+    } catch {}
     player.play();
+    // 🟢 فعّل حالة "يؤذّن الآن" ليظهر بانر الإسكات في أي شاشة
+    try { useAdhanPlaybackStore.getState().setPlaying(true, prayerLabel ?? null); } catch {}
     return true;
   } catch {
     return false;
@@ -81,6 +95,8 @@ export async function playAdhan(voice: AdhanVoice = 'default'): Promise<boolean>
 
 /** يوقف الأذان الجاري. */
 export async function stopAdhan(): Promise<void> {
+  // نُحدّث الحالة دائماً (حتى لو currentAdhan فارغ) ليُخفى البانر بشكل مؤكّد.
+  try { useAdhanPlaybackStore.getState().setPlaying(false); } catch {}
   if (!currentAdhan) return;
   try { currentAdhan.pause(); } catch {}
   try { currentAdhan.remove(); } catch {}

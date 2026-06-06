@@ -30,6 +30,7 @@ import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
 import { useAppInfo } from '@store/appConfigStore';
 import { ToastProvider, useToast } from '@components/common/Toast';
+import { AdhanBanner } from '@components/common/AdhanBanner';
 import { ErrorBoundary } from '@components/common/ErrorBoundary';
 import { initPremium, checkActiveSubscription } from '@services/premium';
 import { registerForPushNotifications } from '@services/pushNotifications';
@@ -236,6 +237,7 @@ function AppGate() {
   if (!hydrated || !fontsLoaded) return <SplashView />;
 
   return (
+    <>
     <Stack
       screenOptions={{
         headerShown: false,
@@ -294,6 +296,9 @@ function AppGate() {
       <Stack.Screen name="search" options={{ presentation: 'modal' }} />
       <Stack.Screen name="player" options={{ presentation: 'modal' }} />
     </Stack>
+    {/* 🕌 بانر إسكات الأذان — يظهر فوق كل الشاشات أثناء رفع الأذان */}
+    <AdhanBanner />
+    </>
   );
 }
 

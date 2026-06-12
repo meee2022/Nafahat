@@ -283,56 +283,66 @@ const MushafLine: React.FC<LineProps> = ({
   }
 
   // ─── سطر عادي ───
-  // نرسم كل السطر كـ <Text> واحد فيه nested <Text> لكل كلمة.
-  // ده بيخلّي محرّك تخطيط النصوص يتعامل مع المسافات بشكل طبيعي زي مصحف المدينة بدل
-  // flex space-between اللي بيوسّع الكلمات بشكل صناعي.
+  // 🔑 نرسم كل السطر كـ <Text> أب واحد فيه <Text> متداخل لكل كلمة.
+  //   ده بيخلّي محرّك تخطيط النصوص يتعامل مع المسافات بين الكلمات بشكل طبيعي
+  //   (زي مصحف المدينة بالظبط)، بدل ما كل كلمة تبقى في صندوق flex منفصل — اللي
+  //   كان بيفقد التباعد الطبيعي ويخلّي النص يبان مقطّعاً بفجوات غير منتظمة.
+  //   كل كلمة متداخلة تحتفظ بـ onPress + تظليل (backgroundColor) الخاص بيها.
+  //   numberOfLines=1 + adjustsFontSizeToFit يضمنوا دخول السطر كامل بدون قصّ.
   const selectedBg = goldColor + '33';
   const playingBg  = goldColor + '22';
   const currentBg  = goldColor + '55';
 
-  // 📜 الحل الصحيح: flex row-reverse + flex-start
-  //   - row-reverse → أول كلمة في المصفوفة (الأولى في القراءة) تظهر على اليمين
-  //   - flex-start → الكلمات تتجمع في البداية (اليمين في RTL) بدون توسيع صناعي
-  //   - أي مساحة فائضة تتبقّى على اليسار (طبيعي)
   return (
     <View style={styles.line} {...({ dir: 'rtl' } as any)}>
-      {line.words.map((w, i) => {
-        const isSel  = !!selectedVerseKey && w.verse_key === selectedVerseKey;
-        const isPlay = !!playingVerseKey && w.verse_key === playingVerseKey;
-        const isCur  = !!currentWordLocation && w.verse_key && w.position
-          ? `${w.verse_key}:${w.position}` === currentWordLocation
-          : false;
-        const isEnd = w.type === 'end';
-        const bg = isCur
-          ? currentBg
-          : isPlay
-            ? playingBg
-            : isSel
-              ? selectedBg
-              : 'transparent';
+      <RNText
+        allowFontScaling={false}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        // @ts-ignore
+        style={{
+          fontSize,
+          lineHeight: fontSize * 1.7,
+          color: inkColor,
+          writingDirection: 'rtl',
+          textAlign: 'center',
+          letterSpacing: 0,
+          includeFontPadding: false as any,
+        }}
+      >
+        {line.words.map((w, i) => {
+          const isSel  = !!selectedVerseKey && w.verse_key === selectedVerseKey;
+          const isPlay = !!playingVerseKey && w.verse_key === playingVerseKey;
+          const isCur  = !!currentWordLocation && w.verse_key && w.position
+            ? `${w.verse_key}:${w.position}` === currentWordLocation
+            : false;
+          const isEnd = w.type === 'end';
+          const bg = isCur
+            ? currentBg
+            : isPlay
+              ? playingBg
+              : isSel
+                ? selectedBg
+                : 'transparent';
 
-        return (
-          <RNText
-            key={`${line.line}-${i}-${w.code}`}
-            allowFontScaling={false}
-            onPress={onWordPress ? () => onWordPress(w) : undefined}
-            onLongPress={onWordLongPress ? () => onWordLongPress(w) : undefined}
-            // @ts-ignore
-            style={{
-              fontFamily: getQpcFontFamily(w.font),
-              fontSize,
-              lineHeight: fontSize * 1.7,
-              color: isEnd ? goldColor : inkColor,
-              backgroundColor: bg,
-              writingDirection: 'rtl',
-              letterSpacing: 0,
-              includeFontPadding: false as any,
-            }}
-          >
-            {w.char}
-          </RNText>
-        );
-      })}
+          return (
+            <RNText
+              key={`${line.line}-${i}-${w.code}`}
+              allowFontScaling={false}
+              onPress={onWordPress ? () => onWordPress(w) : undefined}
+              onLongPress={onWordLongPress ? () => onWordLongPress(w) : undefined}
+              // @ts-ignore
+              style={{
+                fontFamily: getQpcFontFamily(w.font),
+                color: isEnd ? goldColor : inkColor,
+                backgroundColor: bg,
+              }}
+            >
+              {w.char}
+            </RNText>
+          );
+        })}
+      </RNText>
     </View>
   );
 };
@@ -357,6 +367,12 @@ const styles = StyleSheet.create({
     flexWrap: 'nowrap',
     paddingVertical: 0,
     overflow: 'hidden',
+  },
+  lineInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
+    flexShrink: 0,
   },
   surahEndRow: {
     width: '100%',

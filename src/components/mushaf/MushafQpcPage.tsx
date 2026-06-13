@@ -74,7 +74,7 @@ const MushafQpcPageImpl: React.FC<Props> = ({
   const widthCap = pageWidth >= 700 ? 34 : 24;
   const fontSize = explicitFontSize ?? (() => {
     if (pageWidth === 0 || pageHeight === 0) return 18;
-    const widthBased  = Math.min(widthCap, pageWidth / 18);
+    const widthBased  = Math.min(widthCap, pageWidth / 17.5);
     const heightBased = (pageHeight - 20) / 25.5;
     return Math.max(13, Math.min(widthBased, heightBased));
   })();

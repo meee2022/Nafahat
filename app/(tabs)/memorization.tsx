@@ -4,11 +4,11 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   Brain, Plus, CheckCircle2, RotateCcw, Mic, Target,
-  Calendar, Flame, ListChecks, Trophy, BookOpen, Sparkles,
+  Calendar, Flame, ListChecks, Trophy, BookOpen, Sparkles, Trash2, CopyX,
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SceneMemo } from '@components/illustrations/scenes';
@@ -43,8 +43,60 @@ export default function MemorizationScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
-  const { plans, tasks, markTaskMemorized, markTaskReviewed, createPlan, addTask } = useMemoStore();
+  const { plans, tasks, markTaskMemorized, markTaskReviewed, createPlan, addTask, clearMemorizedTasks, removeDuplicateTasks, removeTask } = useMemoStore();
+
+  const handleDeleteTask = (taskId: string, surahName?: string, range?: string) => {
+    Alert.alert(
+      'حذف المهمة',
+      `متأكد إنك عايز تحذف مهمة ${surahName ?? ''}${range ? ` (${range})` : ''}؟`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        { text: 'حذف', style: 'destructive', onPress: () => removeTask(taskId) },
+      ],
+    );
+  };
   const [tab, setTab] = useState<'today' | 'all' | 'plan'>('today');
+
+  const memorizedCount = useMemo(() => tasks.filter((t) => t.status === 'memorized').length, [tasks]);
+  const duplicateCount = useMemo(() => {
+    const seen = new Set<string>();
+    let dups = 0;
+    for (const t of tasks) {
+      const k = `${t.surahId}:${t.ayahFrom}:${t.ayahTo}`;
+      if (seen.has(k)) dups++; else seen.add(k);
+    }
+    return dups;
+  }, [tasks]);
+
+  const handleClearMemorized = () => {
+    if (memorizedCount === 0) {
+      Alert.alert('لا توجد مهام محفوظة', 'مفيش مهام محفوظة لمسحها.');
+      return;
+    }
+    Alert.alert(
+      'مسح المهام المحفوظة',
+      `هيتم مسح ${memorizedCount} مهمة محفوظة. متأكد؟`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        { text: 'مسح', style: 'destructive', onPress: () => { const n = clearMemorizedTasks(); Alert.alert('تم', `اتمسح ${n} مهمة.`); } },
+      ],
+    );
+  };
+
+  const handleRemoveDuplicates = () => {
+    if (duplicateCount === 0) {
+      Alert.alert('لا يوجد تكرار', 'مفيش مهام مكرّرة.');
+      return;
+    }
+    Alert.alert(
+      'مسح المهام المكرّرة',
+      `هيتم مسح ${duplicateCount} مهمة مكرّرة (هنبقي واحدة من كل مقطع). متأكد؟`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        { text: 'مسح', style: 'destructive', onPress: () => { const n = removeDuplicateTasks(); Alert.alert('تم', `اتمسح ${n} مهمة مكرّرة.`); } },
+      ],
+    );
+  };
   const [showTemplates, setShowTemplates] = useState(false);
 
   const plan = plans[0];
@@ -273,6 +325,7 @@ export default function MemorizationScreen() {
                       status="مراجعة"
                       strength={task.strength}
                       onStartSession={() => router.push({ pathname: '/memo-session', params: { taskId: task.id } })}
+                      onDelete={() => handleDeleteTask(task.id, getSurahById(task.surahId)?.nameAr, `${arabicNumber(task.ayahFrom)} - ${arabicNumber(task.ayahTo)}`)}
                       onDone={(s) => markTaskReviewed(task.id, s)}
                     />
                   ))}
@@ -290,6 +343,7 @@ export default function MemorizationScreen() {
                       status="جديد"
                       strength={task.strength}
                       onStartSession={() => router.push({ pathname: '/memo-session', params: { taskId: task.id } })}
+                      onDelete={() => handleDeleteTask(task.id, getSurahById(task.surahId)?.nameAr, `${arabicNumber(task.ayahFrom)} - ${arabicNumber(task.ayahTo)}`)}
                       onDone={(s) => markTaskMemorized(task.id, s)}
                       hint="اضغط ابدأ الجلسة للحفظ التفاعلي"
                     />
@@ -309,6 +363,7 @@ export default function MemorizationScreen() {
                       status="قيد الحفظ"
                       strength={task.strength}
                       onStartSession={() => router.push({ pathname: '/memo-session', params: { taskId: task.id } })}
+                      onDelete={() => handleDeleteTask(task.id, getSurahById(task.surahId)?.nameAr, `${arabicNumber(task.ayahFrom)} - ${arabicNumber(task.ayahTo)}`)}
                       onDone={(s) => markTaskMemorized(task.id, s)}
                       hint="أكمل حفظ هذا المقطع"
                     />
@@ -335,7 +390,29 @@ export default function MemorizationScreen() {
                   description="ستظهر هنا المقاطع التي تحفظها وتراجعها"
                 />
               ) : (
-                tasks.map((task) => (
+                <>
+                  {/* أزرار تنظيف المهام */}
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Pressable
+                      onPress={handleClearMemorized}
+                      style={({ pressed }) => [styles.cleanupBtn, { borderColor: t.colors.border, backgroundColor: t.colors.surface, opacity: pressed ? 0.8 : 1 }]}
+                    >
+                      <CheckCircle2 size={15} color={t.colors.success ?? t.colors.primary} />
+                      <Text variant="caption" color={t.colors.textPrimary} style={{ fontWeight: '700' }}>
+                        مسح المحفوظ{memorizedCount > 0 ? ` (${arabicNumber(memorizedCount)})` : ''}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={handleRemoveDuplicates}
+                      style={({ pressed }) => [styles.cleanupBtn, { borderColor: t.colors.border, backgroundColor: t.colors.surface, opacity: pressed ? 0.8 : 1 }]}
+                    >
+                      <CopyX size={15} color={t.colors.error} />
+                      <Text variant="caption" color={t.colors.textPrimary} style={{ fontWeight: '700' }}>
+                        مسح المكرّر{duplicateCount > 0 ? ` (${arabicNumber(duplicateCount)})` : ''}
+                      </Text>
+                    </Pressable>
+                  </View>
+                  {tasks.map((task) => (
                   <TaskCard
                     key={task.id}
                     surahId={task.surahId}
@@ -344,9 +421,11 @@ export default function MemorizationScreen() {
                     strength={task.strength}
                     hint={task.nextReviewAt ? `المراجعة القادمة خلال ${Math.max(1, Math.round((task.nextReviewAt - Date.now()) / 86400000))} أيام` : 'لم يبدأ بعد'}
                     onStartSession={() => router.push({ pathname: '/memo-session', params: { taskId: task.id } })}
+                    onDelete={() => handleDeleteTask(task.id, getSurahById(task.surahId)?.nameAr, `${arabicNumber(task.ayahFrom)} - ${arabicNumber(task.ayahTo)}`)}
                     onDone={(s) => markTaskMemorized(task.id, s)}
                   />
-                ))
+                  ))}
+                </>
               )}
             </View>
           ) : (
@@ -446,9 +525,10 @@ interface TaskCardProps {
   hint?: string;
   onDone?: (s: MemorizationStrength) => void;
   onStartSession?: () => void;
+  onDelete?: () => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ surahId, range, status, strength, hint, onDone, onStartSession }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ surahId, range, status, strength, hint, onDone, onStartSession, onDelete }) => {
   const t = useTheme();
   const surah = getSurahById(surahId);
   const strengthColor = strength === 'strong' ? t.colors.success : strength === 'medium' ? t.colors.warning : t.colors.error;
@@ -472,6 +552,17 @@ const TaskCard: React.FC<TaskCardProps> = ({ surahId, range, status, strength, h
           </Text>
           {hint ? <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 4 }}>{hint}</Text> : null}
         </View>
+        {onDelete ? (
+          <Pressable
+            onPress={onDelete}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="حذف المهمة"
+            style={({ pressed }) => ({ padding: 6, borderRadius: 8, opacity: pressed ? 0.6 : 1 })}
+          >
+            <Trash2 size={18} color={t.colors.error} />
+          </Pressable>
+        ) : null}
       </View>
 
       <View style={{ flexDirection: 'row', gap: 8, marginTop: 14 }}>
@@ -522,6 +613,16 @@ const SettingRow: React.FC<{ icon: React.ReactNode; label: string; value: string
 };
 
 const styles = StyleSheet.create({
+  cleanupBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
   badge: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bigIcon: { width: 72, height: 72, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   statsRow: { flexDirection: 'row' },

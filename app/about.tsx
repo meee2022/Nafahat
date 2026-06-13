@@ -188,6 +188,21 @@ export default function AboutScreen() {
                 </Text>
               </View>
 
+              {/* قسم المتوفّين بالاسم */}
+              {APP_INFO.charityDedication.deceased ? (
+                <View style={styles.dedicSection}>
+                  <View style={styles.dedicHeader}>
+                    <Text style={[styles.dedicLabel, { color: t.colors.textPrimary }]}>
+                      <Text style={{ color: t.colors.accent, fontWeight: '900' }}>◂ </Text>
+                      {APP_INFO.charityDedication.deceased.label}: <Text style={{ color: t.colors.accent }}>{APP_INFO.charityDedication.deceased.names}</Text>
+                    </Text>
+                  </View>
+                  <Text style={[styles.dedicPrayer, { color: t.colors.textSecondary }]}>
+                    {APP_INFO.charityDedication.deceased.prayer}
+                  </Text>
+                </View>
+              ) : null}
+
               {/* قسم العموم */}
               <View style={styles.dedicSection}>
                 <View style={styles.dedicHeader}>

@@ -61,6 +61,12 @@ export const APP_INFO = {
       /** دعاء بعد الأسماء. */
       prayer: 'أطال الله في عمرهما',
     },
+    /** قسم المتوفّين بالاسم (دعاء رحمة ومغفرة). */
+    deceased: {
+      label: 'وخالتي',
+      names: 'سلوى الشحات',
+      prayer: 'رحمها الله وغفر لها وأسكنها فسيح جنّاته',
+    },
     /** قسم العموم - بدون أسماء. */
     general: {
       /** الجملة الأولى - الشمولية. */
@@ -75,6 +81,7 @@ export const APP_INFO = {
   } as null | {
     title: string;
     parents: { label: string; names: string; prayer: string };
+    deceased: { label: string; names: string; prayer: string };
     general: { title: string; scope: string; deceasedPrayer: string; livingPrayer: string };
   },
 

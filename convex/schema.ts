@@ -14,14 +14,20 @@ export default defineSchema({
   users: defineTable({
     email:        v.string(),                          // البريد - فريد (lowercase)
     name:         v.string(),                          // الاسم المعروض
-    passwordHash: v.string(),                          // hash للباسورد
+    passwordHash: v.optional(v.string()),              // hash للباسورد (اختياري لحسابات OAuth)
     avatarSeed:   v.string(),                          // bdz seed لتوليد الأفاتار
     joinedAt:     v.number(),                          // تاريخ التسجيل
     role:         v.union(v.literal('user'), v.literal('admin')),
     emailVerified: v.boolean(),                        // تأكيد الإيميل (مستقبلاً)
     lastLoginAt:  v.optional(v.number()),
+    // 🔐 تسجيل الدخول الخارجي (Apple / Google)
+    provider:     v.optional(v.union(v.literal('email'), v.literal('apple'), v.literal('google'))),
+    appleUserId:  v.optional(v.string()),              // مُعرّف Apple الثابت (sub)
+    googleUserId: v.optional(v.string()),              // مُعرّف Google الثابت (sub)
   })
-    .index('by_email', ['email']),
+    .index('by_email', ['email'])
+    .index('by_appleUserId', ['appleUserId'])
+    .index('by_googleUserId', ['googleUserId']),
 
   // ----------------- جلسات تسجيل الدخول (tokens) -----------------
   authSessions: defineTable({

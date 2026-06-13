@@ -167,6 +167,172 @@ export const signIn = mutation({
   },
 });
 
+// ───── تسجيل الدخول عبر Apple ─────
+//
+// ⚠️ ملاحظة أمنية: في الإنتاج الكامل يُفضّل التحقق من توقيع identityToken
+//    على الخادم (Apple JWKS). حالياً نثق في الـ credential من جهاز iOS —
+//    متوافق مع مستوى الأمان الحالي للتطبيق (راجع ملاحظة simpleHash أعلاه).
+
+export const signInWithApple = mutation({
+  args: {
+    appleUserId: v.string(),
+    email:       v.optional(v.string()),
+    name:        v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const appleUserId = args.appleUserId.trim();
+    if (!appleUserId) return { ok: false, error: 'unknown' as const };
+
+    const email = (args.email ?? '').toLowerCase().trim();
+
+    // 1) ابحث بمُعرّف Apple الثابت
+    let user = await ctx.db
+      .query('users')
+      .withIndex('by_appleUserId', (q) => q.eq('appleUserId', appleUserId))
+      .first();
+
+    // 2) لو مش موجود، اربطه بحساب موجود بنفس الإيميل (لو متاح)
+    if (!user && email && isValidEmail(email)) {
+      const byEmail = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', email))
+        .first();
+      if (byEmail) {
+        await ctx.db.patch(byEmail._id, { appleUserId, provider: 'apple', lastLoginAt: Date.now() });
+        user = await ctx.db.get(byEmail._id);
+      }
+    }
+
+    // 3) لسه مش موجود → أنشئ حساباً جديداً
+    if (!user) {
+      const finalEmail = email && isValidEmail(email)
+        ? email
+        : `apple_${appleUserId}@privaterelay.appleid.com`;
+      const name = (args.name ?? '').trim() || 'مستخدم';
+      const userId = await ctx.db.insert('users', {
+        email: finalEmail,
+        name,
+        avatarSeed: finalEmail,
+        joinedAt: Date.now(),
+        role: determineRole(finalEmail),
+        emailVerified: true, // Apple يتحقّق من الإيميل بنفسه
+        lastLoginAt: Date.now(),
+        provider: 'apple',
+        appleUserId,
+      });
+      user = await ctx.db.get(userId);
+    } else {
+      await ctx.db.patch(user._id, { lastLoginAt: Date.now() });
+    }
+
+    if (!user) return { ok: false, error: 'unknown' as const };
+
+    const token = genToken();
+    await ctx.db.insert('authSessions', {
+      userId: user._id,
+      token,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    });
+
+    return {
+      ok: true as const,
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        avatarSeed: user.avatarSeed,
+        joinedAt: user.joinedAt,
+        emailVerified: user.emailVerified,
+        role: user.role,
+      },
+    };
+  },
+});
+
+// ───── تسجيل الدخول عبر Google ─────
+//
+// ⚠️ نفس الملاحظة الأمنية: يُفضّل التحقق من idToken على الخادم في الإنتاج الكامل.
+
+export const signInWithGoogle = mutation({
+  args: {
+    googleUserId: v.string(),
+    email:        v.optional(v.string()),
+    name:         v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const googleUserId = args.googleUserId.trim();
+    if (!googleUserId) return { ok: false, error: 'unknown' as const };
+
+    const email = (args.email ?? '').toLowerCase().trim();
+
+    // 1) ابحث بمُعرّف Google الثابت
+    let user = await ctx.db
+      .query('users')
+      .withIndex('by_googleUserId', (q) => q.eq('googleUserId', googleUserId))
+      .first();
+
+    // 2) لو مش موجود، اربطه بحساب موجود بنفس الإيميل (لو متاح)
+    if (!user && email && isValidEmail(email)) {
+      const byEmail = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', email))
+        .first();
+      if (byEmail) {
+        await ctx.db.patch(byEmail._id, { googleUserId, provider: 'google', lastLoginAt: Date.now() });
+        user = await ctx.db.get(byEmail._id);
+      }
+    }
+
+    // 3) لسه مش موجود → أنشئ حساباً جديداً
+    if (!user) {
+      const finalEmail = email && isValidEmail(email)
+        ? email
+        : `google_${googleUserId}@users.noreply.nafahat.app`;
+      const name = (args.name ?? '').trim() || 'مستخدم';
+      const userId = await ctx.db.insert('users', {
+        email: finalEmail,
+        name,
+        avatarSeed: finalEmail,
+        joinedAt: Date.now(),
+        role: determineRole(finalEmail),
+        emailVerified: true, // Google يتحقّق من الإيميل بنفسه
+        lastLoginAt: Date.now(),
+        provider: 'google',
+        googleUserId,
+      });
+      user = await ctx.db.get(userId);
+    } else {
+      await ctx.db.patch(user._id, { lastLoginAt: Date.now() });
+    }
+
+    if (!user) return { ok: false, error: 'unknown' as const };
+
+    const token = genToken();
+    await ctx.db.insert('authSessions', {
+      userId: user._id,
+      token,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
+    });
+
+    return {
+      ok: true as const,
+      token,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        avatarSeed: user.avatarSeed,
+        joinedAt: user.joinedAt,
+        emailVerified: user.emailVerified,
+        role: user.role,
+      },
+    };
+  },
+});
+
 // ───── تسجيل الخروج ─────
 
 export const signOut = mutation({
@@ -180,6 +346,37 @@ export const signOut = mutation({
       await ctx.db.delete(session._id);
     }
     return { ok: true };
+  },
+});
+
+// ───── حذف الحساب نهائياً (المستخدم نفسه) ─────
+//   مطلوب من App Store (قاعدة 5.1.1): أي تطبيق فيه إنشاء حساب لازم
+//   يسمح للمستخدم بحذف حسابه نهائياً من داخل التطبيق.
+
+export const deleteMyAccount = mutation({
+  args: { token: v.string() },
+  handler: async (ctx, args) => {
+    const session = await ctx.db
+      .query('authSessions')
+      .withIndex('by_token', (q) => q.eq('token', args.token))
+      .first();
+    if (!session) return { ok: false, error: 'not-authenticated' as const };
+
+    const userId = session.userId;
+
+    // احذف كل جلسات الدخول الخاصة بالمستخدم
+    const sessions = await ctx.db
+      .query('authSessions')
+      .withIndex('by_user', (q) => q.eq('userId', userId))
+      .collect();
+    for (const s of sessions) {
+      await ctx.db.delete(s._id);
+    }
+
+    // احذف سجل المستخدم نهائياً
+    await ctx.db.delete(userId);
+
+    return { ok: true as const };
   },
 });
 

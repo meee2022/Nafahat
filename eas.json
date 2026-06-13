@@ -1,18 +1,28 @@
 {
   "cli": {
     "version": ">= 12.0.0",
-    "appVersionSource": "remote"
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://shiny-kiwi-78.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://shiny-kiwi-78.eu-west-1.convex.site",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://fb915b0c8b14b00ad2b243d6372cbf42@o4511415202021376.ingest.us.sentry.io/4511415211261952"
+      },
       "android": {
         "buildType": "apk"
       }
     },
     "preview": {
       "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://shiny-kiwi-78.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://shiny-kiwi-78.eu-west-1.convex.site",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://fb915b0c8b14b00ad2b243d6372cbf42@o4511415202021376.ingest.us.sentry.io/4511415211261952"
+      },
       "android": {
         "buildType": "apk"
       },
@@ -21,7 +31,11 @@
       }
     },
     "production": {
-      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_CONVEX_URL": "https://shiny-kiwi-78.eu-west-1.convex.cloud",
+        "EXPO_PUBLIC_CONVEX_SITE_URL": "https://shiny-kiwi-78.eu-west-1.convex.site",
+        "EXPO_PUBLIC_SENTRY_DSN": "https://fb915b0c8b14b00ad2b243d6372cbf42@o4511415202021376.ingest.us.sentry.io/4511415211261952"
+      },
       "android": {
         "buildType": "app-bundle"
       },

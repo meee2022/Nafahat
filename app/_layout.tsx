@@ -22,7 +22,7 @@ import { ThemeProvider, useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore, useAudioStore, useArticlesStore } from '@store/index';
 import { useLanguageStore } from '@store/languageStore';
-import { calculatePrayerTimes } from '@services/prayerTimes';
+import { calculatePrayerTimes, methodForCountry } from '@services/prayerTimes';
 import { startAdhanScheduler, stopAdhanScheduler } from '@services/adhanScheduler';
 import { schedulePrayerNotifications, cancelAllPrayerNotifications } from '@services/prayerNotifications';
 import { scheduleDhikrReminders, cancelDhikrReminders } from '@services/dhikrReminders';
@@ -207,7 +207,7 @@ function AppGate() {
         latitude: adhanLocation.latitude,
         longitude: adhanLocation.longitude,
         timezone: adhanLocation.timezone,
-        method: 'Makkah',
+        method: methodForCountry(adhanLocation.countryCode),
         adjustments: prayerAdjustments,
       });
       startAdhanScheduler(times, adhanVoice as any);

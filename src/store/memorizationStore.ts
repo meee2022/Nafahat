@@ -21,6 +21,10 @@ interface MemoState {
   startLearningTask: (id: string) => void;
   addTask: (t: Omit<MemorizationTask, 'id' | 'reviewIntervalDays' | 'repetitions' | 'strength'>) => void;
   removeTask: (id: string) => void;
+  /** يمسح كل المهام المحفوظة (status = 'memorized'). يُرجع عدد المحذوف. */
+  clearMemorizedTasks: () => number;
+  /** يمسح المهام المكرّرة (نفس السورة + نفس المدى)، يُبقي واحدة. يُرجع عدد المحذوف. */
+  removeDuplicateTasks: () => number;
   hydrate: () => Promise<void>;
 }
 
@@ -170,6 +174,28 @@ export const useMemoStore = create<MemoState>((set, get) => ({
     const tasks = get().tasks.filter((t) => t.id !== id);
     set({ tasks });
     persist({ ...get(), tasks });
+  },
+
+  clearMemorizedTasks() {
+    const before = get().tasks.length;
+    const tasks = get().tasks.filter((t) => t.status !== 'memorized');
+    set({ tasks });
+    persist({ ...get(), tasks });
+    return before - tasks.length;
+  },
+
+  removeDuplicateTasks() {
+    const before = get().tasks.length;
+    const seen = new Set<string>();
+    const tasks = get().tasks.filter((t) => {
+      const key = `${t.surahId}:${t.ayahFrom}:${t.ayahTo}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    set({ tasks });
+    persist({ ...get(), tasks });
+    return before - tasks.length;
   },
 
   async hydrate() {

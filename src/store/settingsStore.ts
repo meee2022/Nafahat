@@ -11,6 +11,8 @@ export interface UserLocation {
   latitude: number;
   longitude: number;
   timezone: number;
+  /** رمز الدولة ISO (مثل QA, EG, SA) — لاختيار طريقة حساب المواقيت الرسمية. */
+  countryCode?: string;
 }
 
 interface SettingsState {
@@ -88,6 +90,7 @@ const DEFAULT_LOCATION: UserLocation = {
   latitude: 25.2854,
   longitude: 51.5310,
   timezone: 3,
+  countryCode: 'QA',
 };
 
 const DEFAULT = {

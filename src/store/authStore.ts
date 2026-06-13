@@ -49,8 +49,11 @@ interface AuthState {
   // أكشن
   signIn: (email: string, password: string) => Promise<boolean>;
   signUp: (name: string, email: string, password: string) => Promise<boolean>;
+  signInWithApple: (params: { appleUserId: string; email?: string; name?: string }) => Promise<boolean>;
+  signInWithGoogle: (params: { googleUserId: string; email?: string; name?: string }) => Promise<boolean>;
   signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<boolean>;
   forgotPassword: (email: string) => Promise<boolean>;
   clearError: () => void;
   hydrate: () => Promise<void>;
@@ -259,6 +262,86 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
+  // 🍎 تسجيل الدخول عبر Apple — يتطلّب Convex (لا يوجد fallback محلي لـ OAuth)
+  async signInWithApple({ appleUserId, email, name }) {
+    set({ loading: true, error: null });
+
+    if (!useCloudAuth() || !convex || !convexApi) {
+      set({ loading: false, error: 'network' });
+      return false;
+    }
+
+    try {
+      const result = await convex.mutation(convexApi.users.signInWithApple, {
+        appleUserId,
+        email: email || undefined,
+        name: name || undefined,
+      });
+      if (!result.ok) {
+        set({ loading: false, error: result.error });
+        return false;
+      }
+      const u = result.user;
+      const user: AuthUser = {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        avatarSeed: u.avatarSeed,
+        joinedAt: u.joinedAt,
+        emailVerified: u.emailVerified,
+      };
+      await AsyncStorage.setItem(KEY_USER, JSON.stringify(user));
+      await secureSet(KEY_TOKEN, result.token);
+      await AsyncStorage.setItem(KEY_STATUS, 'authenticated');
+      set({ status: 'authenticated', user, token: result.token, loading: false, error: null });
+      return true;
+    } catch (e) {
+      if (__DEV__) console.warn('[auth] Apple signIn failed', e);
+      set({ loading: false, error: 'unknown' });
+      return false;
+    }
+  },
+
+  // 🟢 تسجيل الدخول عبر Google — يتطلّب Convex
+  async signInWithGoogle({ googleUserId, email, name }) {
+    set({ loading: true, error: null });
+
+    if (!useCloudAuth() || !convex || !convexApi) {
+      set({ loading: false, error: 'network' });
+      return false;
+    }
+
+    try {
+      const result = await convex.mutation(convexApi.users.signInWithGoogle, {
+        googleUserId,
+        email: email || undefined,
+        name: name || undefined,
+      });
+      if (!result.ok) {
+        set({ loading: false, error: result.error });
+        return false;
+      }
+      const u = result.user;
+      const user: AuthUser = {
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        avatarSeed: u.avatarSeed,
+        joinedAt: u.joinedAt,
+        emailVerified: u.emailVerified,
+      };
+      await AsyncStorage.setItem(KEY_USER, JSON.stringify(user));
+      await secureSet(KEY_TOKEN, result.token);
+      await AsyncStorage.setItem(KEY_STATUS, 'authenticated');
+      set({ status: 'authenticated', user, token: result.token, loading: false, error: null });
+      return true;
+    } catch (e) {
+      if (__DEV__) console.warn('[auth] Google signIn failed', e);
+      set({ loading: false, error: 'unknown' });
+      return false;
+    }
+  },
+
   async signInAsGuest() {
     await AsyncStorage.setItem(KEY_STATUS, 'guest');
     await AsyncStorage.removeItem(KEY_USER);
@@ -271,6 +354,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await secureDelete(KEY_TOKEN);
     await AsyncStorage.setItem(KEY_STATUS, 'guest');
     set({ status: 'guest', user: null, token: null, error: null });
+  },
+
+  // 🗑️ حذف الحساب نهائياً (مطلوب من App Store) — يحذف من الخادم ثم محلياً
+  async deleteAccount() {
+    const token = get().token;
+    if (useCloudAuth() && convex && convexApi && token) {
+      try {
+        await convex.mutation(convexApi.users.deleteMyAccount, { token });
+      } catch (e) {
+        if (__DEV__) console.warn('[auth] deleteAccount failed', e);
+        // نكمّل التنظيف المحلي حتى لو فشل الخادم
+      }
+    }
+    await AsyncStorage.removeItem(KEY_USER);
+    await secureDelete(KEY_TOKEN);
+    await AsyncStorage.setItem(KEY_STATUS, 'guest');
+    set({ status: 'guest', user: null, token: null, error: null });
+    return true;
   },
 
   async forgotPassword(email) {

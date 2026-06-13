@@ -209,6 +209,7 @@ export function mergeAppInfo(overrides: AppConfigOverrides) {
               names:  overrides.charityDedication.parents?.names  ?? APP_INFO.charityDedication.parents.names,
               prayer: overrides.charityDedication.parents?.prayer ?? APP_INFO.charityDedication.parents.prayer,
             },
+            deceased: APP_INFO.charityDedication.deceased,
             general: {
               title:           overrides.charityDedication.general?.title           ?? APP_INFO.charityDedication.general.title,
               scope:           overrides.charityDedication.general?.scope           ?? APP_INFO.charityDedication.general.scope,

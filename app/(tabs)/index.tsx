@@ -3,19 +3,19 @@
  * Hero (مسجد + وقت الصلاة) -> شريط أوقات الصلاة -> شبكة الميزات الأساسية
  */
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet, Pressable, ScrollView, useWindowDimensions, Image, Platform } from 'react-native';
 import { useResponsive } from '@hooks/useResponsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
-import { useRouter } from 'expo-router';
+import { useRouter, useNavigation } from 'expo-router';
 import { Bell, Search, MapPin, ChevronLeft, ChevronRight, BookOpen, Headphones, Brain } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { IllMushaf, IllAdhkar, IllTasbeeh, IllQibla, IllMosques, IllCalendar, IllDuas, IllTajweed, IllKhatma, IllZakat, IllStats, IllMemo, IllAudio, IllHadith, IllNotes, IllAchievements, IllArticles } from '@components/illustrations';
 import { useSettingsStore } from '@store/index';
 import { useT, useLanguage } from '@store/languageStore';
-import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@services/prayerTimes';
+import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, prayerDisplayName, PrayerName, methodForCountry } from '@services/prayerTimes';
 import { SectionHeading, DailyActionCard, computeDailyAction } from '@components/home';
 import { useWirdStore, useMemoStore } from '@store/index';
 import { useAuthStore } from '@store/authStore';
@@ -55,7 +55,7 @@ const HeroCountdown = ({ nextP, todayPrayers, cityName }: { nextP: any, todayPra
 
   return (
     <View style={styles.countdownContainer}>
-      <Text style={styles.nextPrayerText}>{PRAYER_NAMES_AR[nextP.name as PrayerName]} {tr('home.heroNextSuffix')}</Text>
+      <Text style={styles.nextPrayerText}>{prayerDisplayName(nextP.name as PrayerName)} {tr('home.heroNextSuffix')}</Text>
       <Text style={styles.countdownTime}>{countdownText}</Text>
       <Pressable
         style={styles.locationBadge}
@@ -74,6 +74,8 @@ export default function HomeScreen() {
   const tr = useT();
   const { lang } = useLanguage();
   const router = useRouter();
+  const navigation = useNavigation();
+  const scrollRef = useRef<ScrollView>(null);
   const { height: screenHeight } = useWindowDimensions();
   const r = useResponsive();
   const location = useSettingsStore((s) => s.location);
@@ -82,7 +84,18 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   const [selectedDate, setSelectedDate] = useState(new Date());
-  
+
+  // 🔄 عند الضغط على تبويب "الرئيسية": أعِد الصفحة لحالتها الأولى —
+  //    رجّع التاريخ لليوم الحالي واسكرول لأعلى (كأنك فاتح البرنامج من جديد).
+  const resetHome = useCallback(() => {
+    setSelectedDate(new Date());
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []);
+  useEffect(() => {
+    const unsub = navigation.addListener('tabPress', resetHome);
+    return unsub;
+  }, [navigation, resetHome]);
+
   // No more 1-second interval here!
   // We use a fixed 'now' for the initial calculations for the current day.
   // The ticking countdown is handled inside HeroCountdown.
@@ -97,7 +110,7 @@ export default function HomeScreen() {
       latitude: location.latitude,
       longitude: location.longitude,
       timezone: location.timezone,
-      method: 'Makkah',
+      method: methodForCountry(location.countryCode),
       adjustments: prayerAdjustments,
     });
   }, [selectedDate, location, prayerAdjustments]);
@@ -179,6 +192,7 @@ export default function HomeScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <ScrollView
+        ref={scrollRef}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           { paddingBottom: 100 },
@@ -317,7 +331,7 @@ export default function HomeScreen() {
               const isActive = isToday && nextP.name === pKey;
               return (
                 <View key={pKey} style={[styles.timeItem, isActive && { backgroundColor: t.colors.primary }]}>
-                  <Text style={[styles.timeName, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{PRAYER_NAMES_AR[pKey]}</Text>
+                  <Text style={[styles.timeName, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{prayerDisplayName(pKey, selectedDate)}</Text>
                   <Text style={[styles.timeValue, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
                     {todayPrayers[pKey]}
                   </Text>

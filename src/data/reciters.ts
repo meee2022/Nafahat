@@ -55,3 +55,50 @@ export function getSurahAudioUrl(reciterId: string, surahId: number): string | n
   const padded = String(surahId).padStart(3, '0');
   return `${r.cdnBase}/${padded}.mp3`;
 }
+
+/**
+ * 🎯 أسماء مجلّدات everyayah.com لملفات الآيات المنفصلة (ملف صوت لكل آية).
+ *   تشغيل ملف الآية المنفصل يبدأ من أوّل الآية بالظبط — بدون أي قفز/تقدير —
+ *   فالبداية مضبوطة 100% لكل القرّاء المدعومين هنا.
+ *   (القرّاء الحديثون غير الموجودين على everyayah يفضلوا على ملف السورة الكامل.)
+ */
+const EVERYAYAH_FOLDER: Record<string, string> = {
+  mishary:         'Alafasy_128kbps',
+  sudais:          'Abdurrahmaan_As-Sudais_192kbps',
+  shuraim:         'Saood_ash-Shuraym_128kbps',
+  husary:          'Husary_128kbps',
+  minshawi:        'Minshawy_Murattal_128kbps',
+  abdulbasit:      'Abdul_Basit_Murattal_192kbps',
+  abdulbasit_mjwd: 'Abdul_Basit_Mujawwad_128kbps',
+  minshawi_mjwd:   'Minshawy_Mujawwad_64kbps',
+  husary_mjwd:     'Husary_Mujawwad_64kbps',
+  ghamdi:          'Ghamadi_40kbps',
+  maher:           'Maher_AlMuaiqly_64kbps',
+  ajamy:           'Ahmed_ibn_Ali_al_Ajamy_128kbps',
+  shatry:          'Abu_Bakr_Ash-Shaatree_128kbps',
+  dosari:          'Yasser_Ad-Dussary_128kbps',
+  banna:           'Mahmoud_Ali_Al_Banna_32kbps',
+  qatami:          'Nasser_Alqatami_128kbps',
+  bukhatir:        'Salaah_AbdulRahman_Bukhatir_128kbps',
+  abbad:           'Fares_Abbad_64kbps',
+  jibreel:         'Muhammad_Jibreel_128kbps',
+  akhdar:          'Ibrahim_Akhdar_32kbps',
+  ayyub:           'Muhammad_Ayyoub_128kbps',
+  mutrod:          'Abdullah_Matroud_128kbps',
+};
+
+/** هل للقارئ ملفات آيات منفصلة (بداية مضبوطة)؟ */
+export function getReciterAyahFolder(reciterId: string): string | null {
+  return EVERYAYAH_FOLDER[reciterId] ?? null;
+}
+
+/**
+ * رابط ملف آية مفردة (يبدأ من أوّل الآية بالظبط) — أو null لو القارئ غير مدعوم.
+ */
+export function getAyahFileUrl(reciterId: string, surahId: number, ayahNumber: number): string | null {
+  const folder = EVERYAYAH_FOLDER[reciterId];
+  if (!folder) return null;
+  const s = String(surahId).padStart(3, '0');
+  const a = String(ayahNumber).padStart(3, '0');
+  return `https://everyayah.com/data/${folder}/${s}${a}.mp3`;
+}

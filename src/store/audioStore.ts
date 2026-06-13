@@ -1,11 +1,11 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Reciter } from '@/types/index';
-import { getSurahAudioUrl } from '@data/reciters';
+import { getSurahAudioUrl, getReciterAyahFolder } from '@data/reciters';
 import { getSurahById } from '@data/surahs';
 import { loadAndPlay, setPlaying, setSpeed as setSpeedAv, seekTo, unload, fadeOutAndStop, cancelFade } from '@services/audioPlayer';
 import { getAyahStartTimeMs } from '@services/verseSync';
-import type { SurahTimings } from '@services/audioTimings';
+import { getSurahTimings, type SurahTimings } from '@services/audioTimings';
 
 const PREFS_KEY = '@nafahat/audio/prefs';
 
@@ -30,6 +30,11 @@ interface NowPlaying {
   startAtAyah?: number;
   /** توقيتات دقيقة لكل آية (لو متوفرة) — تُستخدم للـ seek الدقيق بدل التقدير. */
   timings?: SurahTimings | null;
+  /**
+   * 🎯 لما المستخدم يضغط آية بعينها: نشغّل ملف الآية المنفصل (بداية مضبوطة)
+   *   بدل القفز في ملف السورة. يشتغل فقط للقرّاء اللي ليهم ملفات آيات منفصلة.
+   */
+  exactAyah?: boolean;
 }
 
 const SKIP_STEP_MS = 10_000;
@@ -46,6 +51,11 @@ interface AudioState {
   sleepTimerMin: number | null;
   /** الوقت المتبقي للموقّت بالملي ثانية - يُستخدم في الواجهة لعرض العدّ التنازلي. */
   sleepRemainingMs: number | null;
+  /**
+   * 🎯 رقم الآية الجاري تشغيلها في وضع "ملف الآية المنفصل" (بداية مضبوطة).
+   *   لو != null، الواجهة تستخدمه مباشرةً للتظليل بدل حساب getCurrentAyah التقريبي.
+   */
+  liveAyah: number | null;
   /** عداد المفضلة للسور (سعّ تجريبي - يخزَّن في readingStore.favorites). */
   play: (n: NowPlaying) => Promise<void>;
   toggle: () => Promise<void>;
@@ -73,6 +83,51 @@ function clearSleepInternals() {
   if (sleepTickId)    { clearInterval(sleepTickId);   sleepTickId = null; }
 }
 
+// ─────────────────────────────────────────────
+// 🎯 وضع "ملف الآية المنفصل" — تشغيل كل آية من ملفها الخاص (بداية مضبوطة).
+//   نشغّل آية بعد آية بالترتيب من الآية المختارة لآخر السورة.
+// ─────────────────────────────────────────────
+let perAyahCtx: { folder: string; surahId: number; nums: number[]; idx: number } | null = null;
+
+/** يبني رابط ملف آية مفردة من مجلّد everyayah. */
+function ayahFileUrl(folder: string, surahId: number, ayahNumber: number): string {
+  const s = String(surahId).padStart(3, '0');
+  const a = String(ayahNumber).padStart(3, '0');
+  return `https://everyayah.com/data/${folder}/${s}${a}.mp3`;
+}
+
+/** يحمّل ويشغّل الآية رقم idx في الطابور، مع الانتقال التلقائي للي بعدها. */
+async function loadPerAyahAt(idx: number): Promise<void> {
+  const ctx = perAyahCtx;
+  if (!ctx) return;
+  if (idx < 0 || idx >= ctx.nums.length) {
+    // خلصت السورة
+    perAyahCtx = null;
+    useAudioStore.setState({ isPlaying: false, positionMs: 0, liveAyah: null });
+    return;
+  }
+  ctx.idx = idx;
+  const ayahNum = ctx.nums[idx];
+  useAudioStore.setState({ liveAyah: ayahNum, positionMs: 0 });
+  await loadAndPlay(
+    ayahFileUrl(ctx.folder, ctx.surahId, ayahNum),
+    (st) => {
+      // تجاهل التحديثات لو اتلغى وضع الآية (المستخدم شغّل حاجة تانية)
+      if (perAyahCtx !== ctx) return;
+      useAudioStore.setState({
+        isPlaying: st.isPlaying,
+        positionMs: st.positionMs,
+        durationMs: st.durationMs,
+      });
+      if (st.didJustFinish) {
+        const mode = useAudioStore.getState().repeatMode;
+        if (mode === 'one') loadPerAyahAt(ctx.idx).catch(() => {});
+        else loadPerAyahAt(ctx.idx + 1).catch(() => {}); // 'none' و 'all' → كمّل للآية اللي بعدها
+      }
+    },
+  );
+}
+
 export const useAudioStore = create<AudioState>((set, get) => ({
   current: null,
   isPlaying: false,
@@ -84,12 +139,62 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   repeatMode: 'none',
   sleepTimerMin: null,
   sleepRemainingMs: null,
+  liveAyah: null,
 
   async play(n) {
-    // 🎯 للقفز الدقيق للآية: لو عندنا توقيتات quran.com نستخدم ملف صوتها المطابق
-    //    (نفس التسجيل اللي التوقيتات متظبوطة عليه) بدل mp3quran — فالقفز والتظليل
-    //    يبقوا دقيقين بالملّي ثانية بدل تقدير يقع على الآية الغلط.
-    const url = n.timings?.audioUrl || getSurahAudioUrl(n.reciter.id, n.surahId);
+    const startAyah = n.startAtAyah ?? n.ayahNumber;
+    const ayahsForSeek = n.ayahs ?? [];
+
+    // 🎯 وضع "ملف الآية المنفصل": لو المستخدم ضغط آية بعينها والقارئ عنده
+    //    ملفات آيات منفصلة → نشغّلها من ملفها مباشرةً (بداية مضبوطة 100% بدون قفز).
+    const ayahFolder = n.exactAyah ? getReciterAyahFolder(n.reciter.id) : null;
+    if (n.exactAyah && ayahFolder && startAyah && ayahsForSeek.length > 0) {
+      const nums = ayahsForSeek
+        .map((a) => a.number)
+        .filter((x) => x >= startAyah)
+        .sort((a, b) => a - b);
+      if (nums.length === 0) nums.push(startAyah);
+      perAyahCtx = { folder: ayahFolder, surahId: n.surahId, nums, idx: 0 };
+      try {
+        const { useSettingsStore } = require('./settingsStore');
+        useSettingsStore.getState().pushRecentReciter(n.reciter.id);
+      } catch {}
+      set({ current: n, isLoading: true, error: null, positionMs: 0, durationMs: 0, liveAyah: nums[0] });
+      try {
+        await loadPerAyahAt(0);
+        await setSpeedAv(get().speed);
+        set({ isLoading: false, isPlaying: true });
+      } catch {
+        set({ isLoading: false, isPlaying: false, error: 'تعذّر تشغيل الملف الصوتي' });
+      }
+      return;
+    }
+
+    // 🔻 الوضع العادي (ملف السورة الكامل) — نلغي أي وضع آية منفصل سابق.
+    perAyahCtx = null;
+    set({ liveAyah: null });
+
+    const wantsAyahSeek = !!(startAyah && startAyah > 1 && ayahsForSeek.length > 0);
+    // القارئ له توقيتات خاصة على quran.com؟ (لو لأ، الـ fallback توقيتات العفاسي)
+    const reciterHasOwnTimings = n.reciter.qcfRecitationId != null;
+
+    // 🎯 لضمان بداية دقيقة من الآية: تأكّد من وجود توقيتات قبل القفز.
+    //    لو اليوزر ضغط الآية قبل ما التوقيتات تحمّل (race) أو لو مش متمرّرة،
+    //    نجلبها هنا (مخزّنة بعد أوّل مرة فسريعة) بدل التقدير التقريبي بعدّ الحروف.
+    let timings = n.timings ?? null;
+    if (wantsAyahSeek && (!timings || timings.verses.length === 0)) {
+      try { timings = await getSurahTimings(n.surahId, n.reciter.qcfRecitationId); }
+      catch { timings = null; }
+    }
+
+    // 🎯 نستخدم ملف صوت التوقيتات (المطابق بالملّي ثانية) فقط لو كان فعلاً
+    //    بصوت نفس القارئ المختار. القرّاء بدون qcfRecitationId توقيتاتهم تكون
+    //    للعفاسي (fallback) — لو استخدمنا audioUrl بتاعها كنّا هنشغّل العفاسي
+    //    بالغلط بدل القارئ المطلوب، فنرجع لملف القارئ نفسه ونستخدم التوقيتات
+    //    للقفز بس (بالتناسب مع مدّة ملفه).
+    const url = (reciterHasOwnTimings && timings?.audioUrl)
+      ? timings.audioUrl
+      : getSurahAudioUrl(n.reciter.id, n.surahId);
     if (!url) {
       set({ error: 'لم يُعثر على رابط الصوت' });
       return;
@@ -101,12 +206,9 @@ export const useAudioStore = create<AudioState>((set, get) => ({
     } catch {}
     set({ current: n, isLoading: true, error: null, positionMs: 0, durationMs: 0 });
 
-    const startAyah = n.startAtAyah ?? n.ayahNumber;
-    const ayahsForSeek = n.ayahs ?? [];
-
     // 🎯 لو محدّد آية بدء + معه قائمة الآيات → احسب موضع البداية من الـ duration
-    const computeStartMs = (startAyah && startAyah > 1 && ayahsForSeek.length > 0)
-      ? (durationMs: number) => getAyahStartTimeMs(startAyah, durationMs, ayahsForSeek, n.surahId, n.timings)
+    const computeStartMs = wantsAyahSeek
+      ? (durationMs: number) => getAyahStartTimeMs(startAyah as number, durationMs, ayahsForSeek, n.surahId, timings)
       : undefined;
 
     const onStatus = (st: { isPlaying: boolean; positionMs: number; durationMs: number; didJustFinish: boolean }) => {
@@ -249,7 +351,8 @@ export const useAudioStore = create<AudioState>((set, get) => ({
 
   async stop() {
     clearSleepInternals();
-    set({ isPlaying: false, current: null, positionMs: 0, durationMs: 0, sleepTimerMin: null, sleepRemainingMs: null });
+    perAyahCtx = null;
+    set({ isPlaying: false, current: null, positionMs: 0, durationMs: 0, sleepTimerMin: null, sleepRemainingMs: null, liveAyah: null });
     await unload();
   },
 

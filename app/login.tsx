@@ -5,6 +5,15 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, TextInput, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GOOGLE_IOS_CLIENT_ID, GOOGLE_WEB_CLIENT_ID } from '@/config/google';
+
+// إعداد Google مرّة واحدة عند تحميل الوحدة
+GoogleSignin.configure({
+  iosClientId: GOOGLE_IOS_CLIENT_ID,
+  webClientId: GOOGLE_WEB_CLIENT_ID,
+});
 import Svg, { Path, Circle, Defs, Pattern, Rect } from 'react-native-svg';
 import { Mail, Lock, Eye, EyeOff, ArrowLeft, ArrowRight, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
@@ -30,15 +39,69 @@ export default function LoginScreen() {
   const tr = useT();
   const router = useRouter();
   const APP_INFO = useAppInfo();
-  const { signIn, signInAsGuest, loading, error, clearError } = useAuthStore();
+  const { signIn, signInWithApple, signInWithGoogle, signInAsGuest, loading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
+
+  React.useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => {});
+    }
+  }, []);
 
   const handleSubmit = async () => {
     clearError();
     const ok = await signIn(email.trim(), password);
     if (ok) router.replace('/');
+  };
+
+  const handleApple = async () => {
+    clearError();
+    try {
+      const cred = await AppleAuthentication.signInAsync({
+        requestedScopes: [
+          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
+          AppleAuthentication.AppleAuthenticationScope.EMAIL,
+        ],
+      });
+      const fullName = [cred.fullName?.givenName, cred.fullName?.familyName]
+        .filter(Boolean)
+        .join(' ');
+      const ok = await signInWithApple({
+        appleUserId: cred.user,
+        email: cred.email ?? undefined,
+        name: fullName || undefined,
+      });
+      if (ok) router.replace('/');
+    } catch (e: any) {
+      // المستخدم ألغى → نتجاهل بصمت
+      if (e?.code === 'ERR_REQUEST_CANCELED') return;
+      if (__DEV__) console.warn('[apple] sign-in error', e);
+    }
+  };
+
+  const handleGoogle = async () => {
+    clearError();
+    try {
+      await GoogleSignin.hasPlayServices();
+      const res: any = await GoogleSignin.signIn();
+      // يدعم شكل v13 ({ data: {...} }) والأقدم ({ user, idToken })
+      const data = res?.data ?? res;
+      const gUser = data?.user ?? {};
+      if (!gUser?.id) return;
+      const ok = await signInWithGoogle({
+        googleUserId: String(gUser.id),
+        email: gUser.email ?? undefined,
+        name: gUser.name ?? undefined,
+      });
+      if (ok) router.replace('/');
+    } catch (e: any) {
+      // المستخدم ألغى → نتجاهل بصمت
+      if (e?.code === statusCodes.SIGN_IN_CANCELLED) return;
+      if (__DEV__) console.warn('[google] sign-in error', e);
+    }
   };
 
   const handleGuest = async () => {
@@ -217,14 +280,30 @@ export default function LoginScreen() {
             </View>
 
             {/* أزرار اجتماعية */}
-            <Pressable style={[styles.socialBtn, { borderColor: t.colors.border }]}>
+            <Pressable
+              onPress={handleGoogle}
+              disabled={loading}
+              style={({ pressed }) => [
+                styles.socialBtn,
+                { borderColor: t.colors.border, opacity: pressed || loading ? 0.85 : 1 },
+              ]}
+            >
               <Text style={{ fontSize: 18 }}>🇬</Text>
               <Text variant="button" color={t.colors.textPrimary}>{tr('auth.signInWithGoogle')}</Text>
             </Pressable>
-            <Pressable style={[styles.socialBtn, { borderColor: t.colors.border, marginTop: 10 }]}>
-              <Text style={{ fontSize: 18 }}>🍎</Text>
-              <Text variant="button" color={t.colors.textPrimary}>{tr('auth.signInWithApple')}</Text>
-            </Pressable>
+            {appleAvailable ? (
+              <Pressable
+                onPress={handleApple}
+                disabled={loading}
+                style={({ pressed }) => [
+                  styles.socialBtn,
+                  { borderColor: t.colors.border, marginTop: 10, opacity: pressed || loading ? 0.85 : 1 },
+                ]}
+              >
+                <Text style={{ fontSize: 18 }}>🍎</Text>
+                <Text variant="button" color={t.colors.textPrimary}>{tr('auth.signInWithApple')}</Text>
+              </Pressable>
+            ) : null}
 
           </View>
 

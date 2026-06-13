@@ -25,7 +25,7 @@ import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { useSettingsStore, useWirdStore } from '@store/index';
 import { useT, useLanguage } from '@store/languageStore';
-import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@services/prayerTimes';
+import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName, methodForCountry } from '@services/prayerTimes';
 import { SectionHeading } from '@components/home';
 import { FEATURED_AYAHS } from '@data/featuredAyahs';
 
@@ -94,7 +94,7 @@ export default function DailyScreen() {
     latitude: location.latitude,
     longitude: location.longitude,
     timezone: location.timezone,
-    method: 'Makkah',
+    method: methodForCountry(location.countryCode),
     adjustments: prayerAdjustments,
   }), [selectedDate, location, prayerAdjustments]);
 

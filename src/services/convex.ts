@@ -9,24 +9,30 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const CONVEX_URL: string | undefined = process.env.EXPO_PUBLIC_CONVEX_URL;
+// 🔒 العنوان مكتوب صريح كـ fallback مضمون — لأن بناء production المحلي مبيضمّنش
+//    متغيّرات .env / eas.json دايماً. العنوان ده عام (EXPO_PUBLIC) وآمن للتضمين.
+export const CONVEX_URL: string =
+  process.env.EXPO_PUBLIC_CONVEX_URL || 'https://shiny-kiwi-78.eu-west-1.convex.cloud';
 
 let _convex: unknown = null;
 let _ConvexProviderImpl: React.ComponentType<{ client: unknown; children: React.ReactNode }> | null = null;
+// 🔍 تشخيص مؤقت: نلتقط سبب فشل إنشاء عميل Convex (لو حصل) ليظهر في الواجهة.
+let _convexInitError = '';
 
 if (CONVEX_URL) {
   try {
-    // require الديناميكي حتى لا يفشل البناء إذا لم تُثبَّت convex بعد
-    const mod = require('convex/react');
-    _ConvexProviderImpl = mod.ConvexProvider;
-    _convex = new mod.ConvexReactClient(CONVEX_URL, { unsavedChangesWarning: false });
-  } catch {
-    if (__DEV__) {
-      console.warn(
-        '[nafahat] لم يتم تحميل حزمة convex. شغّل `npm install` لتفعيل المزامنة السحابية.',
-      );
-    }
+    // 🔑 ConvexHttpClient أخف وأثبت في React Native الإنتاجي — لا يعتمد على
+    //    WebSocket مثل ConvexReactClient (الذي يفشل أحياناً في الإنشاء على Hermes
+    //    في نسخ الإنتاج فيصير العميل null → "تعذّر الاتصال"). التطبيق يستخدم
+    //    mutation/query فقط (لا توجد hooks)، فهذا العميل كافٍ تماماً.
+    const { ConvexHttpClient } = require('convex/browser');
+    _convex = new ConvexHttpClient(CONVEX_URL);
+  } catch (e: any) {
+    _convexInitError = `client: ${e?.message ?? String(e)}`;
+    if (__DEV__) console.warn('[nafahat] فشل إنشاء عميل convex:', e);
   }
+} else {
+  _convexInitError = 'no-url';
 }
 
 interface ConvexClientShape {
@@ -37,13 +43,18 @@ interface ConvexClientShape {
 export const convex = _convex as null | ConvexClientShape;
 export const ConvexProviderImpl = _ConvexProviderImpl;
 
-// ───── محاولة تحميل الـ generated API (يعمل بعد `npx convex dev`) ─────
+// ───── مراجع دوال الـ API ─────
+//   ❌ require('../../convex/_generated/api') بيفشل في الإنتاج ("Cannot find module")
+//      لأن مجلد convex/ مش بيتضمّن في الـ bundle بتاع الإنتاج.
+//   ✅ الملف المولّد أصلاً مجرّد `export const api = anyApi`، و anyApi موجود في
+//      مكتبة convex نفسها (متضمّنة في الـ bundle) — فنستخدمه مباشرةً.
+//      anyApi هو Proxy: anyApi.users.signInWithApple → مرجع الدالة "users:signInWithApple".
 let _api: any = null;
 try {
-  const apiMod = require('../../convex/_generated/api');
-  _api = apiMod.api;
-} catch {
-  // _generated مش موجود لسه - الـ Convex auth مش متاح
+  const { anyApi } = require('convex/server');
+  _api = anyApi;
+} catch (e: any) {
+  _convexInitError += ` | api: ${e?.message ?? String(e)}`;
 }
 export const convexApi = _api;
 

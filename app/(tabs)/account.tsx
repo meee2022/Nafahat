@@ -2,7 +2,7 @@
  * شاشة حسابي - الملف + الإحصائيات + الإعدادات + الإنجازات.
  */
 import React from 'react';
-import { View, StyleSheet, Pressable, Switch } from 'react-native';
+import { View, StyleSheet, Pressable, Switch, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -23,7 +23,7 @@ import { copyToClipboard, shareText } from '@utils/clipboard';
 import { useLanguageStore, useT } from '@store/languageStore';
 import { LANGUAGES } from '@/i18n/index';
 import { useAuthStore } from '@store/authStore';
-import { LogOut } from 'lucide-react-native';
+import { LogOut, Trash2 } from 'lucide-react-native';
 
 export default function AccountScreen() {
   const t = useTheme();
@@ -48,10 +48,44 @@ export default function AccountScreen() {
   const authStatus = useAuthStore((s) => s.status);
   const authUser = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
+  const deleteAccount = useAuthStore((s) => s.deleteAccount);
 
   const handleSignOut = async () => {
     await signOut();
     router.replace('/login');
+  };
+
+  // 🗑️ حذف الحساب نهائياً (مطلوب من App Store) — بتأكيد من خطوتين
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'حذف الحساب نهائياً',
+      'سيتم حذف حسابك وكل بياناته من خوادمنا نهائياً، ولا يمكن التراجع عن هذا الإجراء.\n\nYour account and all its data will be permanently deleted. This cannot be undone.',
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'حذف نهائي',
+          style: 'destructive',
+          onPress: () => {
+            // تأكيد ثانٍ لمنع الحذف بالخطأ
+            Alert.alert(
+              'تأكيد أخير',
+              'متأكد إنك عايز تحذف حسابك نهائياً؟',
+              [
+                { text: 'تراجع', style: 'cancel' },
+                {
+                  text: 'نعم، احذف',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await deleteAccount();
+                    router.replace('/login');
+                  },
+                },
+              ],
+            );
+          },
+        },
+      ],
+    );
   };
 
   const isAuthenticated = authStatus === 'authenticated';
@@ -314,6 +348,25 @@ export default function AccountScreen() {
               <Text variant="subtitle" color={t.colors.error}>{tr('account.signOut')}</Text>
               <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 2 }}>
                 {tr('account.signOutHint')}
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* فاصل */}
+          <View style={{ height: 1, backgroundColor: t.colors.border, marginVertical: t.spacing.md }} />
+
+          {/* 🗑️ حذف الحساب نهائياً (مطلوب من App Store) */}
+          <Pressable
+            onPress={handleDeleteAccount}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}
+          >
+            <View style={[styles.signOutIcon, { backgroundColor: t.colors.error + '14', borderColor: t.colors.error + '50' }]}>
+              <Trash2 size={18} color={t.colors.error} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text variant="subtitle" color={t.colors.error}>حذف الحساب نهائياً</Text>
+              <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 2 }}>
+                حذف حسابك وكل بياناتك نهائياً — لا يمكن التراجع
               </Text>
             </View>
           </Pressable>

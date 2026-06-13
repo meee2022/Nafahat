@@ -13,7 +13,7 @@ import {
 import { useTheme } from '@theme/index';
 import { Card, Button } from '@components/ui';
 import {
-  calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName, CalculationMethod,
+  calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, prayerDisplayName, PrayerName, CalculationMethod, methodForCountry,
 } from '@services/prayerTimes';
 import { schedulePrayerNotifications, cancelAllPrayerNotifications, isAvailable as notifAvailable, sendTestNotification } from '@services/prayerNotifications';
 import { playAdhan, stopAdhan } from '@services/adhan';
@@ -50,6 +50,9 @@ const PRAYER_ICONS: Record<PrayerName, React.ReactNode> = {
 
 const METHODS: { id: CalculationMethod; nameAr: string }[] = [
   { id: 'Makkah',  nameAr: 'أم القرى - السعودية' },
+  { id: 'Qatar',   nameAr: 'قطر' },
+  { id: 'Dubai',   nameAr: 'الإمارات - دبي' },
+  { id: 'Kuwait',  nameAr: 'الكويت' },
   { id: 'Egypt',   nameAr: 'الهيئة المصرية' },
   { id: 'ISNA',    nameAr: 'أمريكا الشمالية' },
   { id: 'MWL',     nameAr: 'رابطة العالم الإسلامي' },
@@ -61,7 +64,10 @@ const METHODS: { id: CalculationMethod; nameAr: string }[] = [
 export default function PrayerTimesScreen() {
   const t = useTheme();
   const router = useRouter();
-  const [method, setMethod] = useState<CalculationMethod>('Makkah');
+  // الطريقة الافتراضية تُختار حسب دولة الموقع المحفوظ (مع إمكانية التغيير اليدوي)
+  const [method, setMethod] = useState<CalculationMethod>(
+    () => methodForCountry(useSettingsStore.getState().location.countryCode)
+  );
   const [showMethodPicker, setShowMethodPicker] = useState(false);
   const [now, setNow] = useState(new Date());
   // 🔒 حالة تنبيهات الصلاة محفوظة دائماً في الـstore (مش useState محلّي) فلا
@@ -397,7 +403,7 @@ export default function PrayerTimesScreen() {
           <Text style={[styles.heroEyebrow, { color: 'rgba(251,247,234,0.8)' }]}>الصلاة القادمة</Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 14, marginTop: 8 }}>
             <Text style={[styles.heroPrayerName, { color: '#FBF7EA' }]}>
-              {PRAYER_NAMES_AR[next.name]}
+              {prayerDisplayName(next.name, now)}
             </Text>
             <Text style={[styles.heroPrayerTime, { color: '#FBF7EA' }]}>
               {next.time}
@@ -447,7 +453,7 @@ export default function PrayerTimesScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: t.colors.textPrimary }}>
-                    {PRAYER_NAMES_AR[name]}
+                    {prayerDisplayName(name, now)}
                   </Text>
                   {isNext ? (
                     <Text style={{ fontSize: 11, fontWeight: '700', color: t.colors.accent, marginTop: 2 }}>
@@ -491,7 +497,7 @@ export default function PrayerTimesScreen() {
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textPrimary }}>
-                      {PRAYER_NAMES_AR[name]}
+                      {prayerDisplayName(name, now)}
                     </Text>
                     <Text style={{ fontSize: 12, fontWeight: '800', color: t.colors.accent, marginTop: 2, letterSpacing: 0.5 }}>
                       {times[name]}

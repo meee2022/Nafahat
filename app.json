@@ -2,7 +2,7 @@
   "expo": {
     "name": "نَفَحات",
     "slug": "nafahat",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "nafahat",
@@ -13,6 +13,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.nafahat.app",
+      "buildNumber": "10",
+      "usesAppleSignIn": true,
+      "entitlements": {
+        "com.apple.developer.usernotifications.time-sensitive": true
+      },
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
@@ -23,7 +28,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#065236"
+        "backgroundColor": "#021e12"
       },
       "package": "com.nafahat.app",
       "permissions": [
@@ -63,6 +68,7 @@
     "plugins": [
       "expo-router",
       "expo-font",
+      "expo-apple-authentication",
       [
         "expo-audio",
         {
@@ -73,19 +79,27 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash.png",
-          "imageWidth": 320,
+          "imageWidth": 390,
           "resizeMode": "contain",
-          "backgroundColor": "#04140E",
+          "backgroundColor": "#021e12",
           "dark": {
             "image": "./assets/splash.png",
-            "imageWidth": 320,
+            "imageWidth": 390,
             "resizeMode": "contain",
-            "backgroundColor": "#04140E"
+            "backgroundColor": "#021e12"
           }
         }
       ],
       "expo-status-bar",
       "expo-asset",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "نَفَحات يصل إلى مكتبة الصور فقط عند اختيارك صورة لملفك الشخصي (الأفاتار). تبقى صورك على جهازك ولا تُرفع أو تُشارك مع أي خادم. Nafahat accesses your photo library only when you choose a profile picture (avatar); your photos stay on your device and are never uploaded or shared.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
       [
         "expo-location",
         {
@@ -102,7 +116,13 @@
         }
       ],
       "./plugins/withForceRtl.js",
-      "./plugins/withForceRtlIos.js"
+      "./plugins/withForceRtlIos.js",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.51568642934-iioeajrj5t53de6vcr0p40shc7l5345f"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": false
@@ -110,8 +130,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9c852622-ac30-4e51-ad1e-46355bd9ff7a"
+        "projectId": "3d57d970-6f93-4fc3-bd03-50163a4396ff"
       }
-    }
+    },
+    "owner": "thamertub"
   }
 }

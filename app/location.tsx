@@ -46,14 +46,17 @@ export default function LocationScreen() {
       const { latitude, longitude } = pos.coords;
       let cityAr = 'موقعي الحالي';
       let cityEn = 'My Location';
+      let countryCode: string | undefined;
       try {
         const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
         const name = geo[0]?.city || geo[0]?.region || geo[0]?.subregion;
         if (name) { cityAr = name; cityEn = name; }
+        // رمز الدولة لاختيار طريقة حساب المواقيت الرسمية للبلد
+        if (geo[0]?.isoCountryCode) countryCode = geo[0].isoCountryCode;
       } catch {}
       // توقيت الجهاز الحالي بالساعات (مثلاً قطر = +3)
       const timezone = -new Date().getTimezoneOffset() / 60;
-      setLocation({ cityAr, cityEn, latitude, longitude, timezone });
+      setLocation({ cityAr, cityEn, latitude, longitude, timezone, countryCode });
       router.back();
     } catch {
       Alert.alert('تعذّر تحديد الموقع', 'تأكّد من تفعيل خدمة الموقع (GPS)، أو اختر مدينتك يدوياً.');
@@ -90,6 +93,7 @@ export default function LocationScreen() {
       latitude: city.latitude,
       longitude: city.longitude,
       timezone: city.timezone,
+      countryCode: city.countryCode,
     });
     router.back();
   };

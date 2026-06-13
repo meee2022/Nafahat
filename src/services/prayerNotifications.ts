@@ -82,6 +82,8 @@ const NOTIF_IDS = {
   iqamaAsr:       'iqama-asr',
   iqamaMaghrib:   'iqama-maghrib',
   iqamaIsha:      'iqama-isha',
+  jumuahReminder: 'jumuah-reminder',
+  jumuahFirstAdhan: 'jumuah-first-adhan',
 } as const;
 
 /** خيارات الجدولة - تفعيل الإقامة وعدد دقائقها. */
@@ -213,6 +215,10 @@ export async function cancelAllPrayerNotifications(): Promise<void> {
     for (const id of Object.values(NOTIF_IDS)) {
       await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
     }
+    // إلغاء إشعارات الظهر الأسبوعية (prayer-dhuhr-1 .. prayer-dhuhr-7) عشان ما تتراكمش
+    for (let wd = 1; wd <= 7; wd++) {
+      await Notifications.cancelScheduledNotificationAsync(`${NOTIF_IDS.dhuhr}-${wd}`).catch(() => {});
+    }
   } catch {}
 }
 
@@ -238,19 +244,44 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
   // جدول أذان + إقامة كل صلاة
   for (const p of FARD_PRAYERS) {
     const { hour, minute } = parseTime(times[p.key]);
-    try {
-      await Notifications.scheduleNotificationAsync({
-        identifier: p.adhanId,
-        content: {
-          title: `🕌 ${p.nameAr}`,
-          body: `حان وقت أذان ${p.nameAr}`,
-          // 🔊 صوت أذان مدمج (يعمل والتطبيق مقفول) — على أندرويد يأتي من القناة.
-          sound: 'adhan.wav',
-          data: { type: 'prayer', prayer: p.key },
-        },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: 'adhan' },
-      });
-    } catch {}
+
+    if (p.key === 'dhuhr') {
+      // 🕌 الظهر: نجدوله أسبوعياً لكل يوم — يوم الجمعة باسم "الجمعة" (صلاة مستقلة عن الظهر).
+      //    expo weekday: 1=الأحد ... 6=الجمعة ... 7=السبت.
+      for (let wd = 1; wd <= 7; wd++) {
+        const isFri = wd === 6;
+        const nm = isFri ? 'الجمعة' : 'الظهر';
+        try {
+          await Notifications.scheduleNotificationAsync({
+            identifier: `${p.adhanId}-${wd}`,
+            content: {
+              title: isFri ? '🕌 الجمعة — الأذان الثاني' : `🕌 ${nm}`,
+              body: isFri ? 'الأذان الثاني — حان وقت صلاة الجمعة. تقبّل الله طاعتك' : `حان وقت أذان ${nm}`,
+              sound: 'adhan.wav',
+              interruptionLevel: 'timeSensitive',
+              data: { type: 'prayer', prayer: 'dhuhr', jumuah: isFri },
+            },
+            trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: wd, hour, minute, channelId: 'adhan' },
+          });
+        } catch {}
+      }
+    } else {
+      try {
+        await Notifications.scheduleNotificationAsync({
+          identifier: p.adhanId,
+          content: {
+            title: `🕌 ${p.nameAr}`,
+            body: `حان وقت أذان ${p.nameAr}`,
+            // 🔊 صوت أذان مدمج (يعمل والتطبيق مقفول) — على أندرويد يأتي من القناة.
+            sound: 'adhan.wav',
+            // ⏰ حسّاس للوقت: يخترق وضع التركيز/عدم الإزعاج/النوم ليصل الأذان في وقته.
+            interruptionLevel: 'timeSensitive',
+            data: { type: 'prayer', prayer: p.key },
+          },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: 'adhan' },
+        });
+      } catch {}
+    }
 
     // تنبيه الإقامة بعد الأذان بعدد الدقائق المختار
     if (opts.iqamaEnabled) {
@@ -268,6 +299,41 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
         });
       } catch {}
     }
+  }
+
+  // 🕌 تنبيه يوم الجمعة — قبل صلاة الجمعة بـ ٩٠ دقيقة، بسنن وأذكار الجمعة.
+  //    أسبوعي (الجمعة فقط — expo weekday 6).
+  {
+    const jt = addMinutes(times.dhuhr, -90);
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: NOTIF_IDS.jumuahReminder,
+        content: {
+          title: '🕌 يوم الجمعة المبارك',
+          body: 'استعدّ لصلاة الجمعة: اغتسل وتطيّب وبكّر، واقرأ سورة الكهف، وأكثِر من الصلاة على النبي ﷺ، واغتنم ساعة الإجابة.',
+          sound: 'default',
+          data: { type: 'jumuah' },
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 6, hour: jt.hour, minute: jt.minute },
+      });
+    } catch {}
+
+    // 🕌 الأذان الأول للجمعة — قبل الأذان الثاني (وقت الظهر) بـ ٣٠ دقيقة، بصوت الأذان.
+    //    (الأذان الأول سنّة عثمان رضي الله عنه لتنبيه الناس للتبكير.)
+    const fa = addMinutes(times.dhuhr, -30);
+    try {
+      await Notifications.scheduleNotificationAsync({
+        identifier: NOTIF_IDS.jumuahFirstAdhan,
+        content: {
+          title: '🕌 الأذان الأول للجمعة',
+          body: 'أذّن الأذان الأول — بكّر إلى صلاة الجمعة، فالرواح في الساعة الأولى كمن قرّب بدنة.',
+          sound: 'adhan.wav',
+          interruptionLevel: 'timeSensitive',
+          data: { type: 'jumuah-first-adhan' },
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.WEEKLY, weekday: 6, hour: fa.hour, minute: fa.minute, channelId: 'adhan' },
+      });
+    } catch {}
   }
 
   // أذكار الصباح - بعد الفجر بـ ٣٠ دقيقة

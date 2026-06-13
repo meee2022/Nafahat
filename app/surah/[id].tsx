@@ -324,7 +324,10 @@ export default function SurahDetail() {
   //   حتى لو positionMs تغيّر في كل tick. هذا يقطع dozens من re-renders كل ثانية.
   const playingAyahNumber = useAudioStore((s) => {
     const playingThisSurah = s.current?.surahId === surah.id && s.isPlaying;
-    if (!playingThisSurah || !ayahs || s.durationMs === 0) return null;
+    if (!playingThisSurah || !ayahs) return null;
+    // 🎯 وضع ملف الآية المنفصل: نعرف الآية الجارية بدقّة من الـ store مباشرةً.
+    if (s.liveAyah != null) return s.liveAyah;
+    if (s.durationMs === 0) return null;
     return getCurrentAyah(s.positionMs, s.durationMs, ayahs, surah.id, timings);
   });
 
@@ -360,15 +363,19 @@ export default function SurahDetail() {
   const subInfo = `${surah.revelationType === 'meccan' ? 'مكية' : 'مدنية'}  ·  ${arabicNumber(surah.versesCount)} آية`;
 
   const handlePlay = () => {
-    const firstAyahOfPage = currentPage?.ayahs[0]?.number ?? 1;
+    const pageAyahs = currentPage?.ayahs ?? [];
+    const firstAyahOfPage = pageAyahs[0]?.number ?? 1;
 
-    // هل الـ context الحالي محمّل بالفعل؟ (نفس السورة + نفس الصفحة)
+    // هل الـ context الحالي محمّل بالفعل؟ (نفس السورة + التشغيل بدأ من أي آية
+    //   في الصفحة الحالية — مش لازم الأولى). كده لو اخترت آية في نص الصفحة
+    //   وعملت pause، الزرار يعمل resume من نفس المكان بدل ما يبدأ من أول الصفحة.
     const isCurrentPageLoaded =
       current?.surahId === surah.id &&
-      current?.startAtAyah === firstAyahOfPage;
+      current?.startAtAyah != null &&
+      pageAyahs.some((a) => a.number === current.startAtAyah);
 
     if (isCurrentPageLoaded) {
-      // 🟡 نفس الصفحة محمّلة → toggle (pause/resume)
+      // 🟡 نفس الصفحة محمّلة → toggle (pause/resume) من نفس الموضع
       toggle();
     } else {
       // 🎵 سياق جديد (سورة مختلفة أو صفحة مختلفة) → ابدأ من الصفحة الحالية
@@ -440,6 +447,7 @@ export default function SurahDetail() {
       ayahs: ayahs,
       startAtAyah: ayahNum,
       timings,
+      exactAyah: true,
     });
   }, [activeReciter, ayahs, play, surah, timings]);
 
@@ -554,17 +562,9 @@ export default function SurahDetail() {
           onToggleFavorite={() => toggleFavorite(surah.id, selectedAyah)}
           onPlay={() => {
             setSelectedAyah(null);
-            // 🎯 اقرأ durationMs الحالية من الـ store (بدون اشتراك reactive)
-            const liveState = useAudioStore.getState();
-            const liveDurationMs = liveState.durationMs;
-            if (current?.surahId === surah.id && current.reciter.id === activeReciter.id && liveDurationMs > 0 && ayahs) {
-              // مستخدم getAyahStartTimeMs المستورد فوق - بدل require() القديم
-              const targetMs = getAyahStartTimeMs(selectedAyah, liveDurationMs, ayahs, surah.id, timings);
-              if (targetMs > 0) seek(targetMs);
-              if (!isPlaying) toggle();
-            } else {
-              play({ reciter: activeReciter, surahId: surah.id, surahName: surah.nameAr, ayahNumber: selectedAyah, ayahs: ayahs ?? [], startAtAyah: selectedAyah, timings });
-            }
+            // 🎯 شغّل من الآية المختارة بـ "ملف الآية المنفصل" (بداية مضبوطة).
+            //   للقرّاء غير المدعومين، الـ store بيرجع تلقائياً لملف السورة + القفز.
+            play({ reciter: activeReciter, surahId: surah.id, surahName: surah.nameAr, ayahNumber: selectedAyah, ayahs: ayahs ?? [], startAtAyah: selectedAyah, timings, exactAyah: true });
           }}
         />
       ) : null}

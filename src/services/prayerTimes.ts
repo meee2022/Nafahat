@@ -22,7 +22,10 @@ export type CalculationMethod =
   | 'MWL'   // Muslim World League
   | 'ISNA'  // Islamic Society of North America
   | 'Egypt' // الهيئة المصرية العامة للمساحة
-  | 'Makkah' // أم القرى
+  | 'Makkah' // أم القرى (السعودية)
+  | 'Qatar'  // قطر (أم القرى لكن الفجر 18°)
+  | 'Dubai'  // الإمارات
+  | 'Kuwait' // الكويت
   | 'Karachi' // كراتشي
   | 'Tehran'
   | 'Jafari';
@@ -32,10 +35,38 @@ const METHOD_PARAMS: Record<CalculationMethod, { fajr: number; isha: number | st
   ISNA:    { fajr: 15,    isha: 15 },
   Egypt:   { fajr: 19.5,  isha: 17.5 },
   Makkah:  { fajr: 18.5,  isha: '90 min' }, // بعد المغرب
+  Qatar:   { fajr: 18,    isha: '90 min' }, // أم القرى لكن الفجر 18° (الرسمي في قطر)
+  Dubai:   { fajr: 18.2,  isha: 18.2 },
+  Kuwait:  { fajr: 18,    isha: 17.5 },
   Karachi: { fajr: 18,    isha: 18 },
   Tehran:  { fajr: 17.7,  isha: 14 },
   Jafari:  { fajr: 16,    isha: 14 },
 };
+
+/**
+ * يختار طريقة الحساب الرسمية حسب الدولة (ISO country code).
+ * الهدف: دقّة الفجر/العشاء لكل بلد بدل استخدام أم القرى للجميع
+ * (كان الفجر يجي بدري في قطر لأن أم القرى تستخدم 18.5° والرسمي 18°).
+ */
+export function methodForCountry(countryCode?: string | null): CalculationMethod {
+  switch ((countryCode || '').toUpperCase()) {
+    // الخليج
+    case 'SA': case 'BH': case 'OM': case 'YE': return 'Makkah';
+    case 'QA': return 'Qatar';
+    case 'AE': return 'Dubai';
+    case 'KW': return 'Kuwait';
+    // مصر
+    case 'EG': return 'Egypt';
+    // أمريكا الشمالية
+    case 'US': case 'CA': return 'ISNA';
+    // شبه القارة الهندية
+    case 'PK': case 'IN': case 'BD': case 'AF': case 'LK': return 'Karachi';
+    // إيران
+    case 'IR': return 'Tehran';
+    // الافتراضي العالمي: رابطة العالم الإسلامي
+    default: return 'MWL';
+  }
+}
 
 // ============== Math helpers ==============
 const dtr = (d: number) => (d * Math.PI) / 180;
@@ -136,9 +167,12 @@ export function calculatePrayerTimes(params: PrayerCalcParams): PrayerTimes {
 
   const fajr    = sunAngleTime(method.fajr as number, 5 / 24, jd, lat, 'ccw');
   const sunrise = sunAngleTime(0.833, 6 / 24, jd, lat, 'ccw');
-  const dhuhr   = computeNoon(jd, 12 / 24) + 0.0667; // +4 دقائق احتياط
-  const asr     = asrTime(params.asrFactor ?? 1, 13 / 24, jd, lat);
-  const maghrib = sunAngleTime(0.833, 18 / 24, jd, lat, 'cw');
+  const dhuhr   = computeNoon(jd, 12 / 24) + 0.05;  // +3 دقائق احتياط
+  const asr     = asrTime(params.asrFactor ?? 1, 13 / 24, jd, lat) + 0.05; // +3 دقائق احتياط (الأذان الرسمي يتأخر قليلاً عن الحساب الفلكي)
+  // المغرب = لحظة غياب قرص الشمس الفلكية (0.833°) + 3 دقائق احتياط.
+  //   الأذان الرسمي (خصوصاً الخليج/الإمارات) يكون بعد الغروب الفلكي بدقائق،
+  //   فبدون الاحتياط يجي التنبيه بدري شوية. (العشاء "90 min" محسوب من المغرب بعد الاحتياط.)
+  const maghrib = sunAngleTime(0.833, 18 / 24, jd, lat, 'cw') + 0.05;
   let ishaTime: number;
   if (typeof method.isha === 'string' && method.isha.includes('min')) {
     const mins = parseFloat(method.isha) / 60;
@@ -192,6 +226,18 @@ export const PRAYER_NAMES_AR: Record<PrayerName, string> = {
   maghrib: 'المغرب',
   isha:    'العشاء',
 };
+
+/** هل اليوم (أو التاريخ المعطى) هو الجمعة؟ getDay(): 0=الأحد ... 5=الجمعة. */
+export const isFriday = (d: Date = new Date()): boolean => d.getDay() === 5;
+
+/**
+ * اسم الصلاة للعرض — يوم الجمعة تُعرض صلاة الظهر باسم "الجمعة".
+ * (صلاة الجمعة تكون في وقت الظهر لكنها صلاة مستقلة عن الظهر.)
+ */
+export function prayerDisplayName(key: PrayerName, date: Date = new Date()): string {
+  if (key === 'dhuhr' && isFriday(date)) return 'الجمعة';
+  return PRAYER_NAMES_AR[key];
+}
 
 /** أسماء الصلوات بالإنجليزية. */
 export const PRAYER_NAMES_EN: Record<PrayerName, string> = {

@@ -36,3 +36,6 @@ _pdf_meta.txt
 
 # import packages
 *.zip
+
+# EAS local build artifacts
+*.ipa

@@ -250,7 +250,7 @@ const MushafLine: React.FC<LineProps> = ({
             letterSpacing: 0,
             writingDirection: 'rtl',
             textAlign: 'center',
-            includeFontPadding: false as any,
+            includeFontPadding: true as any,
           }}
         >
           {w.char}
@@ -273,7 +273,7 @@ const MushafLine: React.FC<LineProps> = ({
             letterSpacing: 0,
             writingDirection: 'rtl',
             textAlign: 'center',
-            includeFontPadding: false as any,
+            includeFontPadding: true as any,
           }}
         >
           {w.char}
@@ -307,7 +307,11 @@ const MushafLine: React.FC<LineProps> = ({
           writingDirection: 'rtl',
           textAlign: 'center',
           letterSpacing: 0,
-          includeFontPadding: false as any,
+          // ✅ includeFontPadding=true يمنع قصّ النقط/الأطراف السفلية للحروف
+          //    (مثلاً نقطتي الياء في «يُنقِذُونِ» كانتا تُقصّان فتبدو باءً).
+          //    lineHeight الصريح (1.7×) كافٍ لاحتواء الـ padding بدون تغيير ارتفاع السطر.
+          includeFontPadding: true as any,
+          textAlignVertical: 'center' as any,
         }}
       >
         {line.words.map((w, i) => {
@@ -366,7 +370,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'nowrap',
     paddingVertical: 0,
-    overflow: 'hidden',
+    // ⚠️ بدون overflow:'hidden' هنا — كان يقصّ النقط السفلية للحروف.
+    //    الحماية من الفيضان موجودة على مستوى .page (الإطار الخارجي).
   },
   lineInner: {
     flexDirection: 'row',

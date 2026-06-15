@@ -24,7 +24,19 @@ const CDN_BASE = 'https://cdn.jsdelivr.net/npm/quran-qcf4@1.0.3';
  */
 const TTF_CDN_BASE = 'https://cdn.jsdelivr.net/gh/meee2022/Nafahat@fonts';
 
+// 🔤 خط مصحف المدينة v1 (الكلاسيكي) — TTF لكل صفحة.
+const V1_TTF_BASE = 'https://cdn.jsdelivr.net/gh/quran/quran.com-images/res/fonts';
+const isV1Font = (name: string): boolean => name.startsWith('QCF_P');
+export const v1FontForPage = (page: number): string => `QCF_P${String(page).padStart(3, '0')}`;
+
+// 🔤 خط مصحف المدينة v2 (الأشهر — نقطه أوضح من v4). TTF لكل صفحة.
+const V2_TTF_BASE = 'https://cdn.jsdelivr.net/gh/mustafa0x/qpc-fonts/mushaf-v2';
+const isV2Font = (name: string): boolean => name.startsWith('QCF2_');
+export const v2FontForPage = (page: number): string => `QCF2_${String(page).padStart(3, '0')}`;
+
 function getQpcTtfUrl(fontName: string): string {
+  if (isV2Font(fontName)) return `${V2_TTF_BASE}/QCF2${fontName.slice(5)}.ttf`;
+  if (isV1Font(fontName)) return `${V1_TTF_BASE}/${fontName}.TTF`;
   const suffix = fontName === 'QCF4_QBSML' ? '' : '_W';
   return `${TTF_CDN_BASE}/${fontName}${suffix}.ttf`;
 }
@@ -121,28 +133,64 @@ export function fetchQpcPage(page: number): Promise<QpcPageData> {
 }
 
 async function fetchQpcPageInternal(page: number): Promise<QpcPageData> {
-  // 📦 جرّب AsyncStorage أولاً - يعمل أوفلاين ويحفظ bandwidth
+  let data: QpcPageData | null = null;
   try {
     const raw = await AsyncStorage.getItem(pageCacheKey(page));
     if (raw) {
       const stored = JSON.parse(raw) as QpcPageData;
-      if (stored && Array.isArray(stored.lines) && stored.lines.length > 0) {
-        return stored;
-      }
+      if (stored && Array.isArray(stored.lines) && stored.lines.length > 0) data = stored;
     }
   } catch {}
 
-  // 🌐 جلب من CDN
-  const padded = String(page).padStart(3, '0');
-  const url = `${CDN_BASE}/pages/${padded}.json`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const data: QpcPageData = await res.json();
+  if (!data) {
+    const padded = String(page).padStart(3, '0');
+    const res = await fetch(`${CDN_BASE}/pages/${padded}.json`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    data = (await res.json()) as QpcPageData;
+    AsyncStorage.setItem(pageCacheKey(page), JSON.stringify(data)).catch(() => {});
+  }
 
-  // 💾 احفظ في AsyncStorage للقراءة الأوفلاين المستقبلية (غير محظور)
-  AsyncStorage.setItem(pageCacheKey(page), JSON.stringify(data)).catch(() => {});
+  // ✅ خط QCF v2 لكل المصحف — نقطه أوضح من v4 ويحافظ على شكل الصفحة (15 سطر).
+  //    best-effort: لو فشل (أوفلاين أول مرة) يرجع v4 من غير كسر.
+  await applyV2Layer(data, page).catch(() => {});
 
   return data;
+}
+
+// ─────── طبقة خط QCF v2 (تجربة وضوح النقط مع الحفاظ على شكل الصفحة) ───────
+const V2_MAP_PREFIX = '@nafahat/qpcV2map/';
+async function fetchV2CodeMap(page: number): Promise<Record<string, string>> {
+  const key = `${V2_MAP_PREFIX}${page}`;
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (raw) { const m = JSON.parse(raw); if (m && Object.keys(m).length) return m; }
+  } catch {}
+  const url = `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=code_v2&per_page=300`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`v2 HTTP ${res.status}`);
+  const json: any = await res.json();
+  const map: Record<string, string> = {};
+  for (const v of json.verses ?? []) {
+    for (const w of v.words ?? []) {
+      if (w.code_v2 && w.position != null) map[`${v.verse_key}:${w.position}`] = w.code_v2;
+    }
+  }
+  if (Object.keys(map).length) AsyncStorage.setItem(key, JSON.stringify(map)).catch(() => {});
+  return map;
+}
+/** يستبدل أكواد الكلمات بأكواد v2 + خط v2 (نقطه أوضح). */
+async function applyV2Layer(data: QpcPageData, page: number): Promise<void> {
+  const map = await fetchV2CodeMap(page);
+  if (!map || !Object.keys(map).length) return;
+  const v2font = v2FontForPage(page);
+  for (const line of data.lines) {
+    for (const w of line.words) {
+      if ((w.type === 'word' || w.type === 'end') && w.verse_key && (w as any).position != null) {
+        const code = map[`${w.verse_key}:${(w as any).position}`];
+        if (code) { w.char = code; (w as any).code = code.codePointAt(0) ?? (w as any).code; w.font = v2font; }
+      }
+    }
+  }
 }
 
 /**

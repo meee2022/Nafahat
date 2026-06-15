@@ -74,8 +74,8 @@ const MushafQpcPageImpl: React.FC<Props> = ({
   const widthCap = pageWidth >= 700 ? 34 : 24;
   const fontSize = explicitFontSize ?? (() => {
     if (pageWidth === 0 || pageHeight === 0) return 18;
-    const widthBased  = Math.min(widthCap, pageWidth / 17.5);
-    const heightBased = (pageHeight - 20) / 25.5;
+    const widthBased  = Math.min(widthCap, pageWidth / 18);
+    const heightBased = (pageHeight - 20) / 25.5; // حجم البيلد الإنتاجي الأصلي + خط v2
     return Math.max(13, Math.min(widthBased, heightBased));
   })();
 
@@ -347,7 +347,6 @@ const styles = StyleSheet.create({
     //    دائماً - بغضّ النظر عن عدد السطور أو طولها. صفحة الفاتحة والبقرة تظهر بنفس
     //    الـ filling تماماً.
     justifyContent: 'space-between',
-    overflow: 'hidden',
   },
   line: {
     width: '100%',
@@ -356,7 +355,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'nowrap',
     paddingVertical: 0,
-    overflow: 'hidden',
   },
   surahEndRow: {
     width: '100%',

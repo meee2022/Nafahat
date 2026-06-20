@@ -30,7 +30,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#021e12"
       },
-      "package": "com.nafahat.app",
+      "package": "com.nafahat.quran",
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
@@ -79,14 +79,14 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash.png",
-          "imageWidth": 390,
+          "imageWidth": 700,
           "resizeMode": "contain",
-          "backgroundColor": "#021e12",
+          "backgroundColor": "#075136",
           "dark": {
             "image": "./assets/splash.png",
-            "imageWidth": 390,
+            "imageWidth": 700,
             "resizeMode": "contain",
-            "backgroundColor": "#021e12"
+            "backgroundColor": "#075136"
           }
         }
       ],

@@ -121,9 +121,9 @@ export const MushafBorder: React.FC<BorderProps> = ({
   const goldLight = goldColor;
 
   // ثوابت التصميم
-  const OUTER_INSET = 14;   // المسافة من حافة الـ container للإطار الخارجي
-  const INNER_INSET = 22;   // المسافة للإطار الداخلي
-  const STRIP_H     = 16;   // ارتفاع شريط الزخرفة الأفقي
+  const OUTER_INSET = 5;    // المسافة من حافة الـ container للإطار الخارجي (أنحف لإتاحة عرض أكبر للنص)
+  const INNER_INSET = 11;   // المسافة للإطار الداخلي
+  const STRIP_H     = 10;   // ارتفاع شريط الزخرفة الأفقي
   const CORNER_SZ   = 30;   // حجم الزخرفة الزاوية
   const MOTIF_GAP   = 36;   // المسافة بين زخارف الجوانب
   const MOTIF_OFFSET = 6;   // مسافة بدء الزخارف الجانبية من الزوايا
@@ -309,9 +309,9 @@ const styles = StyleSheet.create({
     // مسافة آمنة من الإطار والزخارف الجانبية.
     // عمودي: OUTER_INSET(14) + STRIP_H(16) + 4 = 34
     // أفقي:  OUTER_INSET(14) + sideMotif(12) + 6 = 32
-    paddingTop: 32,
-    paddingBottom: 32,
-    paddingHorizontal: 32,
+    paddingTop: 11,
+    paddingBottom: 16,   // فوق الإطار الداخلي (11) + الشريط الزخرفي السفلي حتى لا يركب آخر سطر على الإطار
+    paddingHorizontal: 14,
     zIndex: 1,
   },
 });

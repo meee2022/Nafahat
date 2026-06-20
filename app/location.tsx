@@ -87,14 +87,17 @@ export default function LocationScreen() {
   const popularCities = useMemo(() => CITIES.filter((c) => c.popular), []);
 
   const handleSelect = (city: City) => {
-    setLocation({
-      cityAr: city.cityAr,
-      cityEn: city.cityEn,
-      latitude: city.latitude,
-      longitude: city.longitude,
-      timezone: city.timezone,
-      countryCode: city.countryCode,
-    });
+    setLocation(
+      {
+        cityAr: city.cityAr,
+        cityEn: city.cityEn,
+        latitude: city.latitude,
+        longitude: city.longitude,
+        timezone: city.timezone,
+        countryCode: city.countryCode,
+      },
+      true, // 📍 اختيار يدوي صريح — لا يُكتب فوقه بالتحديد التلقائي عند الفتح
+    );
     router.back();
   };
 

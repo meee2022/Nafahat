@@ -34,7 +34,12 @@ const V2_TTF_BASE = 'https://cdn.jsdelivr.net/gh/mustafa0x/qpc-fonts/mushaf-v2';
 const isV2Font = (name: string): boolean => name.startsWith('QCF2_');
 export const v2FontForPage = (page: number): string => `QCF2_${String(page).padStart(3, '0')}`;
 
+// 🔤 خط KFGQPC Uthmanic Hafs — خط نصّي حقيقي (يرسم النص العثماني مباشرة، خط واحد لكل المصحف).
+const HAFS_FONT = 'KFGQPCHafs';
+const HAFS_TTF_URL = 'https://cdn.jsdelivr.net/gh/quran/quran.com-frontend-next/public/fonts/quran/hafs/uthmanic_hafs/UthmanicHafs1Ver18.ttf';
+
 function getQpcTtfUrl(fontName: string): string {
+  if (fontName === HAFS_FONT) return HAFS_TTF_URL;
   if (isV2Font(fontName)) return `${V2_TTF_BASE}/QCF2${fontName.slice(5)}.ttf`;
   if (isV1Font(fontName)) return `${V1_TTF_BASE}/${fontName}.TTF`;
   const suffix = fontName === 'QCF4_QBSML' ? '' : '_W';
@@ -123,12 +128,19 @@ export function getQpcFontFamily(fontName: string): string {
 // ─────────────────────────────────────────────
 
 const pageCache = new Map<number, Promise<QpcPageData>>();
+/** كاش متزامن للصفحات المحمّلة بالفعل — يتيح عرضها فوراً وقت الـ render بدون تفريغ/وميض أسود. */
+const resolvedPages = new Map<number, QpcPageData>();
+
+/** يرجّع بيانات الصفحة فوراً لو محمّلة بالفعل (متزامن)، وإلا null. */
+export function getQpcPageSync(page: number): QpcPageData | null {
+  return resolvedPages.get(page) ?? null;
+}
 
 export function fetchQpcPage(page: number): Promise<QpcPageData> {
   if (pageCache.has(page)) return pageCache.get(page)!;
   const p = fetchQpcPageInternal(page);
   pageCache.set(page, p);
-  p.catch(() => pageCache.delete(page));
+  p.then((data) => { resolvedPages.set(page, data); }).catch(() => pageCache.delete(page));
   return p;
 }
 
@@ -150,11 +162,102 @@ async function fetchQpcPageInternal(page: number): Promise<QpcPageData> {
     AsyncStorage.setItem(pageCacheKey(page), JSON.stringify(data)).catch(() => {});
   }
 
-  // ✅ خط QCF v2 لكل المصحف — نقطه أوضح من v4 ويحافظ على شكل الصفحة (15 سطر).
-  //    best-effort: لو فشل (أوفلاين أول مرة) يرجع v4 من غير كسر.
+  // ✅ خط QCF v2 لكل المصحف — كل الحروف والتشكيل والنقط واضحة، متجانس، ومطابق للرسمي.
   await applyV2Layer(data, page).catch(() => {});
 
   return data;
+}
+
+// ─────── طبقة خط QCF v1 (الكلاسيكي) — للمقارنة على صفحتي 440/441 ───────
+const V1_MAP_PREFIX = '@nafahat/qpcV1map/';
+async function fetchV1CodeMap(page: number): Promise<Record<string, string>> {
+  const key = `${V1_MAP_PREFIX}${page}`;
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (raw) { const m = JSON.parse(raw); if (m && Object.keys(m).length) return m; }
+  } catch {}
+  const url = `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=code_v1&per_page=300`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`v1 HTTP ${res.status}`);
+  const json: any = await res.json();
+  const map: Record<string, string> = {};
+  for (const v of json.verses ?? []) {
+    for (const w of v.words ?? []) {
+      if (w.code_v1 && w.position != null) map[`${v.verse_key}:${w.position}`] = w.code_v1;
+    }
+  }
+  if (Object.keys(map).length) AsyncStorage.setItem(key, JSON.stringify(map)).catch(() => {});
+  return map;
+}
+/** يستبدل أكواد الكلمات بأكواد v1 + خط v1 (الكلاسيكي). */
+async function applyV1Layer(data: QpcPageData, page: number): Promise<void> {
+  const map = await fetchV1CodeMap(page);
+  if (!map || !Object.keys(map).length) return;
+  const v1font = v1FontForPage(page);
+  const quarterKeys = new Set<string>();
+  for (const line of data.lines) {
+    for (const w of line.words) {
+      if ((w.type as string) === 'quarter' && w.verse_key) quarterKeys.add(w.verse_key);
+    }
+  }
+  for (const line of data.lines) {
+    for (const w of line.words) {
+      if ((w.type === 'word' || w.type === 'end') && w.verse_key && (w as any).position != null) {
+        let code = map[`${w.verse_key}:${(w as any).position}`];
+        if (code) {
+          if (code.includes(' ') && quarterKeys.has(w.verse_key)) {
+            const parts = code.split(' ');
+            code = parts[parts.length - 1];
+          }
+          w.char = code; (w as any).code = code.codePointAt(0) ?? (w as any).code; w.font = v1font;
+        }
+      }
+    }
+  }
+}
+
+// ─────── طبقة خط KFGQPC Uthmanic Hafs (نصّي عثماني) — تجربة على 440/441 ───────
+const HAFS_MAP_PREFIX = '@nafahat/qpcHafsmap/';
+async function fetchHafsTextMap(page: number): Promise<Record<string, string>> {
+  const key = `${HAFS_MAP_PREFIX}${page}`;
+  try {
+    const raw = await AsyncStorage.getItem(key);
+    if (raw) { const m = JSON.parse(raw); if (m && Object.keys(m).length) return m; }
+  } catch {}
+  const url = `https://api.quran.com/api/v4/verses/by_page/${page}?words=true&word_fields=text_uthmani,char_type_name&per_page=300`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`hafs HTTP ${res.status}`);
+  const json: any = await res.json();
+  const map: Record<string, string> = {};
+  for (const v of json.verses ?? []) {
+    for (const w of v.words ?? []) {
+      if (w.position == null) continue;
+      // علامة آخر الآية: U+06DD + رقم الآية بالعربي ليرسمها الخط داخل دائرة مزخرفة.
+      const txt = w.char_type_name === 'end'
+        ? `۝${w.text_uthmani ?? ''}`
+        : w.text_uthmani;
+      if (txt) map[`${v.verse_key}:${w.position}`] = txt;
+    }
+  }
+  if (Object.keys(map).length) AsyncStorage.setItem(key, JSON.stringify(map)).catch(() => {});
+  return map;
+}
+/** يستبدل أكواد الكلمات بالنص العثماني الحقيقي + خط KFGQPC Hafs (خط نصّي واضح). */
+async function applyHafsLayer(data: QpcPageData, page: number): Promise<void> {
+  const map = await fetchHafsTextMap(page);
+  if (!map || !Object.keys(map).length) return;
+  for (const line of data.lines) {
+    for (const w of line.words) {
+      if ((w.type === 'word' || w.type === 'end') && w.verse_key && (w as any).position != null) {
+        const txt = map[`${w.verse_key}:${(w as any).position}`];
+        if (txt) {
+          // مسافة بعد كل كلمة (الخط النصّي مفهوش مسافات مدمجة زي جليفات QCF).
+          const spaced = txt + ' ';
+          w.char = spaced; (w as any).code = txt.codePointAt(0) ?? (w as any).code; w.font = HAFS_FONT;
+        }
+      }
+    }
+  }
 }
 
 // ─────── طبقة خط QCF v2 (تجربة وضوح النقط مع الحفاظ على شكل الصفحة) ───────
@@ -183,11 +286,64 @@ async function applyV2Layer(data: QpcPageData, page: number): Promise<void> {
   const map = await fetchV2CodeMap(page);
   if (!map || !Object.keys(map).length) return;
   const v2font = v2FontForPage(page);
+  // 🔑 آيات فيها علامة ربع الحزب (۞) كـ كلمة v4 منفصلة. نحتفظ بعلامة v4 الأنيقة،
+  //    ونشيل علامة الربع المدمجة في كود v2 (التي تظهر كنجمة صغيرة "٭") حتى لا تتكرر.
+  const quarterKeys = new Set<string>();
+  for (const line of data.lines) {
+    for (const w of line.words) {
+      if ((w.type as string) === 'quarter' && w.verse_key) quarterKeys.add(w.verse_key);
+    }
+  }
+  for (const line of data.lines) {
+    for (const w of line.words) {
+      // 🕌 كلمات الرموز المنفصلة في v4 (مثل علامة السجدة ۩) نصّها يبدأ بـ '#'.
+      //    خط v2 يدمج هذه العلامة داخل الكلمة المجاورة ("وَأَنَابَ ۩")، فالنسخة
+      //    المنفصلة تتطابق غلط مع رقم الآية وتظهر كميدالية مكرّرة → نتخطّاها ونشيلها.
+      if (typeof (w as any).text === 'string' && (w as any).text.startsWith('#')) continue;
+      if ((w.type === 'word' || w.type === 'end') && w.verse_key && (w as any).position != null) {
+        let code = map[`${w.verse_key}:${(w as any).position}`];
+        if (code) {
+          // v2 يدمج علامة الربع قبل أول كلمة (code_v2 = "ﳄ ﳅ"). نأخذ الكلمة فقط
+          //    (آخر مقطع) ونترك علامة v4 المنفصلة تظهر بشكلها الأنيق ۞.
+          if (code.includes(' ') && quarterKeys.has(w.verse_key)) {
+            const parts = code.split(' ');
+            code = parts[parts.length - 1];
+          }
+          w.char = code; (w as any).code = code.codePointAt(0) ?? (w as any).code; w.font = v2font;
+        }
+      }
+    }
+    // نشيل كلمات الرموز المنفصلة (السجدة..) — v2 ضمّنها بالفعل في الكلمة المجاورة.
+    line.words = line.words.filter((w) => !(typeof (w as any).text === 'string' && (w as any).text.startsWith('#')));
+  }
+}
+
+/**
+ * 🔀 هجين انتقائي: المصحف كله v4، ويبدّل فقط الكلمات المُدرَجة في WORDS_TO_V2
+ *    (اللي المستخدم يحدّدها كغير واضحة) إلى خط v2. القائمة الفاضية = كل المصحف v4.
+ */
+// قائمة الكلمات (بدون تشكيل) اللي نحوّلها v2 بناءً على طلب المستخدم. تُطابَق في كل المصحف.
+const WORDS_TO_V2: string[] = [];
+// إزالة التشكيل والتطويل للمقارنة (نطابق الحروف الأساسية فقط).
+const stripTashkeel = (s: string): string =>
+  s.replace(/[ؐ-ًؚ-ٰٟۖ-ۭـ]/g, '');
+const WORDS_TO_V2_NORM = new Set(WORDS_TO_V2.map(stripTashkeel));
+
+async function applyV2ToYaaWords(data: QpcPageData, page: number): Promise<void> {
+  if (WORDS_TO_V2_NORM.size === 0) return; // القائمة فاضية → كل المصحف v4
+  const map = await fetchV2CodeMap(page);
+  if (!map || !Object.keys(map).length) return;
+  const v2font = v2FontForPage(page);
   for (const line of data.lines) {
     for (const w of line.words) {
       if ((w.type === 'word' || w.type === 'end') && w.verse_key && (w as any).position != null) {
-        const code = map[`${w.verse_key}:${(w as any).position}`];
-        if (code) { w.char = code; (w as any).code = code.codePointAt(0) ?? (w as any).code; w.font = v2font; }
+        const txt = stripTashkeel(w.text ?? '');
+        if (!WORDS_TO_V2_NORM.has(txt)) continue; // مش في قائمة المستخدم → يفضل v4
+        let code = map[`${w.verse_key}:${(w as any).position}`];
+        if (code) {
+          if (code.includes(' ')) code = code.split(' ').pop() as string;
+          w.char = code; (w as any).code = code.codePointAt(0) ?? (w as any).code; w.font = v2font;
+        }
       }
     }
   }
@@ -287,6 +443,17 @@ export async function loadFontsForPage(pageData: QpcPageData): Promise<void> {
     }
   }
   await Promise.all([...uniqueFonts].map((f) => loadQpcFont(f).catch(() => {})));
+}
+
+/** هل كل خطوط الصفحة محمّلة بالفعل؟ (متزامن) — عشان نعرف نعرضها فوراً بدون وميض. */
+export function arePageFontsLoaded(pageData: QpcPageData): boolean {
+  if (pageData.font && !loadedFonts.has(pageData.font)) return false;
+  for (const line of pageData.lines) {
+    for (const word of line.words) {
+      if (word.font && !loadedFonts.has(word.font)) return false;
+    }
+  }
+  return true;
 }
 
 /**

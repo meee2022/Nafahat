@@ -39,6 +39,7 @@ export const AyahListSheet: React.FC<Props> = ({
       visible={visible}
       animationType="slide"
       transparent
+      supportedOrientations={['portrait', 'landscape']}
       onRequestClose={onClose}
     >
       {/* الحاوية - View عادي (مش Pressable) لتجنّب nested buttons */}

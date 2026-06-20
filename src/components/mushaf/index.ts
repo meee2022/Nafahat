@@ -3,7 +3,7 @@ export { MushafHeader }    from './MushafHeader';
 export { MushafFooter }    from './MushafFooter';
 export { AyahRosette }     from './AyahRosette';
 export { AyahDetailSheet } from './AyahDetailSheet';
-export { MushafQpcPage } from './MushafQpcPage';
+export { MushafQpcPage, landscapeFontSize } from './MushafQpcPage';
 export { MushafWord }    from './MushafWord';
 export { MushafBottomBar } from './MushafBottomBar';
 export { AyahListSheet }   from './AyahListSheet';

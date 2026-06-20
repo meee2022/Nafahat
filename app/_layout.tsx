@@ -33,6 +33,7 @@ import { ToastProvider, useToast } from '@components/common/Toast';
 import { ErrorBoundary } from '@components/common/ErrorBoundary';
 import { initPremium, checkActiveSubscription } from '@services/premium';
 import { registerForPushNotifications } from '@services/pushNotifications';
+import { autoDetectLocation } from '@services/geolocation';
 // 🛰️ يستورد logger أولاً عشان Sentry.init() يحصل قبل أي خطأ محتمل في الـ tree
 import { sentryWrap, log, setSentryUser } from '@utils/logger';
 import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
@@ -220,6 +221,15 @@ function AppGate() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated, autoAdhanEnabled, adhanVoice, adhanLocation, adjustmentsKey]);
+
+  // 🛰️ تحديد الموقع تلقائياً عند فتح التطبيق — عشان مواقيت الصلاة + الأذان + القبلة
+  //    + المساجد تشتغل صح من غير ما المستخدم يختار مدينته يدوياً. يحترم الاختيار
+  //    اليدوي (لو اختار مدينة من شاشة الموقع لا يكتب فوقه). أي تحديث ناجح يُعيد
+  //    جدولة الأذان تلقائياً لأن effect الأذان يعتمد على adhanLocation.
+  useEffect(() => {
+    if (!hydrated || !hasOnboarded) return;
+    autoDetectLocation().catch(() => {});
+  }, [hydrated, hasOnboarded]);
 
   // 📿 الأذكار الدورية — تُجدول عند الإقلاع لو مفعّلة (تعمل حتى لو التطبيق مقفول).
   const dhikrEnabled = useSettingsStore((s) => s.dhikrEnabled);

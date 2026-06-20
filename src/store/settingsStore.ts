@@ -34,6 +34,8 @@ interface SettingsState {
 
   /** الموقع الجغرافي المختار (لمواقيت الصلاة + القبلة + المساجد). */
   location: UserLocation;
+  /** هل اختار المستخدم مدينته يدوياً؟ لو true لا نكتب فوقه بالتحديد التلقائي (نحترم اختياره). */
+  locationManuallySet: boolean;
   /** هل المستخدم مشترك في العضوية المدفوعة. */
   isPremium: boolean;
 
@@ -73,7 +75,8 @@ interface SettingsState {
   setPreferredReciterId: (id: string) => void;
   /** 🆕 يدفع reciterId إلى recentReciterIds (max 5، أحدث في الأول، مفيش duplicates) */
   pushRecentReciter: (id: string) => void;
-  setLocation: (loc: UserLocation) => void;
+  /** يحدّث الموقع. manual=true عند اختيار المستخدم مدينة يدوياً (يمنع الكتابة فوقه لاحقاً بالتحديد التلقائي). */
+  setLocation: (loc: UserLocation, manual?: boolean) => void;
   setPremium: (v: boolean) => void;
   setMushafMode: (m: 'image' | 'text' | 'qpc') => void;
   markCloudSynced: () => void;
@@ -102,6 +105,7 @@ const DEFAULT = {
   lastCloudSyncAt: null as number | null,
   estimatedDownloadsMB: 0,
   location: DEFAULT_LOCATION,
+  locationManuallySet: false,   // 📍 افتراضياً غير محدّد يدوياً → يُحدَّد تلقائياً عند الفتح
   isPremium: true,   // 🆓 التطبيق مجاني بالكامل — كل المميزات مفتوحة دائماً
   mushafMode: 'qpc' as 'image' | 'text' | 'qpc',  // 🎯 QPC الافتراضي: مطابق لمصحف المدينة + تفاعلية كلمة-بكلمة
   autoAdhanEnabled: true,           // 🕌 الأذان التلقائي مفعّل افتراضياً
@@ -124,6 +128,7 @@ const persist = (s: Partial<SettingsState>) => {
     recentReciterIds: s.recentReciterIds,
     lastCloudSyncAt: s.lastCloudSyncAt,
     location: s.location,
+    locationManuallySet: s.locationManuallySet,
     isPremium: s.isPremium,
     mushafMode: s.mushafMode,
     autoAdhanEnabled: s.autoAdhanEnabled,
@@ -181,8 +186,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set({ recentReciterIds: next });
     persist(get());
   },
-  setLocation(loc) {
-    set({ location: loc });
+  setLocation(loc, manual = false) {
+    set({ location: loc, locationManuallySet: manual });
     persist(get());
   },
   setMushafMode(m) {

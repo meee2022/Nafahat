@@ -10,6 +10,7 @@
  */
 import React, { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator, Text as RNText } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { AlertCircle } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
@@ -37,6 +38,24 @@ interface Props {
   onWordLongPress?: (word: QpcWord) => void;
 
   fontSize?: number;
+  /** 🖥️ الوضع الأفقي: خط كبير، السطور بعرض الشاشة، والمحتوى يـ scroll عمودياً. */
+  landscape?: boolean;
+}
+
+// 🖥️ الفاصل الرأسي بين سطور الوضع الأفقي (نسبة من حجم الخط) — صغير عشان 3 سطور تدخل.
+export const LANDSCAPE_GAP = 0.4;
+
+/**
+ * 🖥️ حجم خط الوضع الأفقي = الأصغر بين (العرض÷16 → السطر يملا عرض الشاشة) و(ارتفاع 3 سطور).
+ *    دالة مستقلة عشان الشاشة تحسبه مرة واحدة وتمرّره لكل الصفحات → مفيش تصغير-ثم-تكبير وقت السحب.
+ */
+export function landscapeFontSize(pageWidth: number, pageHeight: number): number {
+  const byWidth = (pageWidth - 80) / 16; // 80 = هامش جانبي 40×2
+  if (pageHeight > 0) {
+    const byHeight = (pageHeight - 24) / (3 * 1.7 + 2 * LANDSCAPE_GAP);
+    return Math.max(18, Math.min(60, byWidth, byHeight));
+  }
+  return Math.max(18, Math.min(60, byWidth));
 }
 
 const MushafQpcPageImpl: React.FC<Props> = ({
@@ -50,6 +69,7 @@ const MushafQpcPageImpl: React.FC<Props> = ({
   onWordPress,
   onWordLongPress,
   fontSize: explicitFontSize,
+  landscape,
 }) => {
   const t = useTheme();
   const [pageData, setPageData] = useState<QpcPageData | null>(null);
@@ -71,11 +91,34 @@ const MushafQpcPageImpl: React.FC<Props> = ({
   //   نأخذ الأصغر من الاتنين عشان النص ما يتقصّش لا من الجنب ولا من تحت.
   // سقف العرض أكبر على الشاشات العريضة (لوحي/أفقي واسع) لقراءة أكبر،
   // مع بقاء قيد الارتفاع (heightBased) حارساً يمنع تجاوز النص للإطار.
-  const widthCap = pageWidth >= 700 ? 34 : 24;
+  const widthCap = pageWidth >= 700 ? 40 : 28;
+  // 📐 الوزن الرأسي الديناميكي: السطر العادي ≈ 1.7، أما الترويسة والبسملة فأطول،
+  //   وزخرفة "تمّت السورة" سطر إضافي. الصفحات اللي فيها كذا سورة (آخر المصحف) وزنها
+  //   أكبر بكتير من 15×1.7، فنحسب الوزن الفعلي عشان الخط يصغّر بالقدر اللي يخلّي
+  //   كل السطور والزخارف تظهر داخل الإطار (مايختفيش سطر).
+  const vWeight = (() => {
+    const ls = pageData?.lines ?? [];
+    let w = 0, ornaments = 0;
+    for (let i = 0; i < ls.length; i++) {
+      const ty = ls[i].words?.[0]?.type as string;
+      if (ty === 'surah_header') w += 2.5;
+      else if (ty === 'bismillah') w += 2.3;
+      else w += 1.7;
+      const next = ls[i + 1];
+      const hasAyah = ls[i].words?.some((x) => x.type === 'word' || x.type === 'end');
+      const nextHeader = next?.words?.some((x) => x.type === 'surah_header');
+      if (hasAyah && nextHeader) ornaments += 1;
+    }
+    w += ornaments * 1.6;
+    return Math.max(25.5, w);
+  })();
   const fontSize = explicitFontSize ?? (() => {
-    if (pageWidth === 0 || pageHeight === 0) return 18;
-    const widthBased  = Math.min(widthCap, pageWidth / 18);
-    const heightBased = (pageHeight - 20) / 25.5; // حجم البيلد الإنتاجي الأصلي + خط v2
+    if (pageWidth === 0) return 18;
+    // 🖥️ الأفقي: الخط يملا عرض الشاشة + يضمن ~3 سطور (دالة مشتركة landscapeFontSize).
+    if (landscape) return landscapeFontSize(pageWidth, pageHeight);
+    if (pageHeight === 0) return 18;
+    const widthBased  = Math.min(widthCap, pageWidth / 16);
+    const heightBased = (pageHeight - 20) / vWeight;
     return Math.max(13, Math.min(widthBased, heightBased));
   })();
 
@@ -86,11 +129,11 @@ const MushafQpcPageImpl: React.FC<Props> = ({
     setError(null);
 
     fetchQpcPage(pageNumber)
-      .then(async (data) => {
+      .then(async (d) => {
         if (!mounted) return;
-        await loadFontsForPage(data);
+        await loadFontsForPage(d);
         if (!mounted) return;
-        setPageData(data);
+        setPageData(d);
         setReady(true);
         preloadQpcPages([pageNumber + 1, pageNumber + 2]);
       })
@@ -130,6 +173,68 @@ const MushafQpcPageImpl: React.FC<Props> = ({
     );
   }
 
+  const linesBody = pageData.lines.map((line, idx) => {
+        // علامة "تمّت السورة" تظهر فقط بعد سطر فيه آيات فعلية (word/end) ويليه
+        // عنوان سورة جديدة (surah_header). كده ما تظهرش بالغلط تحت اسم السورة
+        // الجديدة (لأن سطر العنوان يليه بسملة).
+        const nextLine = pageData.lines[idx + 1];
+        const lineHasAyah = line.words.some(w => w.type === 'word' || w.type === 'end');
+        const nextStartsNewSurah = !!(nextLine && nextLine.words.some(w => w.type === 'surah_header'));
+        const isLastOfSurah = lineHasAyah && nextStartsNewSurah;
+        // آخر سطر فيه آيات في الصفحة كلها (= ذيل آخر سورة في الصفحة، اللي مفيش
+        //   بعده ولا سطر آيات). ده السطر الوحيد اللي نوسّطه لو قصير — أما السطور
+        //   القصيرة في النص (زي سطر الحروف المقطّعة "الٓر") تتفرد عادي.
+        const isLastAyahLine =
+          lineHasAyah &&
+          !pageData.lines.slice(idx + 1).some((l) => l.words.some((w) => w.type === 'word' || w.type === 'end'));
+
+        return (
+          <React.Fragment key={line.line}>
+            <MushafLine
+              line={line}
+              fontSize={fontSize}
+              inkColor={ink}
+              goldColor={gold}
+              pageColor={pageBg}
+              isLastAyahLine={isLastAyahLine}
+              selectedVerseKey={selectedVerseKey ?? null}
+              playingVerseKey={playingVerseKey ?? null}
+              currentWordLocation={currentWordLocation ?? null}
+              noStretch={isLastOfSurah || pageNumber === 1 || pageNumber === 2}
+              onWordPress={onWordPress}
+              onWordLongPress={onWordLongPress}
+            />
+            {/* 🌿 End-of-Surah ornament — يظهر بعد آخر سطر في السورة قبل
+                الـ surah header للسورة اللي بعدها. زخرفة عثمانية أنيقة. */}
+            {isLastOfSurah ? <SurahEndOrnament goldColor={gold} fontSize={fontSize} /> : null}
+          </React.Fragment>
+        );
+  });
+
+  // 🖥️ الوضع الأفقي: خط كبير + السطور بعرض الشاشة + scroll عمودي (مايتقيّدش بارتفاع الشاشة).
+  if (landscape) {
+    return (
+      <View
+        style={{ flex: 1, backgroundColor: pageBg }}
+        onLayout={(e) => {
+          const w = e.nativeEvent.layout.width;
+          const h = e.nativeEvent.layout.height;
+          if (Math.abs(w - pageWidth) > 1) setPageWidth(w);
+          if (Math.abs(h - pageHeight) > 1) setPageHeight(h);
+        }}
+      >
+        <ScrollView
+          // السطور تملا عرض الشاشة كله (الخط محسوب من العرض فبتملاه بمسافات طبيعية).
+          //   الهامش الجانبي (20) بيمتص تمدّد الحروف على الأطراف فالكلمة الأولى/الأخيرة تبان كاملة.
+          contentContainerStyle={{ paddingVertical: 12, paddingHorizontal: 40, rowGap: fontSize * LANDSCAPE_GAP }}
+          showsVerticalScrollIndicator={false}
+        >
+          {linesBody}
+        </ScrollView>
+      </View>
+    );
+  }
+
   return (
     <View
       style={[styles.page, { backgroundColor: pageBg }]}
@@ -140,35 +245,7 @@ const MushafQpcPageImpl: React.FC<Props> = ({
         if (Math.abs(h - pageHeight) > 1) setPageHeight(h);
       }}
     >
-      {pageData.lines.map((line, idx) => {
-        // علامة "تمّت السورة" تظهر فقط بعد سطر فيه آيات فعلية (word/end) ويليه
-        // عنوان سورة جديدة (surah_header). كده ما تظهرش بالغلط تحت اسم السورة
-        // الجديدة (لأن سطر العنوان يليه بسملة).
-        const nextLine = pageData.lines[idx + 1];
-        const lineHasAyah = line.words.some(w => w.type === 'word' || w.type === 'end');
-        const nextStartsNewSurah = !!(nextLine && nextLine.words.some(w => w.type === 'surah_header'));
-        const isLastOfSurah = lineHasAyah && nextStartsNewSurah;
-
-        return (
-          <React.Fragment key={line.line}>
-            <MushafLine
-              line={line}
-              fontSize={fontSize}
-              inkColor={ink}
-              goldColor={gold}
-              pageColor={pageBg}
-              selectedVerseKey={selectedVerseKey ?? null}
-              playingVerseKey={playingVerseKey ?? null}
-              currentWordLocation={currentWordLocation ?? null}
-              onWordPress={onWordPress}
-              onWordLongPress={onWordLongPress}
-            />
-            {/* 🌿 End-of-Surah ornament — يظهر بعد آخر سطر في السورة قبل
-                الـ surah header للسورة اللي بعدها. زخرفة عثمانية أنيقة. */}
-            {isLastOfSurah ? <SurahEndOrnament goldColor={gold} fontSize={fontSize} /> : null}
-          </React.Fragment>
-        );
-      })}
+      {linesBody}
     </View>
   );
 };
@@ -216,6 +293,10 @@ interface LineProps {
   selectedVerseKey: string | null;
   playingVerseKey: string | null;
   currentWordLocation: string | null;
+  /** سطر طبيعي لا يُفرد (آخر سطر بسورة / الفاتحة). */
+  noStretch?: boolean;
+  /** آخر سطر آيات في الصفحة (ذيل آخر سورة) — لو قصير نوسّطه. */
+  isLastAyahLine?: boolean;
   onWordPress?: (word: QpcWord) => void;
   onWordLongPress?: (word: QpcWord) => void;
 }
@@ -229,9 +310,35 @@ const MushafLine: React.FC<LineProps> = ({
   selectedVerseKey,
   playingVerseKey,
   currentWordLocation,
+  noStretch,
+  isLastAyahLine,
   onWordPress,
   onWordLongPress,
 }) => {
+  // 📏 قياس عرض كلمات السطر الطبيعي مقابل عرض الإطار:
+  //   - أعرض من الإطار (سطر مزحوم) → نصغّره ليدخل (مايطلعش بره).
+  //   - أضيق (سطر خفيف) → نوزّع المسافات (justify) ليملا الطرفين.
+  const wordW = React.useRef<Record<number, number>>({});
+  const [contentW, setContentW] = useState(0);
+  const [availW, setAvailW] = useState(0);
+  // مسافة صغيرة ثابتة بين الكلمات — تفضل موجودة حتى وقت تصغير السطر المزحوم،
+  //   فالحروف ما تلمسش بعض ولا يختفي منها حاجة.
+  const WORD_GAP = fontSize * 0.04;
+  // 🛡️ مساحة قَص كبيرة جوّه كل صندوق كلمة (padding) عشان الحروف المتمدّدة (المدّة فوق
+  //    "الٓر"، ذيل الراء..) تاخد راحتها وما تتقصّش — ويُلغى أثرها على التخطيط بـ margin
+  //    سالب مساوٍ، فالتباعد والملء يفضلوا زي ما هما بالظبط، والكلمة الأولى توصل للحافة.
+  const INK_PAD = fontSize * 0.22;
+  const n = line.words.length;
+  // العرض الفعلي للحبر = مجموع الصناديق المقيس ناقص الـ padding (الملغى بالـ margin) + المسافات.
+  const inkContent = Math.max(0, contentW - 2 * INK_PAD * n) + Math.max(0, n - 1) * WORD_GAP;
+  const overflow = availW > 0 && contentW > 0 && inkContent > availW;
+  const lineScaleX = overflow ? availW / inkContent : 1;
+  // سطر قصير محتواه أقل بكتير من عرض السطر. نوسّطه (بدل فجوات space-between الضخمة)
+  //   فقط لو كان **آخر سطر آيات في الصفحة** (ذيل آخر سورة) — أما السطور القصيرة في
+  //   النص (زي سطر الحروف المقطّعة "الٓر") تتفرد عادي وتبدأ من حافة اليمين.
+  const tooShort =
+    !!isLastAyahLine && availW > 0 && contentW > 0 && inkContent < availW * 0.62;
+
   // تحديد نوع السطر: header / bismillah / normal
   const isHeader = line.words.length === 1 && line.words[0].type === 'surah_header';
   const isBismillah = line.words.length === 1 && line.words[0].type === 'bismillah';
@@ -294,8 +401,28 @@ const MushafLine: React.FC<LineProps> = ({
   //   - row-reverse → أول كلمة في المصفوفة (الأولى في القراءة) تظهر على اليمين
   //   - flex-start → الكلمات تتجمع في البداية (اليمين في RTL) بدون توسيع صناعي
   //   - أي مساحة فائضة تتبقّى على اليسار (طبيعي)
+  // 🎯 رسم السطر كنص واحد متصل (زي البرامج الاحترافية) — الخط يتدفّق طبيعي وكل
+  //    الحروف تظهر صح. الضغط على الكلمة محفوظ عبر nested <Text>. بدون شد (scaleX).
+  // 🎯 تبرير بالمسافات (justify): الكلمات منفصلة + توزيع المسافة بينها (space-between)
+  //    عشان السطر يملا من الطرف للطرف — بدون شد الحروف (الحروف نضيفة زي ما هي).
+  //    السطور الطبيعية (آخر سورة / الفاتحة) تتوسّط بدل ما تتفرد.
   return (
-    <View style={styles.line} {...({ dir: 'rtl' } as any)}>
+    <View
+      style={[
+        styles.line,
+        {
+          justifyContent: overflow || noStretch || tooShort ? 'center' : 'space-between',
+          gap: WORD_GAP,
+          // نحط مفتاح transform فقط وقت التصغير الفعلي (وبقيمة محدودة) — تمرير undefined/null
+          //   بيكسر validateTransforms في الـ native، فنحذف المفتاح بالكامل لما مش محتاجينه.
+          ...(overflow && Number.isFinite(lineScaleX) && lineScaleX > 0
+            ? { transform: [{ scaleX: lineScaleX }] }
+            : null),
+        },
+      ]}
+      onLayout={(e) => { const w = e.nativeEvent.layout.width; if (Math.abs(w - availW) > 1) setAvailW(w); }}
+      {...({ dir: 'rtl' } as any)}
+    >
       {line.words.map((w, i) => {
         const isSel  = !!selectedVerseKey && w.verse_key === selectedVerseKey;
         const isPlay = !!playingVerseKey && w.verse_key === playingVerseKey;
@@ -315,6 +442,11 @@ const MushafLine: React.FC<LineProps> = ({
           <RNText
             key={`${line.line}-${i}-${w.code}`}
             allowFontScaling={false}
+            onLayout={(e) => {
+              wordW.current[i] = e.nativeEvent.layout.width;
+              const sum = Object.values(wordW.current).reduce((a, b) => a + b, 0);
+              if (Math.abs(sum - contentW) > 2) setContentW(sum);
+            }}
             onPress={onWordPress ? () => onWordPress(w) : undefined}
             onLongPress={onWordLongPress ? () => onWordLongPress(w) : undefined}
             // @ts-ignore
@@ -325,8 +457,10 @@ const MushafLine: React.FC<LineProps> = ({
               color: isEnd ? goldColor : inkColor,
               backgroundColor: bg,
               writingDirection: 'rtl',
-              letterSpacing: 0,
               includeFontPadding: false as any,
+              // مساحة قَص جوّه الصندوق + margin سالب يلغيها من التخطيط (شرح فوق عند INK_PAD)
+              paddingHorizontal: INK_PAD,
+              marginHorizontal: -INK_PAD,
             }}
           >
             {w.char}
@@ -355,6 +489,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'nowrap',
     paddingVertical: 0,
+  },
+  // الصف الداخلي يأخذ عرض محتواه فقط (ليُقاس) ثم يتمدّد بـ scaleX خفيف ليملأ السطر.
+  lineInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'nowrap',
   },
   surahEndRow: {
     width: '100%',

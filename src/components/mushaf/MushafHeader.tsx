@@ -79,21 +79,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 2,
   },
   cartouche: {
     flex: 1,
-    minHeight: 40,
-    borderRadius: 10,
+    minHeight: 32,
+    borderRadius: 9,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 3,
   },
   cartoucheText: {
-    fontSize: 14,
-    lineHeight: 26,        // مساحة كافية لخط المصحف الطويل حتى لا يُقصّ
+    fontSize: 13,
+    lineHeight: 22,        // مساحة كافية لخط المصحف الطويل حتى لا يُقصّ
     fontWeight: '700',
     textAlign: 'center',
     includeFontPadding: false,

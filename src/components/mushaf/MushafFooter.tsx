@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
-    paddingVertical: 4,
+    paddingVertical: 1,
     paddingHorizontal: 12,
   },
   hizbLabel: {
@@ -79,18 +79,18 @@ const styles = StyleSheet.create({
     flex: 0,
   },
   pageBadge: {
-    minWidth: 64,
-    minHeight: 34,
-    borderRadius: 10,
+    minWidth: 46,
+    minHeight: 22,
+    borderRadius: 7,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 1,
   },
   pageNumber: {
-    fontSize: 14,
-    lineHeight: 24,        // مساحة كافية لأرقام خط المصحف حتى لا تُقصّ
+    fontSize: 12,
+    lineHeight: 19,        // مساحة كافية لأرقام خط المصحف حتى لا تُقصّ
     fontWeight: '800',
     includeFontPadding: false,
   },

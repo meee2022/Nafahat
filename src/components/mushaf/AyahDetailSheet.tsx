@@ -169,6 +169,9 @@ export const AyahDetailSheet: React.FC<Props> = ({
       animationType="slide"
       transparent
       statusBarTranslucent
+      // 🔑 يمنع تجمّد iOS في الوضع الأفقي: لو الـ Modal بيدعم الرأسي فقط، فتحه والتطبيق
+      //    أفقي يسبّب صراع اتجاهات (re-layout متكرر). ندعم الاتجاهين فيشتغل بسلاسة.
+      supportedOrientations={['portrait', 'landscape']}
     >
       {/* خلفية معتمة قابلة للنقر للإغلاق */}
       <Pressable style={styles.backdrop} onPress={onClose} />

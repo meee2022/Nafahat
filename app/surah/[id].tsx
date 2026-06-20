@@ -8,7 +8,9 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, ActivityIndicator, Modal, FlatList, TextInput, Platform, PanResponder, I18nManager } from 'react-native';
+import { View, StyleSheet, Pressable, ActivityIndicator, Modal, FlatList, TextInput, Platform, I18nManager, useWindowDimensions } from 'react-native';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, { runOnJS, useSharedValue, useAnimatedStyle, withTiming, withSpring } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -34,6 +36,7 @@ import {
   AyahDetailSheet,
   AyahListSheet,
   MushafQpcPage,
+  landscapeFontSize,
 } from '@components/mushaf';
 import { getCurrentAyah, getAyahStartTimeMs } from '@services/verseSync';
 import { getWordsByVerse, type QuranWord } from '@services/wordByWord';
@@ -156,10 +159,11 @@ export default function SurahDetail() {
     let alive = true;
     (async () => {
       try {
-        const seen = await AsyncStorage.getItem('@nafahat/mushaf/pageHintSeen_v2');
+        // v3: تغيّر التنقل من لمس → سحب، فنعيد إظهار التلميح المحدَّث للجميع مرة.
+        const seen = await AsyncStorage.getItem('@nafahat/mushaf/pageHintSeen_v3');
         if (alive && !seen) {
           setShowPageHint(true);
-          AsyncStorage.setItem('@nafahat/mushaf/pageHintSeen_v2', '1').catch(() => {});
+          AsyncStorage.setItem('@nafahat/mushaf/pageHintSeen_v3', '1').catch(() => {});
           setTimeout(() => { if (alive) setShowPageHint(false); }, 4500);
         }
       } catch {}
@@ -458,27 +462,77 @@ export default function SurahDetail() {
   //   شرط الـ swipe: حركة أفقية > 60px مع dx مهيمن على dy (مش scroll عمودي).
   //   كده تـ taps العادية على الكلمات بتشتغل بدون تداخل، والـ horizontal swipe
   //   ينقل بين الصفحات بسلاسة.
-  const panResponder = React.useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_evt, gs) =>
-        Math.abs(gs.dx) > 18 && Math.abs(gs.dx) > Math.abs(gs.dy) * 2,
-      onPanResponderRelease: (_evt, gs) => {
-        const threshold = 50;
-        if (Math.abs(gs.dx) < threshold) return;
-        // ✋ ملاحظة RTL: في المصحف، swipe يمين = الصفحة السابقة (مصحف يُقرأ من اليمين)
-        if (gs.dx > 0) {
-          // user swiped to the right → previous page (الـ "أخرى" في الترتيب الأرقامي = أقل)
-          goToPrevPage();
-        } else {
-          goToNextPage();
-        }
-      },
-    }),
-  ).current;
+  // 🔑 ref بيحمل أحدث نسخة من دوال التنقل — يمنع الـ stale closure داخل الـ
+  //   PanResponder (اللي بيتعمل مرة واحدة فقط).
+  const navRef = React.useRef<{ next: () => void; prev: () => void }>({ next: () => {}, prev: () => {} });
+  navRef.current.next = goToNextPage;
+  navRef.current.prev = goToPrevPage;
+
+  // 🖐️ السحب الأفقي بـ gesture-handler (أضمن من PanResponder ولا يتعارض مع ضغط الكلمات).
+  const goPrevJS = React.useCallback(() => navRef.current.prev(), []);
+  const goNextJS = React.useCallback(() => navRef.current.next(), []);
+
+  // 📐 الوضع الأفقي (landscape/iPad): نحطّ الصفحة في النص بنسبة المصحف (بهوامش على
+  //    الجنبين) بدل ما تتمدّد عريضة-قصيرة، فالخط يفضل واضح ومتناسق.
+  const { width: winW, height: winH } = useWindowDimensions();
+  const isLandscape = winW > winH;
+  const [areaW, setAreaW] = useState(0);
+  const [areaH, setAreaH] = useState(0);
+  // الصفحة بعرض الشاشة الكامل (في الأفقي الخط بيكبر والمحتوى يـ scroll داخل MushafQpcPage).
+  const pageW = areaW || winW;
+  const sideMargin = 0;
+  // 🖥️ نحسب خط الأفقي مرة واحدة من أبعاد الشاشة (ثابتة لكل الصفحات) ونمرّره جاهزاً لكل
+  //    صفحة → الصفحة الجديدة تظهر بالحجم الصح فوراً بدل ما تبدأ صغيرة وتكبر وقت السحب.
+  const landscapeFont = isLandscape && areaW > 0 ? landscapeFontSize(areaW, areaH || winH) : undefined;
+
+  // 🎞️ سحب على شكل pager: الصفحة المجاورة ملزوقة جنب الحالية وتتحرك معاها (من غير فراغ).
+  const SCREEN_W = pageW || winW; // مسافة الانزلاق = عرض الصفحة الفعلي (يشمل الأفقي)
+  const dragX = useSharedValue(0);
+  const [dragging, setDragging] = useState(false); // نركّب الصفحات المجاورة وقت السحب فقط
+  const pageAnimStyle = useAnimatedStyle(() => ({ transform: [{ translateX: dragX.value }] }));
+  const commitSwap = React.useCallback((dir: number) => {
+    if (dir > 0) navRef.current.next();
+    else navRef.current.prev();
+    dragX.value = 0;
+    setDragging(false);
+  }, [dragX]);
+  const endDrag = React.useCallback(() => setDragging(false), []);
+  const swipeGesture = React.useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetX([-15, 15]) // يُفعَّل فقط مع حركة أفقية > 15px (الضغط/العمودي يمرّ)
+        .failOffsetY([-25, 25]) // يفشل لو الحركة عمودية (مايتعارضش مع scroll)
+        .onStart(() => {
+          'worklet';
+          runOnJS(setDragging)(true);
+        })
+        .onUpdate((e) => {
+          'worklet';
+          dragX.value = e.translationX;
+        })
+        .onEnd((e) => {
+          'worklet';
+          const tx = e.translationX;
+          if (Math.abs(tx) < 55) {
+            dragX.value = withTiming(0, { duration: 150 }, () => {
+              'worklet';
+              runOnJS(endDrag)();
+            });
+            return;
+          }
+          const dir = tx > 0 ? 1 : -1;
+          dragX.value = withTiming(dir * SCREEN_W, { duration: 180 }, (finished) => {
+            'worklet';
+            if (finished) runOnJS(commitSwap)(dir);
+            else runOnJS(endDrag)();
+          });
+        }),
+    [SCREEN_W, dragX, commitSwap, endDrag],
+  );
 
   // Use an inline JSX element instead of a component to prevent remounting/flickering
   const pageContentNode = (
-    <View style={styles.pageWrap} {...panResponder.panHandlers}>
+    <View style={styles.pageWrap}>
       {/* رسالة خطأ */}
       {loadError ? (
         <View style={[styles.errBox, { borderColor: MUSHAF.gold, backgroundColor: 'rgba(184,148,86,0.10)' }]}>
@@ -511,6 +565,8 @@ export default function SurahDetail() {
           goldColor={MUSHAF.gold}
           inkColor={MUSHAF.ink}
           pageColor={MUSHAF.page}
+          landscape={isLandscape}
+          fontSize={landscapeFont}
           selectedVerseKey={selectedAyah ? `${surah.id}:${selectedAyah}` : null}
           playingVerseKey={playingAyahNumber ? `${surah.id}:${playingAyahNumber}` : null}
           onWordPress={handleWordPress}
@@ -518,34 +574,9 @@ export default function SurahDetail() {
         />
       ) : null}
 
-      {/* منطقتا اللمس للتنقّل بين الصفحات — مواضع فيزيائية ثابتة (مستقلّة عن RTL):
-          نفرض اتجاه الصف LTR، فالعنصر الأول دائماً على اليسار الفيزيائي والأخير على
-          اليمين الفيزيائي مهما كانت حالة I18nManager. (مثل تقليب المصحف الورقي:
-          الصفحة التالية تأتي من جهة اليسار)
-          • اليسار الفيزيائي → الصفحة التالية (2 → 3)
-          • اليمين الفيزيائي → الصفحة السابقة (2 → 1) */}
-      {/* 📖 مناطق التقليب تظهر دائماً (حتى للسور ذات الصفحة الواحدة مثل الفاتحة)
-          ليعمل التصفّح المتواصل عبر السور. التعطيل فقط عند حدّي المصحف المطلقين
-          (صفحة 1 = أول الفاتحة، صفحة 604 = آخر الناس). */}
-      {pages && pages.length >= 1 && currentPage ? (
-        <View
-          pointerEvents="box-none"
-          style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', direction: 'ltr' } as any}
-        >
-          {/* يسار فيزيائياً → التالية */}
-          <Pressable
-            onPress={goToNextPage}
-            disabled={currentPage.page >= 604}
-            style={styles.tapZoneEdge}
-          />
-          {/* يمين فيزيائياً → السابقة */}
-          <Pressable
-            onPress={goToPrevPage}
-            disabled={currentPage.page <= 1}
-            style={styles.tapZoneEdge}
-          />
-        </View>
-      ) : null}
+      {/* 📖 التنقّل بين الصفحات بالسحب (swipe) فقط — مفيش مناطق لمس.
+          الـ PanResponder على الصفحة بيتكفّل بالسحب الأفقي، والضغط العادي يفضل
+          للكلمات (تفسير). swipe يمين = صفحة سابقة، swipe شمال = صفحة تالية. */}
 
       {/* Bottom Sheet: تفسير */}
       {selectedAyah !== null && ayahs ? (
@@ -573,6 +604,30 @@ export default function SurahDetail() {
   // فكل render كان بيعمل remount لكل الـ tree تحته (بما فيها MushafQpcPage).
   // التحويل لـ inline ternary بيحلّ flicker كامل عند اختيار الآيات.
   // Remove wrappedChildren function since we will apply MushafBorder directly to the page content.
+
+  // 📄 الصفحات المجاورة (لسحب الـ pager بدون فراغ) — تُركَّب وقت السحب فقط.
+  const prevPageNum = currentPage && currentPage.page > 1 ? currentPage.page - 1 : null;
+  const nextPageNum = currentPage && currentPage.page < 604 ? currentPage.page + 1 : null;
+  // رسم صفحة مجاورة بإطارها (قراءة فقط — بدون مُعالِجات ضغط، للمعاينة أثناء السحب).
+  const framedPage = (pn: number) =>
+    useDecoFrame && !isLandscape ? (
+      <MushafBorder
+        goldColor={MUSHAF.gold}
+        goldDeep={MUSHAF.goldDeep}
+        pageColor={MUSHAF.page}
+        ornamentBg={MUSHAF.pageWarm}
+      >
+        <View style={styles.pageWrap}>
+          <MushafQpcPage pageNumber={pn} goldColor={MUSHAF.gold} inkColor={MUSHAF.ink} pageColor={MUSHAF.page} landscape={isLandscape} fontSize={landscapeFont} />
+        </View>
+      </MushafBorder>
+    ) : (
+      <View style={{ flex: 1, backgroundColor: MUSHAF.page }}>
+        <View style={styles.pageWrap}>
+          <MushafQpcPage pageNumber={pn} goldColor={MUSHAF.gold} inkColor={MUSHAF.ink} pageColor={MUSHAF.page} landscape={isLandscape} fontSize={landscapeFont} />
+        </View>
+      </View>
+    );
 
   return (
     <View style={{ flex: 1, backgroundColor: MUSHAF.pageWarm }}>
@@ -651,9 +706,34 @@ export default function SurahDetail() {
           />
         </View>
 
-        {/* ── PAGE AREA ── الإطار يعيش هنا فقط، لا overlap */}
-        <View style={styles.pageArea}>
-          {useDecoFrame ? (
+        {/* ── PAGE AREA ── الإطار يعيش هنا فقط، لا overlap. السحب يلفّه GestureDetector */}
+        <GestureDetector gesture={swipeGesture}>
+        <View
+          style={[styles.pageArea, { overflow: 'hidden' }]}
+          onLayout={(e) => {
+            const { width, height } = e.nativeEvent.layout;
+            if (Math.abs(width - areaW) > 1) setAreaW(width);
+            if (Math.abs(height - areaH) > 1) setAreaH(height);
+          }}
+        >
+          {/* 🎞️ pager حقيقي زي البرامج التانية: الحالية + المجاورتين **مُركّبة دايماً** (مش
+              وقت السحب بس) — فبتقيس نفسها وهي برّه الشاشة وتظهر مستقرة فوراً عند السحب،
+              من غير تحميل/قياس/تظليل. في الأفقي: الصفحة بعرض pageW متوسّطة (sideMargin). */}
+          <Animated.View style={[{ flex: 1 }, pageAnimStyle]}>
+          {/* الصفحة التالية (overlay وقت السحب فقط) — على يسار الحالية، تظهر مع السحب لليمين */}
+          {dragging && nextPageNum ? (
+            <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: pageW, transform: [{ translateX: -SCREEN_W }] }}>
+              {framedPage(nextPageNum)}
+            </View>
+          ) : null}
+          {/* الصفحة السابقة (overlay وقت السحب فقط) — على يمين الحالية، تظهر مع السحب لليسار */}
+          {dragging && prevPageNum ? (
+            <View style={{ position: 'absolute', top: 0, bottom: 0, left: 0, width: pageW, transform: [{ translateX: SCREEN_W }] }}>
+              {framedPage(prevPageNum)}
+            </View>
+          ) : null}
+          {/* 🎯 الصفحة الحالية = flex عادي بالظبط زي نسخة اللمس (مفيش تموضع absolute يلخبط القياس) */}
+          {useDecoFrame && !isLandscape ? (
             <MushafBorder
               goldColor={MUSHAF.gold}
               goldDeep={MUSHAF.goldDeep}
@@ -667,6 +747,7 @@ export default function SurahDetail() {
               {pageContentNode}
             </View>
           )}
+          </Animated.View>
 
           {/* 💡 تلميح تقليب الصفحات (أول مرّة فقط) */}
           {showPageHint && pages && pages.length > 1 ? (
@@ -675,20 +756,20 @@ export default function SurahDetail() {
               pointerEvents="box-only"
               style={{ position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(10,24,21,0.55)', zIndex: 200 }}
             >
-              {/* صف مفروض LTR: يسار = التالية، يمين = السابقة (مثل المصحف الورقي) */}
+              {/* صف مفروض LTR: يسار = السابقة (سحب لليسار)، يمين = التالية (سحب لليمين) */}
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%', paddingHorizontal: 24, direction: 'ltr' } as any}>
                 <View style={{ alignItems: 'center' }}>
                   <ChevronsLeft size={40} color={MUSHAF.gold} />
-                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>التالية</Text>
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>السابقة</Text>
                 </View>
                 <View style={{ alignItems: 'center' }}>
                   <ChevronsRight size={40} color={MUSHAF.gold} />
-                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>السابقة</Text>
+                  <Text style={{ color: '#FFF', fontSize: 13, fontWeight: '700', marginTop: 4 }}>التالية</Text>
                 </View>
               </View>
               <View style={{ marginTop: 28, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 18, paddingVertical: 10, borderRadius: 14 }}>
                 <Text style={{ color: '#FFF', fontSize: 14, fontWeight: '700', textAlign: 'center', lineHeight: 24 }}>
-                  اسحب الصفحة يمين/يسار أو اضغط الحافة لتقليب الصفحات
+                  اسحب الصفحة يميناً أو يساراً لتقليب الصفحات
                 </Text>
               </View>
             </Pressable>
@@ -742,6 +823,7 @@ export default function SurahDetail() {
             </View>
           ) : null}
         </View>
+        </GestureDetector>
 
         {/* ── FOOTER AREA ── */}
         <View
@@ -834,6 +916,7 @@ export default function SurahDetail() {
         visible={showRecitersModal}
         animationType="slide"
         transparent={true}
+        supportedOrientations={['portrait', 'landscape']}
         onRequestClose={() => setShowRecitersModal(false)}
       >
         <View style={styles.modalOverlay}>
@@ -896,7 +979,7 @@ export default function SurahDetail() {
       </Modal>
 
       {/* ── Page Jump Modal ── */}
-      <Modal visible={showPageJump} transparent animationType="slide" onRequestClose={() => setShowPageJump(false)}>
+      <Modal visible={showPageJump} transparent animationType="slide" supportedOrientations={['portrait', 'landscape']} onRequestClose={() => setShowPageJump(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowPageJump(false)} accessibilityLabel="إغلاق" />
           <View style={[styles.modalContent, { backgroundColor: MUSHAF.modalBg, height: 'auto', paddingBottom: Platform.OS === 'ios' ? 40 : 20 }]}>
@@ -940,7 +1023,7 @@ export default function SurahDetail() {
       </Modal>
 
       {/* ── Surah Jump Modal ── */}
-      <Modal visible={showSurahJump} transparent animationType="slide" onRequestClose={() => setShowSurahJump(false)}>
+      <Modal visible={showSurahJump} transparent animationType="slide" supportedOrientations={['portrait', 'landscape']} onRequestClose={() => setShowSurahJump(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowSurahJump(false)} accessibilityLabel="إغلاق" />
           <View style={[styles.modalContent, { backgroundColor: MUSHAF.modalBg, maxHeight: '80%' }]}>
@@ -979,7 +1062,7 @@ export default function SurahDetail() {
       </Modal>
 
       {/* ── Juz Jump Modal ── */}
-      <Modal visible={showJuzJump} transparent animationType="slide" onRequestClose={() => setShowJuzJump(false)}>
+      <Modal visible={showJuzJump} transparent animationType="slide" supportedOrientations={['portrait', 'landscape']} onRequestClose={() => setShowJuzJump(false)}>
         <View style={styles.modalOverlay}>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowJuzJump(false)} accessibilityLabel="إغلاق" />
           <View style={[styles.modalContent, { backgroundColor: MUSHAF.modalBg, maxHeight: '80%' }]}>

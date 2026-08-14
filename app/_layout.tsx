@@ -277,7 +277,16 @@ function AppGate() {
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
       <Stack.Screen name="forgot-password" />
-      <Stack.Screen name="surah/[id]" />
+      <Stack.Screen
+        name="surah/[id]"
+        options={{
+          // In an RTL interface iOS uses a swipe from the right edge to pop
+          // the route. That is the same gesture readers use for the previous
+          // Mushaf page, so reserve horizontal swipes for page turning here.
+          gestureEnabled: false,
+          fullScreenGestureEnabled: false,
+        }}
+      />
       <Stack.Screen name="reciter/[id]" />
       <Stack.Screen name="adhkar/index" />
       <Stack.Screen name="adhkar/[category]" />

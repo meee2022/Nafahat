@@ -12,7 +12,7 @@
     "lint": "eslint .",
     "test": "npm run test:quran && npm run test:unit && npm run typecheck",
     "test:quran": "node scripts/validate-qcf-pages.mjs",
-    "test:unit": "tsx --test tests/**/*.test.ts",
+    "test:unit": "tsx --test tests/*.test.ts",
     "check": "npm run lint && npm run test && npx expo-doctor",
     "typecheck": "tsc --noEmit",
     "convex:dev": "convex dev",

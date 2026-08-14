@@ -9,7 +9,6 @@ android/
 ios/
 
 # Convex
-convex/_generated/
 
 # os
 .DS_Store

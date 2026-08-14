@@ -179,25 +179,47 @@ export default function AdhkarScreen() {
               <Text style={{ color: t.colors.onPrimary, fontSize: 16, fontWeight: '800' }}>استمع وردّد الأذكار</Text>
               <Text style={{ color: t.colors.onPrimary, opacity: 0.7, fontSize: 12, marginTop: 4 }}>{audioTrack.title}، بصوت {audioTrack.reciter}</Text>
             </View>
-            <Pressable
-              onPress={toggleAudio}
-              accessibilityRole="button"
-              accessibilityLabel={audioState === 'playing' ? 'إيقاف الأذكار مؤقتاً' : 'تشغيل الأذكار صوتياً'}
-              style={({ pressed }) => [styles.audioPlay, { backgroundColor: t.colors.accent, opacity: pressed ? 0.82 : 1 }]}
-            >
-              {audioState === 'loading' ? <ActivityIndicator color={t.colors.primary} /> : audioState === 'playing' ? <Pause size={22} color={t.colors.primary} fill={t.colors.primary} /> : <Play size={22} color={t.colors.primary} fill={t.colors.primary} />}
-            </Pressable>
           </View>
           <View style={styles.audioProgressTrack}>
             <View style={[styles.audioProgressFill, { backgroundColor: t.colors.accent, width: `${audioProgress.duration ? Math.min(100, (audioProgress.position / audioProgress.duration) * 100) : 0}%` }]} />
           </View>
           <View style={styles.audioMeta}>
-            <Text style={styles.audioTime}>{formatTime(audioProgress.position)} / {audioProgress.duration ? formatTime(audioProgress.duration) : '--:--'}</Text>
+            <Text style={styles.audioTime}>{`\u2066${formatTime(audioProgress.position)} / ${audioProgress.duration ? formatTime(audioProgress.duration) : '--:--'}\u2069`}</Text>
             <Pressable onPress={() => Linking.openURL(audioTrack.sourcePage)} accessibilityRole="link" style={styles.sourceLink}>
               <Text style={{ color: t.colors.accent, fontSize: 11, fontWeight: '700' }}>{audioTrack.source}</Text>
               <ExternalLink size={11} color={t.colors.accent} />
             </Pressable>
           </View>
+          <Pressable
+            onPress={toggleAudio}
+            disabled={audioState === 'loading'}
+            accessibilityRole="button"
+            accessibilityLabel={audioState === 'playing' ? 'إيقاف الأذكار مؤقتاً' : 'تشغيل الأذكار صوتياً'}
+            style={({ pressed }) => [
+              styles.audioMainAction,
+              {
+                backgroundColor: t.colors.surface,
+                borderColor: t.colors.borderGold,
+                opacity: audioState === 'loading' ? 0.72 : pressed ? 0.86 : 1,
+              },
+            ]}
+          >
+            <View style={[styles.audioMainActionIcon, { backgroundColor: t.colors.accent + '20' }]}>
+              {audioState === 'loading' ? (
+                <ActivityIndicator color={t.colors.accentDeep} />
+              ) : audioState === 'playing' ? (
+                <Pause size={21} color={t.colors.accentDeep} fill={t.colors.accentDeep} />
+              ) : (
+                <Play size={21} color={t.colors.accentDeep} fill={t.colors.accentDeep} />
+              )}
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.audioMainActionLabel, { color: t.colors.textPrimary }]}>
+                {audioState === 'loading' ? 'جاري تجهيز الصوت…' : audioState === 'playing' ? 'إيقاف مؤقت' : audioState === 'paused' ? 'متابعة الاستماع' : 'تشغيل الأذكار' }
+              </Text>
+              <Text style={[styles.audioMainActionHint, { color: t.colors.textTertiary }]}>اضغط للاستماع بصوت واضح</Text>
+            </View>
+          </Pressable>
         </View>
       ) : null}
 
@@ -437,12 +459,30 @@ const styles = StyleSheet.create({
   audioCard: { marginTop: 14, borderRadius: 18, borderWidth: 1, padding: 15 },
   audioHeading: { flexDirection: 'row', alignItems: 'center', gap: 11 },
   audioIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  audioPlay: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   audioProgressTrack: { height: 4, borderRadius: 2, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.15)', marginTop: 14 },
   audioProgressFill: { height: '100%', borderRadius: 2 },
   audioMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 9 },
   audioTime: { color: 'rgba(255,255,255,0.62)', fontSize: 10, fontVariant: ['tabular-nums'] },
   sourceLink: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  audioMainAction: {
+    minHeight: 58,
+    marginTop: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+  },
+  audioMainActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  audioMainActionLabel: { fontSize: 15, lineHeight: 22, fontWeight: '900', textAlign: 'right', writingDirection: 'rtl' },
+  audioMainActionHint: { fontSize: 11, lineHeight: 17, marginTop: 1, textAlign: 'right', writingDirection: 'rtl' },
   dhikrCard: {
     borderRadius: 18,
     borderWidth: 1,

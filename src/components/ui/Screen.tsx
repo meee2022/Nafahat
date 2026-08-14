@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, ScrollView, RefreshControl, StatusBar, StyleSheet, ViewStyle } from 'react-native';
+import { View, ScrollView, RefreshControl, StatusBar, StyleSheet, ViewStyle, InteractionManager } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@theme/index';
 import { useResponsive } from '@hooks/useResponsive';
@@ -39,7 +39,25 @@ export const Screen: React.FC<Props> = ({
 
   useEffect(() => {
     if (scrollToTopKey === undefined) return;
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
+
+    // Wait until React Native has measured the replacement content. On iOS,
+    // scrolling during the same render that swaps a tall dhikr card keeps the
+    // old offset and leaves the next item halfway down the screen.
+    const frame = requestAnimationFrame(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    });
+    const interaction = InteractionManager.runAfterInteractions(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    });
+    const fallback = setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    }, 80);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      interaction.cancel();
+      clearTimeout(fallback);
+    };
   }, [scrollToTopKey]);
 
   // في الشاشات العريضة/الأفقية: نقيّد عرض المحتوى ونوسّطه ليبقى مقروءاً

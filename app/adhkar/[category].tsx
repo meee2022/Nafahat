@@ -28,6 +28,9 @@ const formatTime = (milliseconds: number) => {
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
 };
 
+/** Keeps Arabic alignment stable when a dhikr begins with punctuation or a number. */
+const rtlText = (value: string) => value.startsWith('\u200F') ? value : `\u200F${value}`;
+
 export default function AdhkarScreen() {
   const t = useTheme();
   const router = useRouter();
@@ -253,7 +256,7 @@ export default function AdhkarScreen() {
                     style={[styles.cardTitle, { color: t.colors.textPrimary, fontFamily: quranFont }]}
                     numberOfLines={2}
                   >
-                    {d.title}
+                    {rtlText(d.title)}
                   </Text>
                   {done ? (
                     <View style={[styles.doneBadge, { backgroundColor: t.colors.success }]}>
@@ -276,7 +279,7 @@ export default function AdhkarScreen() {
                   <Text
                     style={[styles.dhikrBody, { color: t.colors.textPrimary, fontFamily: quranFont }]}
                   >
-                    {d.body}
+                    {rtlText(d.body)}
                   </Text>
                 )}
 
@@ -286,7 +289,7 @@ export default function AdhkarScreen() {
                       <Sparkles size={13} color={t.colors.accentDeep} />
                       <Text style={[styles.instructionLabel, { color: t.colors.accentDeep }]}>طريقة الذكر</Text>
                     </View>
-                    <Text style={[styles.instructionText, { color: t.colors.textSecondary }]}>{d.instruction}</Text>
+                    <Text style={[styles.instructionText, { color: t.colors.textSecondary }]}>{rtlText(d.instruction)}</Text>
                   </View>
                 ) : null}
 
@@ -327,7 +330,7 @@ export default function AdhkarScreen() {
                   <View style={[styles.benefitBox, { backgroundColor: t.colors.accent + '08', borderColor: t.colors.accent + '30' }]}>
                     <Sparkles size={12} color={t.colors.accent} />
                     <Text style={[styles.benefitText, { color: t.colors.textSecondary }]}>
-                      {d.benefit}
+                      {rtlText(d.benefit)}
                     </Text>
                   </View>
                 ) : null}
@@ -336,7 +339,7 @@ export default function AdhkarScreen() {
                   <View style={styles.sourceRow}>
                     <BookOpenCheck size={10} color={t.colors.textTertiary} />
                     <Text style={[styles.sourceText, { color: t.colors.textTertiary }]}>
-                      {d.source}
+                      {rtlText(d.source)}
                     </Text>
                   </View>
                 ) : null}
@@ -445,6 +448,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 18,
     paddingVertical: 17,
+    direction: 'rtl',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -473,6 +477,9 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     lineHeight: 26,
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    direction: 'rtl',
   },
   repeatBadge: {
     minHeight: 28,
@@ -520,6 +527,7 @@ const styles = StyleSheet.create({
     lineHeight: 25,
     textAlign: 'right',
     writingDirection: 'rtl',
+    direction: 'rtl',
   } as any,
   benefitBox: {
     flexDirection: 'row',
@@ -545,6 +553,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 20,
     fontWeight: '500',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    direction: 'rtl',
   },
   sourceRow: {
     flexDirection: 'row',
@@ -555,6 +566,9 @@ const styles = StyleSheet.create({
   sourceText: {
     fontSize: 11,
     fontWeight: '600',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    direction: 'rtl',
   },
   openSurahButton: {
     minHeight: 48,

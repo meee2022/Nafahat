@@ -31,7 +31,7 @@ function parseQuranicBody(body: string): string[][] {
   return groups.map((group) =>
     group
       .split(/[۝﴿﴾]/g)
-      .map((s) => s.replace(/\.+\s*$/, '').trim())
+      .map((s) => `\u200F${s.replace(/\.+\s*$/, '').trim()}`)
       .filter(Boolean),
   );
 }
@@ -253,6 +253,7 @@ const styles = StyleSheet.create({
   },
   bodyWrap: {
     paddingHorizontal: 2,
+    direction: 'rtl',
   },
   suraFlow: {
     // flex خصائص تُحقَن inline حسب المنصّة
@@ -276,6 +277,7 @@ const styles = StyleSheet.create({
     width: '100%',
     textAlign: 'right',
     writingDirection: 'rtl',
+    direction: 'rtl',
     fontWeight: '500',
     letterSpacing: 0,
   } as any,
@@ -305,6 +307,7 @@ const styles = StyleSheet.create({
   flowText: {
     textAlign: 'justify',
     writingDirection: 'rtl',
+    direction: 'rtl',
     letterSpacing: 0,
     fontWeight: '500',
   } as any,

@@ -154,11 +154,17 @@ export interface DhikrItem {
   category: DhikrCategory;
   title: string;
   body: string;
+  /** طريقة أداء الذكر، تُعرض منفصلة عن النص الذي يُقرأ. */
+  instruction?: string;
   count: number;
   source?: string;
   benefit?: string;
   /** هل النص آية/آيات قرآنية - يُعرض بأسلوب المصحف (إطار ذهبي + رصائع). */
   quranic?: boolean;
+  /** عناوين المقاطع عندما يحتوي الذكر أكثر من سورة قرآنية. */
+  quranicGroupTitles?: string[];
+  /** Optional link to the canonical Mushaf instead of duplicating a full surah here. */
+  surahId?: number;
 }
 
 export interface TasbeehItem {

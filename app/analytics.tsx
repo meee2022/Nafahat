@@ -284,7 +284,7 @@ export default function SpiritualAnalyticsScreen() {
 
         {/* 📋 قائمة المهام الفورية المستحقة للمراجعة */}
         <View style={{ marginTop: 16 }}>
-          <Text style={{ fontSize: 13, fontWeight: '850', color: t.colors.textSecondary, marginBottom: 10 }}>
+          <Text style={{ fontSize: 13, fontWeight: '800', color: t.colors.textSecondary, marginBottom: 10 }}>
             📌 المقاطع المجدولة للمراجعة المتباعدة الفورية
           </Text>
 
@@ -334,7 +334,7 @@ export default function SpiritualAnalyticsScreen() {
                     ]}
                   >
                     <RotateCcw size={12} color={EMERALD} />
-                    <Text style={{ fontSize: 11, fontWeight: '850', color: EMERALD }}>راجع الآن</Text>
+                    <Text style={{ fontSize: 11, fontWeight: '800', color: EMERALD }}>راجع الآن</Text>
                   </Pressable>
                 </Card>
               );

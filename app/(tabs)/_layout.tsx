@@ -206,14 +206,14 @@ const TabItem: React.FC<{ icon: IconName; labelKey: TranslationKey; focused: boo
         damping: 15,
         stiffness: 200,
         mass: 0.65,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
       Animated.spring(translateY, {
         toValue: focused ? -2 : 0,
         damping: 18,
         stiffness: 240,
         mass: 0.55,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
     ]).start();
   }, [focused, scale, translateY]);

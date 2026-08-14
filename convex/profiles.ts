@@ -1,9 +1,11 @@
 import { v } from 'convex/values';
 import { query, mutation } from './_generated/server';
+import { requireOwnerKey } from './auth';
 
 export const get = query({
-  args: { deviceId: v.string() },
-  handler: async (ctx, { deviceId }) => {
+  args: { token: v.string() },
+  handler: async (ctx, { token }) => {
+    const deviceId = await requireOwnerKey(ctx, token);
     return await ctx.db
       .query('profiles')
       .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
@@ -13,7 +15,7 @@ export const get = query({
 
 export const upsert = mutation({
   args: {
-    deviceId:   v.string(),
+    token:      v.string(),
     name:       v.string(),
     role:       v.union(
       v.literal('guest'), v.literal('student'),
@@ -21,10 +23,11 @@ export const upsert = mutation({
     ),
     avatarSeed: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, { token, ...args }) => {
+    const deviceId = await requireOwnerKey(ctx, token);
     const existing = await ctx.db
       .query('profiles')
-      .withIndex('by_device', (q) => q.eq('deviceId', args.deviceId))
+      .withIndex('by_device', (q) => q.eq('deviceId', deviceId))
       .unique();
 
     if (existing) {
@@ -39,6 +42,7 @@ export const upsert = mutation({
 
     return await ctx.db.insert('profiles', {
       ...args,
+      deviceId,
       joinedAt: Date.now(),
       streakDays: 0,
       lastActive: Date.now(),

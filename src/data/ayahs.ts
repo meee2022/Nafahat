@@ -74,14 +74,13 @@ const SURAH_TEXTS: SurahAyahs = {
   ],
 };
 
-const PLACEHOLDER = '﴿ نص الآية - يُحمَّل من قاعدة بيانات القرآن الكامل عند ربط API ﴾';
-
 export function getAyahs(surahId: number, versesCount: number): Ayah[] {
   const text = SURAH_TEXTS[surahId];
-  return Array.from({ length: versesCount }, (_, i) => ({
+  if (!text || text.length !== versesCount) return [];
+  return text.map((ayahText, i) => ({
     surahId,
     number: i + 1,
-    text: text?.[i] ?? PLACEHOLDER,
+    text: ayahText,
     page: 1,
     juz: 1,
   }));

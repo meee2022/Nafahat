@@ -10,11 +10,10 @@ import { Mail, Lock, Eye, EyeOff, ArrowLeft, ArrowRight, AlertCircle } from 'luc
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { OrnamentalRule } from '@components/ornaments';
-import { useAuthStore } from '@store/authStore';
+import { useAuthStore , authErrorMessage } from '@store/authStore';
 import { useT } from '@store/languageStore';
 import { TranslationKey } from '@/i18n/index';
 import { useAppInfo } from '@store/appConfigStore';
-import { authErrorMessage } from '@store/authStore';
 
 const ERROR_KEYS: Record<string, TranslationKey> = {
   'invalid-email':       'auth.error.invalidEmail',

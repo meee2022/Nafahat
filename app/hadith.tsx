@@ -385,7 +385,7 @@ const HadithCard: React.FC<{
         </View>
 
         <View style={styles.sourcePill}>
-          <View style={[styles.gradeChip, { backgroundColor: collMeta?.color + '14' ?? t.colors.surfaceAlt, borderColor: collMeta?.color + '40' ?? t.colors.borderGold }]}>
+          <View style={[styles.gradeChip, { backgroundColor: collMeta ? `${collMeta.color}14` : t.colors.surfaceAlt, borderColor: collMeta ? `${collMeta.color}40` : t.colors.borderGold }]}>
             <Text style={{ color: collMeta?.color ?? t.colors.accent, fontSize: 10, fontWeight: '700' }}>
               {collMeta?.nameAr ?? hadith.collection}
             </Text>

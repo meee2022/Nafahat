@@ -3,23 +3,23 @@
  * تستخدم calculatePrayerTimes (محلية، بدون API).
  */
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Alert, Linking, Text as RNText } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { TOP_BAR_PAD } from '@utils/safeArea';
 import {
   ArrowRight, MapPin, Settings2, Clock, Sun, Sunrise, Sunset, Moon, Star,
-} from 'lucide-react-native';
+ Bell, BellOff, Volume2, ChevronDown, Check } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Card, Button } from '@components/ui';
 import {
-  calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName, CalculationMethod,
+  calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, getJumuahFirstAdhanTime, getPrayerNameAr, PrayerName, CalculationMethod, recommendedCalculationMethod,
 } from '@services/prayerTimes';
-import { schedulePrayerNotifications, cancelAllPrayerNotifications, isAvailable as notifAvailable, sendTestNotification } from '@services/prayerNotifications';
+import { cancelAllPrayerNotifications, isAvailable as notifAvailable, sendTestNotification } from '@services/prayerNotifications';
+import { syncNotificationSchedules } from '@services/notificationCoordinator';
 import { playAdhan, stopAdhan } from '@services/adhan';
 import { startAdhanScheduler, stopAdhanScheduler, updateAdhanTimes } from '@services/adhanScheduler';
 import { useSettingsStore } from '@store/index';
-import { Bell, BellOff, Volume2, ChevronDown, Check } from 'lucide-react-native';
 
 type AdhanVoiceId = 'makkah' | 'madinah' | 'abdulbaset' | 'default';
 
@@ -49,6 +49,7 @@ const PRAYER_ICONS: Record<PrayerName, React.ReactNode> = {
 };
 
 const METHODS: { id: CalculationMethod; nameAr: string }[] = [
+  { id: 'Qatar',   nameAr: 'دولة قطر - دار التقويم القطري' },
   { id: 'Makkah',  nameAr: 'أم القرى - السعودية' },
   { id: 'Egypt',   nameAr: 'الهيئة المصرية' },
   { id: 'ISNA',    nameAr: 'أمريكا الشمالية' },
@@ -61,7 +62,10 @@ const METHODS: { id: CalculationMethod; nameAr: string }[] = [
 export default function PrayerTimesScreen() {
   const t = useTheme();
   const router = useRouter();
-  const [method, setMethod] = useState<CalculationMethod>('Makkah');
+  const location = useSettingsStore((s) => s.location);
+  const [method, setMethod] = useState<CalculationMethod>(() =>
+    recommendedCalculationMethod(location.latitude, location.longitude, location.countryCode),
+  );
   const [showMethodPicker, setShowMethodPicker] = useState(false);
   const [now, setNow] = useState(new Date());
   // 🔒 حالة تنبيهات الصلاة محفوظة دائماً في الـstore (مش useState محلّي) فلا
@@ -79,7 +83,6 @@ export default function PrayerTimesScreen() {
   }, []);
 
   // 📍 موقع المستخدم الفعلي من الإعدادات (نفس مصدر الشاشة الرئيسية) — مش مكة الثابتة
-  const location = useSettingsStore((s) => s.location);
   // ⏱️ تعديلات يدوية لكل صلاة (لمطابقة أذان المنطقة بدقّة)
   const prayerAdjustments = useSettingsStore((s) => s.prayerAdjustments);
   const setPrayerAdjustment = useSettingsStore((s) => s.setPrayerAdjustment);
@@ -104,6 +107,37 @@ export default function PrayerTimesScreen() {
   const iqamaOffsetMin = useSettingsStore((s) => s.iqamaOffsetMin);
   const setIqamaEnabled = useSettingsStore((s) => s.setIqamaEnabled);
   const setIqamaOffsetMin = useSettingsStore((s) => s.setIqamaOffsetMin);
+  const dhikrEnabled = useSettingsStore((s) => s.dhikrEnabled);
+  const dhikrIntervalHours = useSettingsStore((s) => s.dhikrIntervalHours);
+  const setNotificationHealth = useSettingsStore((s) => s.setNotificationHealth);
+
+  const syncNow = async (nextIqamaEnabled = iqamaEnabled, nextIqamaOffset = iqamaOffsetMin) => {
+    const prayerDays = Array.from({ length: 4 }, (_, offset) => {
+      const date = new Date();
+      date.setDate(date.getDate() + offset);
+      return {
+        date,
+        times: calculatePrayerTimes({
+          date,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timezone: location.timezone,
+          method,
+          adjustments: prayerAdjustments,
+        }),
+      };
+    });
+    const result = await syncNotificationSchedules({
+      prayerEnabled: true,
+      prayerDays,
+      iqamaEnabled: nextIqamaEnabled,
+      iqamaOffsetMin: nextIqamaOffset,
+      dhikrEnabled,
+      dhikrIntervalHours,
+    });
+    setNotificationHealth({ ok: result.ok, message: result.message, checkedAt: Date.now() });
+    return result;
+  };
   useEffect(() => {
     // الجدولة تُدار عالمياً في _layout؛ هنا فقط نحدّث الحالة فوراً عند التغيير.
     // لا نوقفها عند الخروج من الشاشة (كان bug يوقف الأذان بمجرد مغادرة الصفحة).
@@ -118,16 +152,6 @@ export default function PrayerTimesScreen() {
   useEffect(() => {
     if (autoAdhanEnabled) updateAdhanTimes(times);
   }, [times, autoAdhanEnabled]);
-
-  // ⏱️ أعد جدولة إشعارات الصلاة عند تغيير التعديلات اليدوية (لو التنبيهات مفعّلة)
-  //    نربطها بقيم التعديلات فقط (مش times التي تتغيّر كل دقيقة) لتفادي إعادة جدولة متكرّرة.
-  const adjustmentsKey = JSON.stringify(prayerAdjustments);
-  useEffect(() => {
-    if (notifEnabled) {
-      schedulePrayerNotifications(times, { iqamaEnabled, iqamaOffsetMin }).catch(() => {});
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [adjustmentsKey]);
 
   const formatCountdown = (mins: number): string => {
     const h = Math.floor(mins / 60);
@@ -179,17 +203,26 @@ export default function PrayerTimesScreen() {
               <Pressable
                 onPress={async () => {
                   if (notifEnabled) {
-                    await cancelAllPrayerNotifications();
+                    const result = await cancelAllPrayerNotifications();
                     setNotifEnabled(false);
-                    Alert.alert('✓ تم', 'تم إيقاف التذكيرات.');
+                    setNotificationHealth({ ok: result.ok, message: result.message, checkedAt: Date.now() });
+                    Alert.alert(result.ok ? '✓ تم' : 'تنبيه', result.message);
                   } else {
-                    await schedulePrayerNotifications(times, { iqamaEnabled, iqamaOffsetMin });
+                    const result = await syncNow();
+                    if (!result.ok) {
+                      setNotifEnabled(false);
+                      Alert.alert('لم يتم تفعيل التنبيهات', result.message, [
+                        { text: 'حسنًا', style: 'cancel' },
+                        { text: 'إعدادات الهاتف', onPress: () => Linking.openSettings() },
+                      ]);
+                      return;
+                    }
                     setNotifEnabled(true);
                     // 🔔 إشعار تجريبي فوري ليتأكّد المستخدم أنها تعمل
-                    await sendTestNotification();
-                    Alert.alert('✓ تم', iqamaEnabled
-                      ? `٥ صلوات + إقامة (بعد ${iqamaOffsetMin} د) + ٣ أذكار جُدْوِلَت يومياً.\n\nسيصلك إشعار تجريبي خلال ثوانٍ ✅`
-                      : '٥ صلوات + ٣ أذكار جُدْوِلَت يومياً.\n\nسيصلك إشعار تجريبي خلال ثوانٍ ✅');
+                    const testSent = await sendTestNotification();
+                    Alert.alert('✓ تم', `${result.message}${testSent
+                      ? '\n\nسيصلك إشعار تجريبي خلال ثوانٍ.'
+                      : '\n\nتعذر إرسال الإشعار التجريبي؛ راجع وضع التركيز والصوت في الهاتف.'}`);
                   }
                 }}
                 style={({ pressed }) => [
@@ -213,11 +246,12 @@ export default function PrayerTimesScreen() {
               <Pressable
                 onPress={async () => {
                   const next = !iqamaEnabled;
-                  setIqamaEnabled(next);
                   // أعد الجدولة فوراً لو التنبيهات مُفعّلة
                   if (notifEnabled) {
-                    await schedulePrayerNotifications(times, { iqamaEnabled: next, iqamaOffsetMin });
+                    const result = await syncNow(next, iqamaOffsetMin);
+                    if (!result.ok) { Alert.alert('تعذّر تحديث تنبيه الإقامة', result.message); return; }
                   }
+                  setIqamaEnabled(next);
                 }}
                 style={({ pressed }) => [
                   styles.voiceRow,
@@ -251,10 +285,11 @@ export default function PrayerTimesScreen() {
                       <Pressable
                         key={mins}
                         onPress={async () => {
-                          setIqamaOffsetMin(mins);
                           if (notifEnabled) {
-                            await schedulePrayerNotifications(times, { iqamaEnabled: true, iqamaOffsetMin: mins });
+                            const result = await syncNow(true, mins);
+                            if (!result.ok) { Alert.alert('تعذّر تعديل وقت الإقامة', result.message); return; }
                           }
+                          setIqamaOffsetMin(mins);
                         }}
                         style={({ pressed }) => [
                           styles.minChip,
@@ -398,7 +433,7 @@ export default function PrayerTimesScreen() {
           <Text style={[styles.heroEyebrow, { color: 'rgba(251,247,234,0.8)' }]}>الصلاة القادمة</Text>
           <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 14, marginTop: 8 }}>
             <Text style={[styles.heroPrayerName, { color: '#FBF7EA' }]}>
-              {PRAYER_NAMES_AR[next.name]}
+              {getPrayerNameAr(next.name, now)}
             </Text>
             <Text style={[styles.heroPrayerTime, { color: '#FBF7EA' }]}>
               {next.time}
@@ -448,8 +483,13 @@ export default function PrayerTimesScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 15, fontWeight: '700', color: t.colors.textPrimary }}>
-                    {PRAYER_NAMES_AR[name]}
+                    {getPrayerNameAr(name, now)}
                   </Text>
+                  {name === 'dhuhr' && now.getDay() === 5 ? (
+                    <Text style={{ fontSize: 11, fontWeight: '700', color: t.colors.textTertiary, marginTop: 2 }}>
+                      الأذان الأول {getJumuahFirstAdhanTime(times.dhuhr)}، الأذان الثاني {times.dhuhr}
+                    </Text>
+                  ) : null}
                   {isNext ? (
                     <Text style={{ fontSize: 11, fontWeight: '700', color: t.colors.accent, marginTop: 2 }}>
                       ◇ القادمة
@@ -492,7 +532,7 @@ export default function PrayerTimesScreen() {
                 >
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14, fontWeight: '700', color: t.colors.textPrimary }}>
-                      {PRAYER_NAMES_AR[name]}
+                      {getPrayerNameAr(name, now)}
                     </Text>
                     <Text style={{ fontSize: 12, fontWeight: '800', color: t.colors.accent, marginTop: 2, letterSpacing: 0.5 }}>
                       {times[name]}
@@ -586,7 +626,6 @@ export default function PrayerTimesScreen() {
 const Text: React.FC<any> = ({ style, ...rest }) => {
   return <RNText style={[{ textAlign: 'auto', writingDirection: 'rtl' }, style]} {...rest} />;
 };
-import { Text as RNText } from 'react-native';
 
 const styles = StyleSheet.create({
   topBar: {

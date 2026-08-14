@@ -72,7 +72,7 @@ export async function loadAndPlay(
   // إنشاء المشغّل (متزامن في expo-audio) مع فاصل تحديث الحالة 250ms
   let player: AudioPlayer;
   try {
-    player = createAudioPlayer({ uri }, 250);
+    player = createAudioPlayer({ uri }, { updateInterval: 250 });
   } catch (e) {
     if (myVersion !== loadRequestVersion) return;
     throw e;
@@ -204,7 +204,7 @@ export async function playOneShot(uri: string): Promise<void> {
   oneShotSub = null;
 
   try {
-    const player = createAudioPlayer({ uri }, 300);
+    const player = createAudioPlayer({ uri }, { updateInterval: 300 });
     if (myVersion !== oneShotVersion) { try { player.remove(); } catch {} return; }
     oneShotPlayer = player;
     oneShotSub = player.addListener('playbackStatusUpdate', (st: AudioStatus) => {

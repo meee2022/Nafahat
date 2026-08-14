@@ -41,7 +41,7 @@ const PRESETS: Preset[] = [
  */
 function safeImagePicker() {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+
     return require('expo-image-picker');
   } catch {
     return null;

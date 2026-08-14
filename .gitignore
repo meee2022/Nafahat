@@ -2,6 +2,8 @@ node_modules/
 .expo/
 .expo-shared/
 dist/
+dist-android-check/
+dist-ios-offline/
 web-build/
 android/
 ios/
@@ -20,6 +22,7 @@ Thumbs.db
 # build
 *.log
 *.pid
+function_spec_*.json
 
 # IDEs
 .vscode/

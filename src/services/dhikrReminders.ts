@@ -8,13 +8,16 @@
  * تستخدم صيغة SchedulableTriggerInputTypes.DAILY (SDK 56).
  */
 import { Platform } from 'react-native';
+import { log } from '@utils/logger';
 
 const isWeb = Platform.OS === 'web';
 
 let Notifications: any = null;
 try {
   if (!isWeb) Notifications = require('expo-notifications');
-} catch {}
+} catch (error) {
+  log.error('expo-notifications could not be loaded for dhikr reminders', { error: String(error) });
+}
 
 const isAvailable = (): boolean => !isWeb && !!Notifications;
 
@@ -40,23 +43,31 @@ const ID_PREFIX = 'dhikr-';
 async function ensurePermission(): Promise<boolean> {
   if (!isAvailable()) return false;
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    if (existing === 'granted') return true;
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
+    const existing = await Notifications.getPermissionsAsync();
+    const accepted = (value: any) => value?.granted === true || value?.status === 'granted' ||
+      value?.ios?.status === Notifications?.IosAuthorizationStatus?.PROVISIONAL ||
+      value?.ios?.status === Notifications?.IosAuthorizationStatus?.EPHEMERAL;
+    if (accepted(existing)) return true;
+    return accepted(await Notifications.requestPermissionsAsync());
   } catch {
     return false;
   }
 }
 
 /** يلغي كل إشعارات الأذكار الدورية المُجَدْوَلة. */
-export async function cancelDhikrReminders(): Promise<void> {
-  if (!isAvailable()) return;
+export async function cancelDhikrReminders(): Promise<boolean> {
+  if (!isAvailable()) return false;
   try {
     for (let h = 0; h < 24; h++) {
-      await Notifications.cancelScheduledNotificationAsync(`${ID_PREFIX}${h}`).catch(() => {});
+      await Notifications.cancelScheduledNotificationAsync(`${ID_PREFIX}${h}`).catch((error: unknown) => {
+        log.warn('dhikr reminder was not present while cancelling', { hour: h, error: String(error) });
+      });
     }
-  } catch {}
+    return true;
+  } catch (error) {
+    log.error('cancel dhikr reminders failed', { error: String(error) });
+    return false;
+  }
 }
 
 /**
@@ -88,7 +99,8 @@ export async function scheduleDhikrReminders(intervalHours: number): Promise<boo
       idx++;
     }
     return true;
-  } catch {
+  } catch (error) {
+    log.error('schedule dhikr reminders failed', { intervalHours, error: String(error) });
     return false;
   }
 }

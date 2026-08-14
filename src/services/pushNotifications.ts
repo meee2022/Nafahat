@@ -18,7 +18,7 @@ let Notifications: any = null;
 let notificationsReady = false;
 
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   Notifications = require('expo-notifications');
   notificationsReady = true;
 } catch {

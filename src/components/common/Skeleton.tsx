@@ -11,7 +11,7 @@
  *   <SkeletonList count={5} />← قائمة من البطاقات
  */
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated, ViewStyle } from 'react-native';
+import { View, StyleSheet, Animated, ViewStyle, Platform } from 'react-native';
 import { useTheme } from '@theme/index';
 
 interface SkeletonProps {
@@ -28,8 +28,8 @@ export const Skeleton: React.FC<SkeletonProps> = ({ width = '100%', height = 16,
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(opacity, { toValue: 0.8, duration: 800, useNativeDriver: true }),
-        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.8, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: Platform.OS !== 'web' }),
       ]),
     );
     loop.start();

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, ScrollView, RefreshControl, StatusBar, StyleSheet, ViewStyle } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@theme/index';
@@ -15,6 +15,8 @@ interface Props {
   edges?: ('top' | 'right' | 'bottom' | 'left')[];
   /** يعطّل توسيط/تقييد العرض في الشاشات العريضة (لشاشات ملء-الشاشة كالمصحف). */
   fullBleed?: boolean;
+  /** Scrolls a scrollable screen back to its beginning whenever this value changes. */
+  scrollToTopKey?: string | number;
 }
 
 export const Screen: React.FC<Props> = ({
@@ -27,11 +29,18 @@ export const Screen: React.FC<Props> = ({
   background,
   edges = ['top'],
   fullBleed = false,
+  scrollToTopKey,
 }) => {
   const t = useTheme();
   const r = useResponsive();
   const bg = background ?? t.colors.background;
   const padH = paddingHorizontal ?? t.spacing.lg;
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (scrollToTopKey === undefined) return;
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
+  }, [scrollToTopKey]);
 
   // في الشاشات العريضة/الأفقية: نقيّد عرض المحتوى ونوسّطه ليبقى مقروءاً
   // بدل التمدّد القبيح على كامل العرض. يُلغى عبر fullBleed.
@@ -48,6 +57,7 @@ export const Screen: React.FC<Props> = ({
       />
       {scrollable ? (
         <ScrollView
+          ref={scrollRef}
           contentContainerStyle={[
             { paddingHorizontal: padH, paddingBottom: t.spacing.huge },
             constrain ? styles.centerContent : null,

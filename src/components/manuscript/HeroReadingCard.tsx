@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { mColors, mText, mSpacing, mShadows } from '@theme/manuscript';
 import { StatBadge } from './StatBadge';
@@ -44,14 +44,14 @@ export const HeroReadingCard: React.FC<Props> = ({
     // floating animation
     Animated.loop(
       Animated.sequence([
-        Animated.timing(floatY, { toValue: -4, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(floatY, { toValue: 4, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(floatY, { toValue: -4, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(floatY, { toValue: 4, duration: 2000, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
       ]),
     ).start();
 
     // shimmer
     Animated.loop(
-      Animated.timing(shimmer, { toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: true }),
+      Animated.timing(shimmer, { toValue: 1, duration: 3000, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
     ).start();
   }, [floatY, shimmer]);
 
@@ -177,7 +177,7 @@ const styles = StyleSheet.create({
     borderRadius: mSpacing.cardRadius - 12,
   },
   shimmerMask: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     overflow: 'hidden',
     borderRadius: mSpacing.cardRadius,
   },

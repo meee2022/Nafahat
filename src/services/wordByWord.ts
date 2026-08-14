@@ -12,6 +12,7 @@
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LruCache } from '@/utils/lruCache';
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 
 const API_BASE = 'https://api.quran.com/api/v4';
 const CACHE_PREFIX = '@nafahat/wbw/';
@@ -55,7 +56,7 @@ export async function getWordsByVerse(surahId: number, ayahNumber: number): Prom
 
   // API
   const url = `${API_BASE}/verses/by_key/${surahId}:${ayahNumber}?words=true&word_translation_language=en&word_fields=text_uthmani,transliteration,translation`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url, { timeoutMs: 10_000 });
   if (!res.ok) throw new Error(`Word-by-word fetch failed: HTTP ${res.status}`);
   const json = await res.json();
 

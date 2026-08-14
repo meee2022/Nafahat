@@ -75,7 +75,7 @@ export function colorizeTajweed(text: string, palette: TajweedColors): ColoredSe
   let buffer = '';
 
   // قائمة الأنماط (مبسّطة جداً - النسخة الكاملة تتطلّب parser عربي متقدّم)
-  const patterns: Array<{ regex: RegExp; color: string; rule: string }> = [
+  const patterns: { regex: RegExp; color: string; rule: string }[] = [
     // مد طبيعي: حرف مد بدون شدّة أو همزة بعده
     { regex: /([ا]ـ?)(?![ّ])/gu,                     color: palette.madNatural,   rule: 'مد طبيعي' },
     // غنّة: نون مشدّدة أو ميم مشدّدة

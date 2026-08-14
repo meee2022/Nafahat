@@ -16,6 +16,8 @@ interface Props {
   source?: string;
   ayahNumbers?: number[];
   fontSize?: number;
+  groupTitles?: string[];
+  variant?: 'framed' | 'plain' | 'bare';
 }
 
 /**
@@ -34,7 +36,7 @@ function parseQuranicBody(body: string): string[][] {
   );
 }
 
-export const QuranicBlock: React.FC<Props> = ({ body, source, ayahNumbers, fontSize = 24 }) => {
+export const QuranicBlock: React.FC<Props> = ({ body, source, ayahNumbers, fontSize = 24, groupTitles, variant = 'framed' }) => {
   const t = useTheme();
 
   const quranFont = Platform.OS === 'web'
@@ -53,9 +55,9 @@ export const QuranicBlock: React.FC<Props> = ({ body, source, ayahNumbers, fontS
 
   return (
     <View style={styles.wrap}>
-      <View style={[styles.outerFrame, { borderColor: goldDeep, backgroundColor: parchment }]}>
-        <View style={[styles.innerFrame, { borderColor: gold }]}>
-          <TopOrnament color={gold} accent={goldDeep} />
+      <View style={[variant === 'framed' ? styles.outerFrame : variant === 'plain' ? styles.plainFrame : styles.bareFrame, { borderColor: goldDeep, backgroundColor: variant === 'bare' ? 'transparent' : parchment }]}> 
+        <View style={variant === 'framed' ? [styles.innerFrame, { borderColor: gold }] : variant === 'plain' ? styles.plainInner : styles.bareInner}>
+          {variant === 'framed' ? <TopOrnament color={gold} accent={goldDeep} /> : null}
 
           {/* نص الآيات - يتدفّق inline مع رصائع SVG */}
           <View style={styles.bodyWrap}>
@@ -72,10 +74,19 @@ export const QuranicBlock: React.FC<Props> = ({ body, source, ayahNumbers, fontS
                     // يقلب row↔row-reverse تلقائياً في وضع RTL. لذلك نستخدم 'row' العادي
                     // (يُعرَض يمين→يسار) + نثبّت direction:'rtl' لضمان الترتيب الصحيح
                     // مهما كانت حالة I18nManager، فلا تظهر السورة معكوسة.
-                    : { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', direction: 'rtl' },
+                    : { width: '100%', flexDirection: 'column', alignItems: 'stretch', direction: 'rtl' },
                   groupIdx < ayahGroups.length - 1 && { marginBottom: 14 },
                 ]}
               >
+                {groupTitles?.[groupIdx] ? (
+                  <View style={styles.surahHeading}>
+                    <View style={[styles.surahHeadingLine, { backgroundColor: gold }]} />
+                    <Text style={[styles.surahHeadingText, { color: goldDeep, fontFamily: quranFont }]}>
+                      {groupTitles[groupIdx]}
+                    </Text>
+                    <View style={[styles.surahHeadingLine, { backgroundColor: gold }]} />
+                  </View>
+                ) : null}
                 {Platform.OS === 'web' ? (
                   // ━━━ WEB: نستخدم Text واحد يتدفّق طبيعياً + رصائع SVG inline-block
                   <RNText
@@ -105,37 +116,31 @@ export const QuranicBlock: React.FC<Props> = ({ body, source, ayahNumbers, fontS
                     })}
                   </RNText>
                 ) : (
-                  // ━━━ NATIVE: flex row-reverse مع flexWrap (كل قطعة عنصر منفصل)
-                  group.map((ayah, idx) => {
-                    const num = ayahNumbers?.[idx] ?? idx + 1;
-                    return (
-                      <React.Fragment key={idx}>
-                        <RNText
-                          allowFontScaling={false}
-                          style={[
-                            styles.flowText,
-                            { color: ink, fontFamily: quranFont, fontSize, lineHeight: fontSize * 2.1 },
-                          ]}
-                        >
-                          {ayah}{' '}
+                  <RNText
+                    allowFontScaling={false}
+                    style={[
+                      styles.nativeFlowText,
+                      { color: ink, fontFamily: quranFont, fontSize, lineHeight: fontSize * 1.95 },
+                    ]}
+                  >
+                    {group.map((ayah, idx) => {
+                      const num = ayahNumbers?.[idx] ?? idx + 1;
+                      return (
+                        <RNText key={idx}>
+                          {ayah}
+                          <RNText style={{ color: gold, fontSize: fontSize * 0.7, fontWeight: '700' }}>
+                            {'  '}﴿{String(num).replace(/\d/g, (digit) => '٠١٢٣٤٥٦٧٨٩'[Number(digit)])}﴾{'  '}
+                          </RNText>
                         </RNText>
-                        <View style={{ marginHorizontal: 3, marginVertical: 2 }}>
-                          <AyahRosette
-                            number={num}
-                            size={fontSize * 1.05}
-                            goldColor={gold}
-                            innerColor={parchment}
-                          />
-                        </View>
-                      </React.Fragment>
-                    );
-                  })
+                      );
+                    })}
+                  </RNText>
                 )}
               </View>
             ))}
           </View>
 
-          <BottomOrnament color={gold} accent={goldDeep} />
+          {variant === 'framed' ? <BottomOrnament color={gold} accent={goldDeep} /> : null}
 
           {source ? (
             <View style={styles.sourceWrap}>
@@ -230,11 +235,72 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingVertical: 16,
   },
+  plainFrame: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  plainInner: {
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+  },
+  bareFrame: {
+    borderWidth: 0,
+  },
+  bareInner: {
+    paddingHorizontal: 0,
+    paddingVertical: 10,
+  },
   bodyWrap: {
     paddingHorizontal: 2,
   },
   suraFlow: {
     // flex خصائص تُحقَن inline حسب المنصّة
+  },
+  nativeVerseRow: {
+    width: '100%',
+    minHeight: 56,
+    justifyContent: 'center',
+    paddingVertical: 6,
+    paddingLeft: 34,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    position: 'relative',
+  },
+  nativeVerseText: {
+    width: '100%',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    fontWeight: '500',
+  } as any,
+  nativeFlowText: {
+    width: '100%',
+    textAlign: 'right',
+    writingDirection: 'rtl',
+    fontWeight: '500',
+    letterSpacing: 0,
+  } as any,
+  nativeRosette: {
+    position: 'absolute',
+    left: 0,
+    bottom: 10,
+  },
+  surahHeading: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 10,
+  },
+  surahHeadingLine: {
+    width: 34,
+    height: StyleSheet.hairlineWidth,
+    opacity: 0.55,
+  },
+  surahHeadingText: {
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '700',
   },
   flowText: {
     textAlign: 'justify',

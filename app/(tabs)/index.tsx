@@ -9,19 +9,17 @@ import { useResponsive } from '@hooks/useResponsive';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Bell, Search, MapPin, ChevronLeft, ChevronRight, BookOpen, Headphones, Brain } from 'lucide-react-native';
+import { Bell, Search, MapPin, ChevronLeft, ChevronRight, BookOpen, Headphones, Brain , LogIn, Cloud } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { IllMushaf, IllAdhkar, IllTasbeeh, IllQibla, IllMosques, IllCalendar, IllDuas, IllTajweed, IllKhatma, IllZakat, IllStats, IllMemo, IllAudio, IllHadith, IllNotes, IllAchievements, IllArticles } from '@components/illustrations';
-import { useSettingsStore } from '@store/index';
+import { useSettingsStore , useWirdStore, useMemoStore } from '@store/index';
 import { useT, useLanguage } from '@store/languageStore';
-import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@services/prayerTimes';
+import { calculatePrayerTimes, nextPrayer, getJumuahFirstAdhanTime, getPrayerNameAr, PrayerName, recommendedCalculationMethod } from '@services/prayerTimes';
 import { SectionHeading, DailyActionCard, computeDailyAction } from '@components/home';
-import { useWirdStore, useMemoStore } from '@store/index';
 import { useAuthStore } from '@store/authStore';
 import { getDueTasks } from '@services/memorization';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LogIn, Cloud } from 'lucide-react-native';
 
 const isSameDay = (a: Date, b: Date) =>
   a.getFullYear() === b.getFullYear() &&
@@ -55,7 +53,7 @@ const HeroCountdown = ({ nextP, todayPrayers, cityName }: { nextP: any, todayPra
 
   return (
     <View style={styles.countdownContainer}>
-      <Text style={styles.nextPrayerText}>{PRAYER_NAMES_AR[nextP.name as PrayerName]} {tr('home.heroNextSuffix')}</Text>
+      <Text style={styles.nextPrayerText}>{getPrayerNameAr(nextP.name as PrayerName, currentTime)} {tr('home.heroNextSuffix')}</Text>
       <Text style={styles.countdownTime}>{countdownText}</Text>
       <Pressable
         style={styles.locationBadge}
@@ -97,7 +95,7 @@ export default function HomeScreen() {
       latitude: location.latitude,
       longitude: location.longitude,
       timezone: location.timezone,
-      method: 'Makkah',
+      method: recommendedCalculationMethod(location.latitude, location.longitude, location.countryCode),
       adjustments: prayerAdjustments,
     });
   }, [selectedDate, location, prayerAdjustments]);
@@ -317,10 +315,15 @@ export default function HomeScreen() {
               const isActive = isToday && nextP.name === pKey;
               return (
                 <View key={pKey} style={[styles.timeItem, isActive && { backgroundColor: t.colors.primary }]}>
-                  <Text style={[styles.timeName, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{PRAYER_NAMES_AR[pKey]}</Text>
+                  <Text style={[styles.timeName, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>{getPrayerNameAr(pKey, selectedDate)}</Text>
                   <Text style={[styles.timeValue, isActive && { color: '#FFF' }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
-                    {todayPrayers[pKey]}
+                    {pKey === 'dhuhr' && selectedDate.getDay() === 5 ? `الثاني ${todayPrayers[pKey]}` : todayPrayers[pKey]}
                   </Text>
+                  {pKey === 'dhuhr' && selectedDate.getDay() === 5 ? (
+                    <Text style={[styles.jumuahFirstTime, isActive && { color: 'rgba(255,255,255,0.82)' }]} numberOfLines={1}>
+                      الأول {getJumuahFirstAdhanTime(todayPrayers.dhuhr)}
+                    </Text>
+                  ) : null}
                 </View>
               );
             })}
@@ -619,6 +622,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     fontVariant: ['tabular-nums'],
+  },
+  jumuahFirstTime: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.72)',
+    marginTop: 1,
   },
   gridContainer: {
     flexDirection: 'row',

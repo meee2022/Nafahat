@@ -43,7 +43,7 @@ let sentryReady = false;
 //    @sentry/react-native في app.json واجعل SENTRY_ENABLED=true.
 const SENTRY_ENABLED = false;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   SentryLib = require('@sentry/react-native');
   const dsn = (process.env.EXPO_PUBLIC_SENTRY_DSN ?? '').trim();
   if (SENTRY_ENABLED && dsn && SentryLib?.init) {

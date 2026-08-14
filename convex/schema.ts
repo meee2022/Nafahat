@@ -33,6 +33,21 @@ export default defineSchema({
     .index('by_token', ['token'])
     .index('by_user', ['userId']),
 
+  authAttempts: defineTable({
+    email: v.string(),
+    attemptedAt: v.number(),
+  }).index('by_email', ['email']),
+
+  passwordResetRequests: defineTable({
+    email: v.string(),
+    codeHash: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    attempts: v.number(),
+    consumedAt: v.optional(v.number()),
+  })
+    .index('by_email', ['email']),
+
   // ----------------- صور صفحات مصحف المدينة (1-604) -----------------
   mushafPages: defineTable({
     page:       v.number(),            // رقم الصفحة 1-604

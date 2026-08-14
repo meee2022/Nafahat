@@ -6,6 +6,9 @@ import { getSurahById } from '@data/surahs';
 import { loadAndPlay, setPlaying, setSpeed as setSpeedAv, seekTo, unload, fadeOutAndStop, cancelFade } from '@services/audioPlayer';
 import { getAyahStartTimeMs } from '@services/verseSync';
 import type { SurahTimings } from '@services/audioTimings';
+import { getSurahTimings } from '@services/audioTimings';
+import { getSurahAyahs, prefetchSurahs } from '@services/quranApi';
+import { nextSurahId, previousSurahId } from '@/utils/audioNavigation';
 
 const PREFS_KEY = '@nafahat/audio/prefs';
 
@@ -109,6 +112,8 @@ export const useAudioStore = create<AudioState>((set, get) => ({
       ? (durationMs: number) => getAyahStartTimeMs(startAyah, durationMs, ayahsForSeek, n.surahId, n.timings)
       : undefined;
 
+    // expo-audio may emit didJustFinish more than once for one track.
+    let finishHandled = false;
     const onStatus = (st: { isPlaying: boolean; positionMs: number; durationMs: number; didJustFinish: boolean }) => {
       set({
         isPlaying: st.isPlaying,
@@ -116,13 +121,14 @@ export const useAudioStore = create<AudioState>((set, get) => ({
         durationMs: st.durationMs,
       });
       if (st.didJustFinish) {
+        if (finishHandled) return;
+        finishHandled = true;
         const mode = get().repeatMode;
         if (mode === 'one') {
           seekTo(0).then(() => setPlaying(true));
-        } else if (mode === 'all') {
-          get().playNext().catch(() => {});
         } else {
-          set({ isPlaying: false, positionMs: 0 });
+          // Continue through the Quran in normal mode as well as repeat-all.
+          get().playNext().catch(() => set({ isPlaying: false, positionMs: 0 }));
         }
       }
     };
@@ -220,23 +226,37 @@ export const useAudioStore = create<AudioState>((set, get) => ({
   async playNext() {
     const cur = get().current;
     if (!cur) return;
-    const nextId = cur.surahId + 1;
-    if (nextId > 114) {
-      // وصلنا لنهاية المصحف - أوقف
+    const nextId = nextSurahId(cur.surahId, get().repeatMode);
+    if (nextId == null) {
+      // وصلنا لنهاية المصحف بدون repeat-all.
       set({ isPlaying: false, positionMs: 0 });
       try { await setPlaying(false); } catch {}
       return;
     }
+    if (cur.surahId === 114 && nextId === 1) {
+        const first = getSurahById(1);
+        const [ayahs, timings] = await Promise.all([
+          getSurahAyahs(1).catch(() => []),
+          getSurahTimings(1, cur.reciter.qcfRecitationId).catch(() => null),
+        ]);
+        await get().play({ reciter: cur.reciter, surahId: 1, surahName: first?.nameAr ?? 'سورة الفاتحة', ayahs, timings });
+        return;
+    }
     // نعتمد على getSurahById للاسم الصحيح
     const next = getSurahById(nextId);
-    await get().play({ reciter: cur.reciter, surahId: nextId, surahName: next?.nameAr ?? `سورة ${nextId}` });
+    const [ayahs, timings] = await Promise.all([
+      getSurahAyahs(nextId).catch(() => []),
+      getSurahTimings(nextId, cur.reciter.qcfRecitationId).catch(() => null),
+    ]);
+    prefetchSurahs([nextId + 1].filter((id) => id <= 114));
+    await get().play({ reciter: cur.reciter, surahId: nextId, surahName: next?.nameAr ?? `سورة ${nextId}`, ayahs, timings });
   },
 
   async playPrev() {
     const cur = get().current;
     if (!cur) return;
-    const prevId = cur.surahId - 1;
-    if (prevId < 1) {
+    const prevId = previousSurahId(cur.surahId);
+    if (cur.surahId <= 1) {
       // قبل الفاتحة - أعد للبداية
       await get().seek(0);
       return;

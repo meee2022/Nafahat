@@ -26,6 +26,9 @@ import { calculateQiblaBearing, distanceToKaaba, describeBearingAr, PRESET_CITIE
 import { OrnamentalRule } from '@components/ornaments';
 import { TOP_BAR_PAD } from '@utils/safeArea';
 
+// نستورد TextInput بأمان
+import { TextInput } from 'react-native';
+
 export default function QiblaScreen() {
   const t = useTheme();
   const tr = useT();
@@ -485,9 +488,6 @@ export default function QiblaScreen() {
     </View>
   );
 }
-
-// نستورد TextInput بأمان
-import { TextInput } from 'react-native';
 
 const styles = StyleSheet.create({
   topBar: {

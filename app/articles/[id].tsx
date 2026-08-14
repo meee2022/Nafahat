@@ -82,10 +82,7 @@ export default function ArticleDetailScreen() {
   }
 
   const cat = ARTICLE_CATEGORIES.find((c) => c.id === article.category);
-  const related = useMemo(
-    () => getArticlesByCategory(article.category).filter((a) => a.id !== article.id).slice(0, 3),
-    [article],
-  );
+  const related = getArticlesByCategory(article.category).filter((a) => a.id !== article.id).slice(0, 3);
 
   const handleShare = () => {
     Share.share({

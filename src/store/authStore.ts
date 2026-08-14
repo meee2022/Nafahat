@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { convex, convexApi } from '@services/convex';
 import { secureGet, secureSet, secureDelete } from '@services/secureStorage';
 
-const useCloudAuth = (): boolean => !!convex && !!convexApi?.users;
+const hasCloudAuth = (): boolean => !!convex && !!convexApi?.users;
 
 export type AuthStatus = 'unknown' | 'guest' | 'authenticated';
 
@@ -36,6 +36,7 @@ export type AuthError =
   | 'email-in-use'
   | 'weak-password'
   | 'invalid-email'
+  | 'too-many-attempts'
   | 'network'
   | 'unknown';
 
@@ -52,6 +53,7 @@ interface AuthState {
   signInAsGuest: () => Promise<void>;
   signOut: () => Promise<void>;
   forgotPassword: (email: string) => Promise<boolean>;
+  resetPassword: (email: string, code: string, newPassword: string) => Promise<boolean>;
   clearError: () => void;
   hydrate: () => Promise<void>;
 }
@@ -63,7 +65,7 @@ const KEY_USERS_DB = '@nafahat/auth/users-db';     // قاعدة بيانات م
 
 // ----- تحقّقات بسيطة -----
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const isStrongPassword = (pw: string) => pw.length >= 6;
+const isStrongPassword = (pw: string) => pw.length >= 8;
 
 // ----- "قاعدة بيانات" محلية للحسابات (demo) -----
 interface StoredUser {
@@ -118,9 +120,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ loading: false, error: 'invalid-email' });
       return false;
     }
+    if (!hasCloudAuth()) {
+      set({ loading: false, error: 'network' });
+      return false;
+    }
 
     // 🌐 محاولة Convex أولاً (إذا متاحة)
-    if (useCloudAuth() && convex && convexApi) {
+    if (hasCloudAuth() && convex && convexApi) {
       try {
         const result = await convex.mutation(convexApi.users.signIn, { email, password });
         if (!result.ok) {
@@ -142,8 +148,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ status: 'authenticated', user, token: result.token, loading: false, error: null });
         return true;
       } catch (e) {
-        // fallback إلى local لو فشل الـ Convex
         if (__DEV__) console.warn('[auth] Convex signIn failed, falling back to local', e);
+        set({ loading: false, error: 'network' });
+        return false;
       }
     }
 
@@ -191,9 +198,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ loading: false, error: 'weak-password' });
       return false;
     }
+    if (!hasCloudAuth()) {
+      set({ loading: false, error: 'network' });
+      return false;
+    }
 
     // 🌐 محاولة Convex أولاً
-    if (useCloudAuth() && convex && convexApi) {
+    if (hasCloudAuth() && convex && convexApi) {
       try {
         const result = await convex.mutation(convexApi.users.signUp, { name, email, password });
         if (!result.ok) {
@@ -216,6 +227,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         return true;
       } catch (e) {
         if (__DEV__) console.warn('[auth] Convex signUp failed, falling back to local', e);
+        set({ loading: false, error: 'network' });
+        return false;
       }
     }
 
@@ -267,6 +280,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   async signOut() {
+    const token = get().token;
+    if (token && hasCloudAuth() && convex && convexApi) {
+      try {
+        await convex.mutation(convexApi.users.signOut, { token });
+      } catch {
+        // Local sign-out must still complete when the network is unavailable.
+      }
+    }
     await AsyncStorage.removeItem(KEY_USER);
     await secureDelete(KEY_TOKEN);
     await AsyncStorage.setItem(KEY_STATUS, 'guest');
@@ -281,10 +302,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       return false;
     }
 
-    // mock - في الإنتاج: استدعِ API لإرسال إيميل reset
-    await new Promise((r) => setTimeout(r, 800));
-    set({ loading: false });
-    return true;
+    if (!convex) {
+      set({ loading: false, error: 'network' });
+      return false;
+    }
+    try {
+      const result = await convex.action('passwordReset:request' as any, { email: email.trim() });
+      if (!result.ok) {
+        set({ loading: false, error: result.error === 'too-many-attempts' ? 'too-many-attempts' : 'network' });
+        return false;
+      }
+      set({ loading: false });
+      return true;
+    } catch {
+      set({ loading: false, error: 'network' });
+      return false;
+    }
+  },
+
+  async resetPassword(email, code, newPassword) {
+    set({ loading: true, error: null });
+    if (!isValidEmail(email) || !/^\d{6}$/.test(code) || !isStrongPassword(newPassword) || !convex || !convexApi) {
+      set({ loading: false, error: !isStrongPassword(newPassword) ? 'weak-password' : 'invalid-credentials' });
+      return false;
+    }
+    try {
+      const result = await convex.mutation(convexApi.users.resetPassword, { email, code, newPassword });
+      set({ loading: false, error: result.ok ? null : 'invalid-credentials' });
+      return result.ok;
+    } catch {
+      set({ loading: false, error: 'network' });
+      return false;
+    }
   },
 
   clearError() {
@@ -298,7 +347,32 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const token = await secureGet(KEY_TOKEN);
 
       if (status === 'authenticated' && userRaw && token) {
-        set({ status: 'authenticated', user: JSON.parse(userRaw), token });
+        if (!hasCloudAuth() || !convex || !convexApi) {
+          set({ status: 'unknown', user: null, token: null });
+          return;
+        }
+        try {
+          const remoteUser = await convex.query(convexApi.users.me, { token });
+          if (!remoteUser) {
+            await AsyncStorage.multiRemove([KEY_USER, KEY_STATUS]);
+            await secureDelete(KEY_TOKEN);
+            set({ status: 'guest', user: null, token: null });
+            return;
+          }
+          const user: AuthUser = {
+            id: remoteUser.id,
+            email: remoteUser.email,
+            name: remoteUser.name,
+            avatarSeed: remoteUser.avatarSeed,
+            joinedAt: remoteUser.joinedAt,
+            emailVerified: remoteUser.emailVerified,
+          };
+          await AsyncStorage.setItem(KEY_USER, JSON.stringify(user));
+          set({ status: 'authenticated', user, token });
+        } catch {
+          // Preserve the cached session while offline, but never mark it freshly validated.
+          set({ status: 'unknown', user: JSON.parse(userRaw), token });
+        }
       } else if (status === 'guest') {
         set({ status: 'guest' });
       } else {
@@ -318,7 +392,8 @@ export const authErrorMessage = (e: AuthError | null): string => {
     case 'account-not-found':   return 'لا يوجد حساب بهذا البريد - أنشئ حساباً جديداً أولاً';
     case 'invalid-credentials': return 'كلمة المرور غير صحيحة';
     case 'email-in-use':        return 'هذا البريد مسجّل بالفعل';
-    case 'weak-password':       return 'كلمة المرور قصيرة (6 أحرف على الأقل)';
+    case 'weak-password':       return 'كلمة المرور قصيرة (8 أحرف على الأقل)';
+    case 'too-many-attempts':   return 'محاولات كثيرة. انتظر 15 دقيقة ثم حاول مجددًا';
     case 'network':             return 'تعذّر الاتصال - تحقق من الإنترنت';
     default:                    return 'حدث خطأ غير متوقّع';
   }

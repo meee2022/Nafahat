@@ -31,8 +31,8 @@ export const JourneyCard: React.FC<Props> = ({ icon, title, subtitle, onPress, a
     if (!active) return;
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
       ]),
     ).start();
   }, [active, pulse]);

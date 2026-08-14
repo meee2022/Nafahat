@@ -98,6 +98,7 @@ export default function Root({ children }: Props) {
 
           /* ════ تحسينات إضافية ════ */
           * { box-sizing: border-box; }
+          html, body, #root { width: 100%; min-height: 100%; overflow-x: hidden; }
 
           /* منع زوم iOS عند الضغط على input */
           input, textarea, select {

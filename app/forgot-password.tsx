@@ -26,9 +26,12 @@ export default function ForgotPasswordScreen() {
   const t = useTheme();
   const tr = useT();
   const router = useRouter();
-  const { forgotPassword, loading, error, clearError } = useAuthStore();
+  const { forgotPassword, resetPassword, loading, error, clearError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
+  const [code, setCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [completed, setCompleted] = useState(false);
 
   const handleSubmit = async () => {
     clearError();
@@ -36,10 +39,16 @@ export default function ForgotPasswordScreen() {
     if (ok) setSent(true);
   };
 
+  const handleReset = async () => {
+    clearError();
+    const ok = await resetPassword(email.trim(), code.trim(), newPassword);
+    if (ok) setCompleted(true);
+  };
+
   return (
     <View style={{ flex: 1, backgroundColor: t.colors.background }}>
       <View style={[styles.topBar, { borderBottomColor: t.colors.borderGold }]}>
-        <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.iconBtn, { borderColor: t.colors.border }]}>
+        <Pressable onPress={() => router.back()} hitSlop={10} style={[styles.iconBtn, { borderColor: t.colors.border }]} accessibilityRole="button" accessibilityLabel={tr('common.back')}>
           <ArrowRight size={18} color={t.colors.textPrimary} strokeWidth={1.6} />
         </Pressable>
         <View style={{ flex: 1, alignItems: 'center' }}>
@@ -90,6 +99,7 @@ export default function ForgotPasswordScreen() {
                   placeholderTextColor={t.colors.textTertiary}
                   autoCapitalize="none"
                   keyboardType="email-address"
+                  accessibilityLabel={tr('auth.email')}
                   style={{ flex: 1, color: t.colors.textPrimary, textAlign: 'right', fontSize: 15 }}
                 />
               </View>
@@ -97,6 +107,9 @@ export default function ForgotPasswordScreen() {
               <Pressable
                 onPress={handleSubmit}
                 disabled={loading || !email.trim()}
+                accessibilityRole="button"
+                accessibilityLabel={tr('auth.forgot.sendButton')}
+                accessibilityState={{ disabled: loading || !email.trim(), busy: loading }}
                 style={({ pressed }) => [
                   styles.primaryBtn,
                   {
@@ -115,7 +128,7 @@ export default function ForgotPasswordScreen() {
                 )}
               </Pressable>
 
-              <Pressable onPress={() => router.back()} style={{ marginTop: 16, alignItems: 'center', paddingVertical: 8 }}>
+              <Pressable onPress={() => router.back()} style={{ marginTop: 16, alignItems: 'center', paddingVertical: 8 }} accessibilityRole="button" accessibilityLabel={tr('auth.forgot.backToLogin')}>
                 <Text variant="bodySm" color={t.colors.textSecondary}>
                   {tr('auth.forgot.remember')} <Text color={t.colors.accent} style={{ fontWeight: '700' }}>{tr('auth.forgot.backToLogin')}</Text>
                 </Text>
@@ -129,23 +142,59 @@ export default function ForgotPasswordScreen() {
                   <Check size={28} color={t.colors.success} strokeWidth={2} />
                 </View>
                 <Text style={[styles.eyebrow, { color: t.colors.success, marginTop: 16 }]}>◇  {tr('common.done')}  ◇</Text>
-                <Text style={[styles.title, { color: t.colors.textPrimary, marginTop: 8 }]}>{tr('auth.forgot.checkInbox')}</Text>
+                <Text style={[styles.title, { color: t.colors.textPrimary, marginTop: 8 }]}>
+                  {completed ? 'تم تغيير كلمة المرور' : tr('auth.forgot.checkInbox')}
+                </Text>
                 <Text variant="body" color={t.colors.textSecondary} align="center" style={{ marginTop: 8, lineHeight: 24, maxWidth: 320 }}>
                   {tr('auth.forgot.sentTo')}
                 </Text>
                 <Text variant="subtitle" color={t.colors.accent} style={{ marginTop: 6, fontWeight: '700' }}>
                   {email}
                 </Text>
-                <Text variant="caption" color={t.colors.textTertiary} align="center" style={{ marginTop: 12, lineHeight: 18, maxWidth: 300 }}>
-                  {tr('auth.forgot.spamHint')}
-                </Text>
+                {!completed ? (
+                  <>
+                    <Text variant="caption" color={t.colors.textTertiary} align="center" style={{ marginTop: 12, lineHeight: 18, maxWidth: 300 }}>
+                      {tr('auth.forgot.spamHint')}
+                    </Text>
+                    {error ? (
+                      <View style={[styles.errorBox, { backgroundColor: t.colors.error + '12', borderColor: t.colors.error, marginTop: 14 }]}>
+                        <AlertCircle size={16} color={t.colors.error} />
+                        <Text variant="bodySm" color={t.colors.error} style={{ flex: 1 }}>الرمز غير صحيح أو انتهت صلاحيته.</Text>
+                      </View>
+                    ) : null}
+                    <TextInput
+                      value={code}
+                      onChangeText={(value) => setCode(value.replace(/\D/g, '').slice(0, 6))}
+                      placeholder="رمز التحقق المكوّن من 6 أرقام"
+                      placeholderTextColor={t.colors.textTertiary}
+                      keyboardType="number-pad"
+                      textContentType="oneTimeCode"
+                      accessibilityLabel="رمز التحقق"
+                      style={[styles.resetInput, { color: t.colors.textPrimary, borderColor: t.colors.border }]}
+                    />
+                    <TextInput
+                      value={newPassword}
+                      onChangeText={setNewPassword}
+                      placeholder="كلمة المرور الجديدة، 8 أحرف على الأقل"
+                      placeholderTextColor={t.colors.textTertiary}
+                      secureTextEntry
+                      textContentType="newPassword"
+                      accessibilityLabel="كلمة المرور الجديدة"
+                      style={[styles.resetInput, { color: t.colors.textPrimary, borderColor: t.colors.border }]}
+                    />
+                  </>
+                ) : null}
 
                 <View style={{ marginTop: 18, alignItems: 'center' }}>
                   <OrnamentalRule width={140} color={t.colors.accent} variant="rosette" />
                 </View>
 
                 <Pressable
-                  onPress={() => router.replace('/login')}
+                  onPress={completed ? () => router.replace('/login') : handleReset}
+                  disabled={loading || (!completed && (code.length !== 6 || newPassword.length < 8))}
+                  accessibilityRole="button"
+                  accessibilityLabel={completed ? tr('auth.forgot.returnLogin') : 'تعيين كلمة المرور الجديدة'}
+                  accessibilityState={{ disabled: loading || (!completed && (code.length !== 6 || newPassword.length < 8)), busy: loading }}
                   style={({ pressed }) => [
                     styles.primaryBtn,
                     {
@@ -156,7 +205,9 @@ export default function ForgotPasswordScreen() {
                     },
                   ]}
                 >
-                  <Text style={[styles.primaryBtnText, { color: t.colors.onPrimary }]}>{tr('auth.forgot.returnLogin')}</Text>
+                  <Text style={[styles.primaryBtnText, { color: t.colors.onPrimary }]}>
+                    {completed ? tr('auth.forgot.returnLogin') : 'تعيين كلمة المرور الجديدة'}
+                  </Text>
                   <ArrowLeft size={16} color={t.colors.onPrimary} />
                 </Pressable>
               </View>
@@ -195,6 +246,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 12, height: 48,
     borderWidth: 1, borderRadius: 4,
+  },
+  resetInput: {
+    width: '100%', height: 48, borderWidth: 1, borderRadius: 4,
+    paddingHorizontal: 12, marginTop: 12, textAlign: 'right', fontSize: 15,
   },
 
   primaryBtn: {

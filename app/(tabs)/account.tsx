@@ -9,7 +9,7 @@ import {
   Award, BookOpen, Brain, Headphones, Heart, Flame, Calendar,
   Moon, Sun, Type, Bell, Globe, Download, Cloud, Info, ChevronLeft,
   LogIn, FileText, Mic, Sparkles, Edit3, Shield, Wrench, MapPin, Share2, Trophy,
-} from 'lucide-react-native';
+ LogOut } from 'lucide-react-native';
 import { useIsAdmin } from '@store/appConfigStore';
 import { computeUserLevel } from '@utils/userLevel';
 import { useTheme, useThemeMode } from '@theme/index';
@@ -23,7 +23,6 @@ import { copyToClipboard, shareText } from '@utils/clipboard';
 import { useLanguageStore, useT } from '@store/languageStore';
 import { LANGUAGES } from '@/i18n/index';
 import { useAuthStore } from '@store/authStore';
-import { LogOut } from 'lucide-react-native';
 
 export default function AccountScreen() {
   const t = useTheme();

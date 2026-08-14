@@ -12,8 +12,7 @@ import {
 import { useTheme } from '@theme/index';
 import { Card, Button, ProgressBar } from '@components/ui';
 import { useSettingsStore } from '@store/index';
-import { SURAHS } from '@data/surahs';
-import { arabicNumber } from '@data/surahs';
+import { SURAHS , arabicNumber } from '@data/surahs';
 
 interface CacheStats {
   surahsCached: number;

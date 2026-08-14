@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, StyleSheet, Pressable, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BookOpen, Brain, Headphones, Sparkles, Globe, Check } from 'lucide-react-native';
+import { BookOpen, Brain, Headphones, Sparkles, Globe, Check, MapPin } from 'lucide-react-native';
 import Svg, { Path, Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-native-svg';
 import { useTheme } from '@theme/index';
 import { useUserStore } from '@store/index';
@@ -11,12 +11,15 @@ import { useAuthStore } from '@store/authStore';
 import { LANGUAGES } from '@/i18n/index';
 import { Text } from '@components/ui';
 import { useAppInfo } from '@store/appConfigStore';
+import { useSettingsStore } from '@store/settingsStore';
+import { detectCurrentLocation } from '@services/locationDetection';
 
 interface Slide {
   icon: React.ReactNode;
   title: string;
   desc: string;
   isLangPicker?: boolean;
+  isLocationPicker?: boolean;
 }
 
 const GOLD = '#D4B570';
@@ -68,6 +71,8 @@ export default function Onboarding() {
   const lang = useLanguageStore((s) => s.lang);
   const setLang = useLanguageStore((s) => s.setLang);
   const [index, setIndex] = useState(0);
+  const [detecting, setDetecting] = useState(false);
+  const setDetectedLocation = useSettingsStore((s) => s.setDetectedLocation);
 
   const slides: Slide[] = [
     {
@@ -96,6 +101,12 @@ export default function Onboarding() {
       title: tr('onboard.slide4Title'),
       desc:  tr('onboard.slide4Desc'),
     },
+    {
+      icon: <MapPin size={46} color={GOLD} strokeWidth={1.4} />,
+      title: 'مواقيت دقيقة حسب موقعك',
+      desc: 'نستخدم موقعك عند الطلب فقط لتحديد المدينة وحساب مواقيت الصلاة والقبلة بدقة. يمكنك اختيار المدينة يدوياً أيضاً.',
+      isLocationPicker: true,
+    },
   ];
 
   const isLast = index === slides.length - 1;
@@ -107,9 +118,36 @@ export default function Onboarding() {
     router.replace('/(tabs)');
   };
 
+  const chooseLocationManually = async () => {
+    completeOnboarding();
+    await signInAsGuest();
+    router.replace('/location');
+  };
+
   const next = () => {
     if (isLast) enterAsGuest();
     else setIndex((i) => i + 1);
+  };
+
+  const detectAndEnter = async () => {
+    if (detecting) return;
+    setDetecting(true);
+    try {
+      setDetectedLocation(await detectCurrentLocation());
+      await enterAsGuest();
+    } catch (error) {
+      const denied = error instanceof Error && error.message === 'LOCATION_PERMISSION_DENIED';
+      Alert.alert(
+        denied ? 'لم يتم السماح بالموقع' : 'تعذّر تحديد موقعك',
+        'لن نفترض أنك في الدوحة. اختر مدينتك يدوياً لضمان دقة مواقيت الصلاة.',
+        [
+          { text: 'لاحقاً', style: 'cancel' },
+          { text: 'اختيار المدينة', onPress: chooseLocationManually },
+        ],
+      );
+    } finally {
+      setDetecting(false);
+    }
   };
 
   return (
@@ -132,10 +170,12 @@ export default function Onboarding() {
 
       {/* شريط أعلى */}
       <View style={styles.top}>
-        {!slide.isLangPicker ? (
+        {!slide.isLangPicker && !slide.isLocationPicker ? (
           <Pressable
             onPress={enterAsGuest}
             hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={tr('onboard.skip')}
             style={{ borderWidth: 1, borderColor: GOLD_BORDER, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 5 }}
           >
             <Text style={{ color: GOLD, fontSize: 13, fontWeight: '600' }}>{tr('onboard.skip')}</Text>
@@ -169,6 +209,9 @@ export default function Onboarding() {
                   <Pressable
                     key={l.code}
                     onPress={() => setLang(l.code)}
+                    accessibilityRole="radio"
+                    accessibilityLabel={`${l.nameNative}, ${l.nameEn}`}
+                    accessibilityState={{ selected: active }}
                     style={({ pressed }) => [
                       styles.langRow,
                       {
@@ -210,6 +253,11 @@ export default function Onboarding() {
             <Text variant="body" color={WHITE_DIM} align="center" style={{ maxWidth: 320, lineHeight: 26 }}>
               {slide.desc}
             </Text>
+            {slide.isLocationPicker ? (
+              <Pressable onPress={chooseLocationManually} style={styles.manualLocation}>
+                <Text style={{ color: GOLD, fontSize: 14, fontWeight: '700' }}>اختيار المدينة يدوياً</Text>
+              </Pressable>
+            ) : null}
           </>
         )}
       </View>
@@ -242,7 +290,10 @@ export default function Onboarding() {
 
         {/* زر CTA بتدرج ذهبي */}
         <Pressable
-          onPress={next}
+          onPress={slide.isLocationPicker ? detectAndEnter : next}
+          disabled={detecting}
+          accessibilityRole="button"
+          accessibilityLabel={isLast ? tr('onboard.start') : tr('onboard.next')}
           style={({ pressed }) => [
             styles.cta,
             { opacity: pressed ? 0.9 : 1, transform: [{ scale: pressed ? 0.98 : 1 }] },
@@ -254,9 +305,13 @@ export default function Onboarding() {
             end={{ x: 1, y: 0 }}
             style={[StyleSheet.absoluteFill, { borderRadius: 16 }]}
           />
-          <Text style={{ color: '#071410', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 }}>
-            {isLast ? tr('onboard.start') : `${tr('onboard.next')} ◀`}
-          </Text>
+          {detecting ? (
+            <ActivityIndicator color="#071410" />
+          ) : (
+            <Text style={{ color: '#071410', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 }}>
+              {slide.isLocationPicker ? 'تحديد موقعي والمتابعة' : (isLast ? tr('onboard.start') : `${tr('onboard.next')} ◀`)}
+            </Text>
+          )}
         </Pressable>
       </View>
     </LinearGradient>
@@ -264,10 +319,10 @@ export default function Onboarding() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 24, paddingTop: 60, paddingBottom: 44 },
+  container: { flex: 1, width: '100%', overflow: 'hidden', paddingHorizontal: 24, paddingTop: 60, paddingBottom: 44 },
   top: { alignItems: 'flex-end', minHeight: 36, marginBottom: 4 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  bottom: { gap: 18 },
+  center: { flex: 1, width: '100%', minWidth: 0, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  bottom: { width: '100%', minWidth: 0, gap: 18 },
 
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { height: 8, borderRadius: 4 },
@@ -287,6 +342,7 @@ const styles = StyleSheet.create({
     width: 24, height: 24, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
+  manualLocation: { marginTop: 18, paddingHorizontal: 18, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: GOLD_BORDER },
 
   charityBadge: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

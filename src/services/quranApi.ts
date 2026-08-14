@@ -11,11 +11,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { Ayah } from '@/types/index';
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 
 const API_BASE = 'https://api.alquran.cloud/v1';
 const EDITION = 'quran-uthmani';
 const CACHE_PREFIX = '@nafahat/quran/';
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 
 interface ApiAyah {
   number: number;
@@ -39,7 +40,7 @@ interface ApiResponse {
 interface CachedSurah {
   version: string;
   surahId: number;
-  ayahs: Array<{ number: number; text: string; juz: number; page: number }>;
+  ayahs: { number: number; text: string; juz: number; page: number }[];
   cachedAt: number;
 }
 
@@ -82,7 +83,7 @@ function saveToDisk(surahId: number, data: CachedSurah): void {
 
 async function fetchFromAlQuranCloud(surahId: number): Promise<CachedSurah> {
   const url = `${API_BASE}/surah/${surahId}/${EDITION}`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) throw new Error(`AlQuran.cloud HTTP ${res.status}`);
   const json = (await res.json()) as ApiResponse;
   if (json.code !== 200) throw new Error('AlQuran.cloud response not OK');
@@ -111,7 +112,7 @@ const QURAN_COM_BASE = 'https://api.quran.com/api/v4';
 interface QuranComVerse {
   id: number;
   verse_key: string; // "1:1"
-  verse_number: number;
+  verse_number?: number;
   juz_number?: number;
   page_number?: number;
   text_uthmani: string;
@@ -122,7 +123,10 @@ async function fetchFromQuranCom(surahId: number): Promise<CachedSurah> {
   const textUrl   = `${QURAN_COM_BASE}/quran/verses/uthmani?chapter_number=${surahId}`;
   const metaUrl   = `${QURAN_COM_BASE}/verses/by_chapter/${surahId}?fields=juz_number,page_number&per_page=300`;
 
-  const [textRes, metaRes] = await Promise.all([fetch(textUrl), fetch(metaUrl)]);
+  const [textRes, metaRes] = await Promise.all([
+    fetchWithTimeout(textUrl),
+    fetchWithTimeout(metaUrl),
+  ]);
   if (!textRes.ok) throw new Error(`Quran.com text HTTP ${textRes.status}`);
   const textJson = await textRes.json();
   const verses: QuranComVerse[] = textJson?.verses ?? [];
@@ -136,7 +140,9 @@ async function fetchFromQuranCom(surahId: number): Promise<CachedSurah> {
     const metaJson = await metaRes.json();
     const metaVerses: QuranComVerse[] = metaJson?.verses ?? [];
     for (const v of metaVerses) {
-      metaMap.set(v.verse_number, {
+      const verseNumber = v.verse_number ?? Number(v.verse_key.split(':')[1]);
+      if (!Number.isInteger(verseNumber) || verseNumber < 1) continue;
+      metaMap.set(verseNumber, {
         juz: v.juz_number ?? 0,
         page: v.page_number ?? 0,
       });
@@ -144,10 +150,16 @@ async function fetchFromQuranCom(surahId: number): Promise<CachedSurah> {
   }
 
   const ayahs = verses.map((v, idx) => {
-    const meta = metaMap.get(v.verse_number);
+    // The Uthmani text endpoint identifies verses with `verse_key` and may omit
+    // `verse_number`; deriving it prevents every verse from falling back to page 0.
+    const verseNumber = v.verse_number ?? Number(v.verse_key.split(':')[1]);
+    if (!Number.isInteger(verseNumber) || verseNumber < 1) {
+      throw new Error(`Quran.com: invalid verse key ${v.verse_key}`);
+    }
+    const meta = metaMap.get(verseNumber);
     const text = v.text_uthmani || '';
     return {
-      number: v.verse_number,
+      number: verseNumber,
       text: idx === 0 && surahId !== 1 && surahId !== 9 ? stripBismillah(text) : text,
       juz: meta?.juz ?? 0,
       page: meta?.page ?? 0,

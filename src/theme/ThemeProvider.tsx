@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
-import { Appearance, ColorSchemeName, I18nManager } from 'react-native';
+import { Appearance, ColorSchemeName } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightColors, darkColors, ThemeColors } from './colors';
 import { spacing, radius, shadows, opacity, hitSlop } from './spacing';
@@ -81,20 +81,11 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mode, setModeState] = useState<ThemeMode>('system');
-  const [systemScheme, setSystemScheme] = useState<ColorSchemeName>(Appearance.getColorScheme());
+  const [systemScheme, setSystemScheme] = useState<ColorSchemeName>(Appearance.getColorScheme() ?? 'light');
   const [fontScale, setFontScaleState] = useState<FontScale>('md');
   const [highContrast, setHighContrastState] = useState<boolean>(false);
 
   // فرض RTL لازم لقراءة النص العربي صحيحاً على Android.
-  useEffect(() => {
-    if (!I18nManager.isRTL) {
-      try {
-        I18nManager.allowRTL(true);
-        I18nManager.forceRTL(true);
-      } catch {}
-    }
-  }, []);
-
   useEffect(() => {
     (async () => {
       try {

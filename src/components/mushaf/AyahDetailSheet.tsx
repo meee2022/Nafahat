@@ -671,7 +671,7 @@ const ActionBig: React.FC<{
 
 const styles = StyleSheet.create({
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(10, 22, 18, 0.55)',
   },
   kbWrap: {

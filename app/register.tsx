@@ -50,7 +50,7 @@ export default function RegisterScreen() {
   // مؤشرات قوّة كلمة المرور
   const pwStrength = (() => {
     if (password.length === 0) return null;
-    if (password.length < 6) return { label: tr('auth.pwWeak'), color: t.colors.error, pct: 0.3 };
+    if (password.length < 8) return { label: tr('auth.pwWeak'), color: t.colors.error, pct: 0.3 };
     if (password.length < 9 || !/[A-Z]|[0-9]/.test(password)) return { label: tr('auth.pwMedium'), color: t.colors.warning, pct: 0.6 };
     return { label: tr('auth.pwStrong'), color: t.colors.success, pct: 1 };
   })();

@@ -25,7 +25,7 @@ let warnedFallback = false;
 
 // محاولة تحميل expo-secure-store - سيفشل بأمان لو غير مثبّت
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   const mod = require('expo-secure-store');
   if (mod && typeof mod.getItemAsync === 'function') {
     secureStore = mod as SecureStoreModule;
@@ -37,7 +37,7 @@ try {
 function warnFallbackOnce() {
   if (warnedFallback) return;
   warnedFallback = true;
-  // eslint-disable-next-line no-console
+
   console.warn(
     '[secureStorage] expo-secure-store غير مثبّت — استخدام AsyncStorage مؤقتاً.\n' +
     'لتأمين الـ tokens، شغّل: `npx expo install expo-secure-store` ثم rebuild.',

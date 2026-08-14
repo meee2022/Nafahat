@@ -72,8 +72,7 @@ async function fetchFromQuranCom(edition: string, surahId: number, ayahNumber: n
  * يجلب JSON من AlQuran.cloud مع fallback متعدد:
  *  1) quran.com (CORS-safe) — للإصدارات المدعومة
  *  2) AlQuran.cloud مباشرة — على native
- *  3) AllOrigins proxy — fallback مجاني وموثوق
- *  4) CORS-Anywhere — fallback أخير
+ * لا تُرسل الطلبات عبر CORS proxies عامة حفاظاً على الخصوصية والثبات.
  */
 async function fetchAlQuranCloudJson(directUrl: string, edition?: string, surahId?: number, ayahNumber?: number): Promise<any> {
   // ── محاولة 1: quran.com (CORS-safe دائماً)
@@ -92,21 +91,7 @@ async function fetchAlQuranCloudJson(directUrl: string, edition?: string, surahI
     return await fetchJsonWithTimeout(directUrl, 8000);
   } catch {}
 
-  // ── محاولة 3: allorigins.win proxy (مجاني وموثوق)
-  try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(directUrl)}`;
-    const res = await fetchJsonWithTimeout(proxyUrl, 8000);
-    // allorigins يُعيد { contents: '...json...' }
-    if (res?.contents) return JSON.parse(res.contents);
-  } catch {}
-
-  // ── محاولة 4: corsproxy.io كآخر محاولة
-  try {
-    const proxyUrl2 = `https://corsproxy.io/?url=${encodeURIComponent(directUrl)}`;
-    return await fetchJsonWithTimeout(proxyUrl2, 8000);
-  } catch (err) {
-    throw err;
-  }
+  throw new Error('tafsir-source-unavailable');
 }
 
 

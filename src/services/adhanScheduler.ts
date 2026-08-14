@@ -10,7 +10,8 @@
  * ⚠️ ملاحظة: تعمل فقط والتطبيق مفتوح. لأذان في الخلفية يلزم background task
  *    (متاح فقط في dev client / production build، ليس Expo Go).
  */
-import { PrayerTimes } from './prayerTimes';
+import { Platform } from 'react-native';
+import { getPrayerNameAr, PrayerTimes } from './prayerTimes';
 import { playAdhan, AdhanVoice } from './adhan';
 
 type PrayerKey = keyof PrayerTimes;
@@ -61,7 +62,11 @@ function checkAndPlay(): void {
     // نافذة دقيقة واحدة بعد الوقت تماماً (لتفادي التشغيل المتأخر جداً)
     if (nowMins === prayerMins) {
       playedToday.add(key);
-      playAdhan(preferredVoice, PRAYER_LABELS_AR[key as string]).catch(() => {});
+      // Browsers reject audio started without a direct user gesture. Web users still
+      // receive the scheduled notification/banner and can start audio themselves.
+      if (Platform.OS !== 'web') {
+        playAdhan(preferredVoice, key === 'dhuhr' ? getPrayerNameAr('dhuhr', now) : PRAYER_LABELS_AR[key as string]).catch(() => {});
+      }
       // نشغّل أذاناً واحداً فقط في الدورة - لو حدث أكثر من صلاة في نفس الدقيقة (نادر)
       // الباقي يُشغَّل في الدورة التالية
       break;

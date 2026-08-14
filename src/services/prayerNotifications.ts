@@ -13,7 +13,9 @@
  * - تذكير بقراءة آية اليوم: بعد العشاء بـ ٣٠ دقيقة
  */
 import { Platform } from 'react-native';
-import { PrayerTimes, PRAYER_NAMES_AR } from './prayerTimes';
+import { PrayerTimes, PRAYER_NAMES_AR, getJumuahFirstAdhanTime, getPrayerNameAr } from './prayerTimes';
+import { log } from '@utils/logger';
+import { notificationResult, type NotificationOperationResult } from './notificationResult';
 
 const isWeb = Platform.OS === 'web';
 
@@ -22,7 +24,9 @@ try {
   if (!isWeb) {
     Notifications = require('expo-notifications');
   }
-} catch {}
+} catch (error) {
+  log.error('expo-notifications could not be loaded', { error: String(error) });
+}
 
 /** هل واجهة إشعارات المتصفح متاحة (ويب). */
 function webNotifSupported(): boolean {
@@ -40,8 +44,9 @@ export const isAvailable = (): boolean => {
  * على أندرويد، صوت الإشعار يأتي من القناة (مش من محتوى الإشعار) — فلازم
  * نعرّف القناة بصوت adhan.wav حتى يُسمَع الأذان والتطبيق مقفول.
  */
-async function ensureAdhanChannel(): Promise<void> {
-  if (isWeb || !isAvailable() || Platform.OS !== 'android') return;
+async function ensureAdhanChannel(): Promise<boolean> {
+  if (isWeb || Platform.OS !== 'android') return true;
+  if (!isAvailable()) return false;
   try {
     await Notifications.setNotificationChannelAsync('adhan', {
       name: 'الأذان',
@@ -50,7 +55,11 @@ async function ensureAdhanChannel(): Promise<void> {
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#0F4A41',
     });
-  } catch {}
+    return true;
+  } catch (error) {
+    log.error('adhan notification channel setup failed', { error: String(error) });
+    return false;
+  }
 }
 
 /** يحوّل "HH:MM" → { hour, minute } */
@@ -79,6 +88,7 @@ const NOTIF_IDS = {
   ayahOfDay:      'ayah-of-day',
   iqamaFajr:      'iqama-fajr',
   iqamaDhuhr:     'iqama-dhuhr',
+  jumuahFirst:    'jumuah-first-adhan',
   iqamaAsr:       'iqama-asr',
   iqamaMaghrib:   'iqama-maghrib',
   iqamaIsha:      'iqama-isha',
@@ -88,6 +98,23 @@ const NOTIF_IDS = {
 export interface ScheduleOptions {
   iqamaEnabled?: boolean;
   iqamaOffsetMin?: number;
+  datedTimes?: { date: Date; times: PrayerTimes }[];
+}
+
+const PRAYER_NOTIFICATION_PREFIX = 'prayer-schedule-';
+
+function triggerFor(date: Date, hour: number, minute: number, channelId?: string): any {
+  const target = new Date(date);
+  target.setHours(hour, minute, 0, 0);
+  return {
+    type: Notifications.SchedulableTriggerInputTypes.DATE,
+    date: target,
+    ...(channelId ? { channelId } : {}),
+  };
+}
+
+function datedId(date: Date, suffix: string): string {
+  return `${PRAYER_NOTIFICATION_PREFIX}${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}-${suffix}`;
 }
 
 /** الصلوات الخمس المفروضة (بدون الشروق) - تُستخدم للأذان والإقامة. */
@@ -131,9 +158,11 @@ function scheduleWebAt(hour: number, minute: number, title: string, body: string
   if (delay <= 0) return; // فات وقته اليوم
   const id = setTimeout(() => {
     try {
-      // eslint-disable-next-line no-new
+
       new Notification(title, { body, tag: title });
-    } catch {}
+    } catch (error) {
+      log.error('web notification display failed', { title, error: String(error) });
+    }
   }, delay);
   webTimers.push(id);
 }
@@ -142,15 +171,22 @@ async function scheduleWeb(times: PrayerTimes, opts: ScheduleOptions): Promise<v
   const granted = await ensureWebPermission();
   if (!granted) return;
   clearWebTimers();
+  const today = new Date();
+
+  if (today.getDay() === 5) {
+    const first = parseTime(getJumuahFirstAdhanTime(times.dhuhr));
+    scheduleWebAt(first.hour, first.minute, '🕌 الأذان الأول لصلاة الجمعة', 'حان وقت الاستعداد والتبكير إلى صلاة الجمعة');
+  }
 
   for (const p of FARD_PRAYERS) {
+    const prayerName = p.key === 'dhuhr' ? getPrayerNameAr('dhuhr', today) : p.nameAr;
     const { hour, minute } = parseTime(times[p.key]);
-    scheduleWebAt(hour, minute, `🕌 ${p.nameAr}`, `حان وقت أذان ${p.nameAr}`);
+    scheduleWebAt(hour, minute, `🕌 ${prayerName}`, `حان وقت أذان ${prayerName}`);
 
     // تنبيه الإقامة بعد الأذان بعدد الدقائق المختار
     if (opts.iqamaEnabled) {
       const iq = addMinutes(times[p.key], opts.iqamaOffsetMin ?? 10);
-      scheduleWebAt(iq.hour, iq.minute, `🕌 إقامة ${p.nameAr}`, `حان وقت إقامة صلاة ${p.nameAr}`);
+      scheduleWebAt(iq.hour, iq.minute, `🕌 إقامة ${prayerName}`, `حان وقت إقامة صلاة ${prayerName}`);
     }
   }
 
@@ -172,7 +208,7 @@ export async function sendTestNotification(): Promise<boolean> {
   if (isWeb || !isAvailable()) return false;
   const granted = await ensurePermission();
   if (!granted) return false;
-  await ensureAdhanChannel();
+  if (!(await ensureAdhanChannel())) return false;
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -183,7 +219,8 @@ export async function sendTestNotification(): Promise<boolean> {
       trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 3, channelId: 'adhan' },
     });
     return true;
-  } catch {
+  } catch (error) {
+    log.error('test notification scheduling failed', { error: String(error) });
     return false;
   }
 }
@@ -193,34 +230,49 @@ export async function ensurePermission(): Promise<boolean> {
   if (isWeb) return ensureWebPermission();
   if (!isAvailable()) return false;
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    if (existing === 'granted') return true;
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
-  } catch {
+    const accepted = (value: any) => value?.granted === true || value?.status === 'granted' ||
+      value?.ios?.status === Notifications?.IosAuthorizationStatus?.PROVISIONAL ||
+      value?.ios?.status === Notifications?.IosAuthorizationStatus?.EPHEMERAL;
+    const existing = await Notifications.getPermissionsAsync();
+    if (accepted(existing)) return true;
+    return accepted(await Notifications.requestPermissionsAsync());
+  } catch (error) {
+    log.error('notification permission check failed', { error: String(error) });
     return false;
   }
 }
 
 /** يلغي كل إشعارات الصلاة المُجَدْوَلة. */
-export async function cancelAllPrayerNotifications(): Promise<void> {
+export async function cancelAllPrayerNotifications(): Promise<NotificationOperationResult> {
   if (isWeb) {
     clearWebTimers();
-    return;
+    return notificationResult(0, 0, 'تم إيقاف مؤقتات التنبيهات في المتصفح.');
   }
-  if (!isAvailable()) return;
+  if (!isAvailable()) return notificationResult(0, 1, 'خدمة الإشعارات غير متاحة في هذه النسخة.');
   try {
-    for (const id of Object.values(NOTIF_IDS)) {
-      await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    for (const item of scheduled) {
+      if (typeof item.identifier === 'string' && item.identifier.startsWith(PRAYER_NOTIFICATION_PREFIX)) {
+        await Notifications.cancelScheduledNotificationAsync(item.identifier);
+      }
     }
-  } catch {}
+    for (const id of Object.values(NOTIF_IDS)) {
+      await Notifications.cancelScheduledNotificationAsync(id).catch((error: unknown) => {
+        log.warn('notification was not present while cancelling', { id, error: String(error) });
+      });
+    }
+    return notificationResult(0, 0, 'تم إيقاف تنبيهات الصلاة.');
+  } catch (error) {
+    log.error('cancel prayer notifications failed', { error: String(error) });
+    return notificationResult(0, 1, 'تعذّر إيقاف بعض تنبيهات الصلاة.');
+  }
 }
 
 /**
  * يجدول إشعارات الصلوات الخمس + أذكار + آية اليوم بناءً على مواقيت اليوم.
  * يلغي السابق ثم يُعيد الجدولة كاملة.
  */
-export async function schedulePrayerNotifications(times: PrayerTimes, opts: ScheduleOptions = {}): Promise<void> {
+async function schedulePrayerNotificationsLegacy(times: PrayerTimes, opts: ScheduleOptions = {}): Promise<void> {
   if (isWeb) {
     await scheduleWeb(times, opts);
     return;
@@ -250,7 +302,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour, minute, channelId: 'adhan' },
       });
-    } catch {}
+    } catch (error) { log.error('legacy prayer notification scheduling failed', { prayer: p.key, error: String(error) }); }
 
     // تنبيه الإقامة بعد الأذان بعدد الدقائق المختار
     if (opts.iqamaEnabled) {
@@ -266,7 +318,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
           },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: iq.hour, minute: iq.minute },
         });
-      } catch {}
+      } catch (error) { log.error('legacy iqama notification scheduling failed', { prayer: p.key, error: String(error) }); }
     }
   }
 
@@ -283,7 +335,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: morningTime.hour, minute: morningTime.minute },
     });
-  } catch {}
+  } catch (error) { log.error('legacy morning reminder scheduling failed', { error: String(error) }); }
 
   // أذكار المساء - قبل المغرب بـ ٣٠ دقيقة
   const eveningTime = addMinutes(times.maghrib, -30);
@@ -298,7 +350,7 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: eveningTime.hour, minute: eveningTime.minute },
     });
-  } catch {}
+  } catch (error) { log.error('legacy evening reminder scheduling failed', { error: String(error) }); }
 
   // تذكير بآية اليوم - بعد العشاء بـ ٣٠ دقيقة
   const ayahTime = addMinutes(times.isha, 30);
@@ -313,16 +365,106 @@ export async function schedulePrayerNotifications(times: PrayerTimes, opts: Sche
       },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DAILY, hour: ayahTime.hour, minute: ayahTime.minute },
     });
-  } catch {}
+  } catch (error) { log.error('legacy ayah reminder scheduling failed', { error: String(error) }); }
 }
 
 /** يحصل على قائمة الإشعارات المُجَدْوَلة (للتشخيص). */
+/** Schedule exact calendar instants so today's astronomical times are not repeated forever. */
+export async function scheduleDatedPrayerNotifications(
+  days: { date: Date; times: PrayerTimes }[],
+  opts: ScheduleOptions = {},
+): Promise<NotificationOperationResult> {
+  if (!days.length) return notificationResult(0, 1, 'لا توجد مواقيت صالحة لجدولة التنبيهات.');
+  if (isWeb) {
+    await scheduleWeb(days[0].times, opts);
+    return notificationResult(0, 0, 'تنبيهات الويب تعمل فقط أثناء بقاء الصفحة مفتوحة.');
+  }
+  if (!isAvailable()) return notificationResult(0, 1, 'خدمة الإشعارات غير متاحة في هذه النسخة.');
+  if (!(await ensurePermission())) return notificationResult(0, 1, 'إذن الإشعارات غير مفعّل من إعدادات الهاتف.');
+  if (!(await ensureAdhanChannel())) {
+    return notificationResult(0, 1, 'تعذّر إعداد قناة صوت الأذان على الهاتف. افتح إعدادات الإشعارات وحاول مرة أخرى.');
+  }
+  const cancelled = await cancelAllPrayerNotifications();
+  if (!cancelled.ok) return cancelled;
+  let scheduledCount = 0;
+  let failedCount = 0;
+  let old: any[] = [];
+  try {
+    old = await Notifications.getAllScheduledNotificationsAsync();
+  } catch (error) {
+    log.error('read scheduled notifications failed', { error: String(error) });
+    failedCount++;
+  }
+  for (const item of old) {
+    if (typeof item.identifier === 'string' && item.identifier.startsWith(PRAYER_NOTIFICATION_PREFIX)) {
+      try { await Notifications.cancelScheduledNotificationAsync(item.identifier); }
+      catch (error) { failedCount++; log.error('cancel dated notification failed', { id: item.identifier, error: String(error) }); }
+    }
+  }
+  for (const day of days.slice(0, 4)) {
+    if (day.date.getDay() === 5) {
+      const first = parseTime(getJumuahFirstAdhanTime(day.times.dhuhr));
+      const firstTrigger = triggerFor(day.date, first.hour, first.minute, 'adhan');
+      if (firstTrigger.date.getTime() > Date.now()) {
+        try { await Notifications.scheduleNotificationAsync({
+          identifier: datedId(day.date, NOTIF_IDS.jumuahFirst),
+          content: {
+            title: '🕌 الأذان الأول لصلاة الجمعة',
+            body: 'حان وقت الاستعداد والتبكير إلى صلاة الجمعة',
+            sound: 'adhan.wav',
+            data: { type: 'prayer', prayer: 'jumuah-first' },
+          },
+          trigger: firstTrigger,
+        }); scheduledCount++; }
+        catch (error) { failedCount++; log.error('schedule first Jumuah adhan failed', { error: String(error) }); }
+      }
+    }
+    for (const prayer of FARD_PRAYERS) {
+      const prayerName = prayer.key === 'dhuhr' ? getPrayerNameAr('dhuhr', day.date) : prayer.nameAr;
+      const { hour, minute } = parseTime(day.times[prayer.key]);
+      const trigger = triggerFor(day.date, hour, minute, 'adhan');
+      if (trigger.date.getTime() <= Date.now()) continue;
+      try { await Notifications.scheduleNotificationAsync({
+        identifier: datedId(day.date, prayer.adhanId),
+        content: { title: prayer.key === 'dhuhr' && day.date.getDay() === 5 ? '🕌 الأذان الثاني لصلاة الجمعة' : `🕌 ${prayerName}`, body: `حان وقت أذان ${prayerName}`, sound: 'adhan.wav', data: { type: 'prayer', prayer: prayer.key } },
+        trigger,
+      }); scheduledCount++; }
+      catch (error) { failedCount++; log.error('schedule prayer notification failed', { prayer: prayer.key, error: String(error) }); }
+      if (opts.iqamaEnabled) {
+        const iqama = addMinutes(day.times[prayer.key], opts.iqamaOffsetMin ?? 10);
+        try { await Notifications.scheduleNotificationAsync({
+          identifier: datedId(day.date, prayer.iqamaId),
+          content: { title: `إقامة ${prayerName}`, body: `حان وقت إقامة صلاة ${prayerName}`, sound: 'default', data: { type: 'iqama', prayer: prayer.key } },
+          trigger: triggerFor(day.date, iqama.hour, iqama.minute),
+        }); scheduledCount++; }
+        catch (error) { failedCount++; log.error('schedule iqama notification failed', { prayer: prayer.key, error: String(error) }); }
+      }
+    }
+  }
+  return notificationResult(scheduledCount, failedCount);
+}
+
 export async function getScheduledNotifications(): Promise<any[]> {
   if (isWeb) return [];
   if (!isAvailable()) return [];
   try {
     return await Notifications.getAllScheduledNotificationsAsync();
-  } catch {
+  } catch (error) {
+    log.error('get scheduled notifications failed', { error: String(error) });
     return [];
+  }
+}
+
+/** Reads the operating system queue and returns a user-facing diagnostic result. */
+export async function inspectScheduledNotifications(): Promise<NotificationOperationResult> {
+  if (isWeb) return notificationResult(0, 1, 'فحص التنبيهات المجدولة متاح داخل تطبيق الهاتف فقط.');
+  if (!isAvailable()) return notificationResult(0, 1, 'خدمة الإشعارات غير متاحة في هذه النسخة.');
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    if (scheduled.length === 0) return notificationResult(0, 1, 'لا توجد أي تنبيهات مجدولة حاليًا على الهاتف.');
+    return notificationResult(scheduled.length, 0, `الهاتف يحتفظ حاليًا بـ ${scheduled.length} تنبيهًا مجدولًا.`);
+  } catch (error) {
+    log.error('scheduled notification inspection failed', { error: String(error) });
+    return notificationResult(0, 1, 'تعذّر قراءة قائمة التنبيهات من نظام الهاتف.');
   }
 }

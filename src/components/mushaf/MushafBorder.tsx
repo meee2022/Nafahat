@@ -305,6 +305,10 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    // React Native Web otherwise treats flex height as content-box and adds
+    // these paddings outside it, pushing the last Mushaf line through the frame.
+    boxSizing: 'border-box' as any,
+    minHeight: 0,
     // padding مُحسَّب بدقّة: نوفّر مساحة للنص أكبر قدر ممكن مع الحفاظ على
     // مسافة آمنة من الإطار والزخارف الجانبية.
     // عمودي: OUTER_INSET(14) + STRIP_H(16) + 4 = 34

@@ -90,7 +90,7 @@ export default function AchievementsScreen() {
             <Card padding={t.spacing.lg} elevation="xs" style={{ alignItems: 'center', minHeight: 170 }}>
               <View style={[styles.badgeIcon, { backgroundColor: a.unlocked ? t.colors.accent + '22' : t.colors.surfaceAlt }]}>
                 {a.unlocked
-                  ? React.cloneElement(ICON_MAP[a.icon] as React.ReactElement, { color: t.colors.accent })
+                  ? React.cloneElement(ICON_MAP[a.icon] as React.ReactElement<{ color?: string }>, { color: t.colors.accent })
                   : <Lock size={22} color={t.colors.textTertiary} />}
               </View>
               <Text variant="subtitle" align="center" style={{ marginTop: 10 }}>{a.title}</Text>

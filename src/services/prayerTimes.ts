@@ -19,6 +19,7 @@ export interface PrayerTimes {
 }
 
 export type CalculationMethod =
+  | 'Qatar'
   | 'MWL'   // Muslim World League
   | 'ISNA'  // Islamic Society of North America
   | 'Egypt' // الهيئة المصرية العامة للمساحة
@@ -27,7 +28,8 @@ export type CalculationMethod =
   | 'Tehran'
   | 'Jafari';
 
-const METHOD_PARAMS: Record<CalculationMethod, { fajr: number; isha: number | string }> = {
+const METHOD_PARAMS: Record<CalculationMethod, { fajr: number; isha: number | string; dhuhrMinutes?: number }> = {
+  Qatar:   { fajr: 18,    isha: '90 min', dhuhrMinutes: 0 },
   MWL:     { fajr: 18,    isha: 17 },
   ISNA:    { fajr: 15,    isha: 15 },
   Egypt:   { fajr: 19.5,  isha: 17.5 },
@@ -122,6 +124,16 @@ export interface PrayerCalcParams {
   adjustments?: Partial<Record<PrayerName, number>>;
 }
 
+/** Select Qatar's local official method for coordinates within Qatar. */
+export function recommendedCalculationMethod(latitude: number, longitude: number, countryCode?: string): CalculationMethod {
+  const methodsByCountry: Partial<Record<string, CalculationMethod>> = {
+    QA: 'Qatar', SA: 'Makkah', EG: 'Egypt', PK: 'Karachi', IR: 'Tehran', US: 'ISNA', CA: 'ISNA',
+  };
+  if (countryCode && methodsByCountry[countryCode]) return methodsByCountry[countryCode]!;
+  const isInQatar = latitude >= 24.4 && latitude <= 26.2 && longitude >= 50.6 && longitude <= 52.0;
+  return isInQatar ? 'Qatar' : 'MWL';
+}
+
 /** يحسب مواقيت الصلوات الستة للموقع المحدد. */
 export function calculatePrayerTimes(params: PrayerCalcParams): PrayerTimes {
   const date = params.date ?? new Date();
@@ -136,7 +148,7 @@ export function calculatePrayerTimes(params: PrayerCalcParams): PrayerTimes {
 
   const fajr    = sunAngleTime(method.fajr as number, 5 / 24, jd, lat, 'ccw');
   const sunrise = sunAngleTime(0.833, 6 / 24, jd, lat, 'ccw');
-  const dhuhr   = computeNoon(jd, 12 / 24) + 0.0667; // +4 دقائق احتياط
+  const dhuhr   = computeNoon(jd, 12 / 24) + (method.dhuhrMinutes ?? 4) / 60;
   const asr     = asrTime(params.asrFactor ?? 1, 13 / 24, jd, lat);
   const maghrib = sunAngleTime(0.833, 18 / 24, jd, lat, 'cw');
   let ishaTime: number;
@@ -202,3 +214,24 @@ export const PRAYER_NAMES_EN: Record<PrayerName, string> = {
   maghrib: 'Maghrib',
   isha:    'Isha',
 };
+
+/** Friday's congregational noon prayer replaces Dhuhr in user-facing labels. */
+export function getPrayerNameAr(name: PrayerName, date: Date = new Date()): string {
+  return name === 'dhuhr' && date.getDay() === 5 ? 'الجمعة' : PRAYER_NAMES_AR[name];
+}
+
+export function getPrayerNameEn(name: PrayerName, date: Date = new Date()): string {
+  return name === 'dhuhr' && date.getDay() === 5 ? "Jumu'ah" : PRAYER_NAMES_EN[name];
+}
+
+/** Default reminder gap. Actual first-adhaan practice can vary by mosque. */
+export const DEFAULT_JUMUAH_FIRST_ADHAN_OFFSET_MIN = 45;
+
+export function getJumuahFirstAdhanTime(
+  dhuhrTime: string,
+  offsetMinutes = DEFAULT_JUMUAH_FIRST_ADHAN_OFFSET_MIN,
+): string {
+  const [hour, minute] = dhuhrTime.split(':').map(Number);
+  const total = (hour * 60 + minute - Math.max(1, offsetMinutes) + 24 * 60) % (24 * 60);
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}

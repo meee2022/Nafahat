@@ -103,7 +103,7 @@ export async function playRecording(uri: string, onFinish?: () => void): Promise
   playbackPlayer = null;
   playbackSub = null;
   try {
-    const player = createAudioPlayer({ uri }, 300);
+    const player = createAudioPlayer({ uri }, { updateInterval: 300 });
     playbackPlayer = player;
     playbackSub = player.addListener('playbackStatusUpdate', (st: AudioStatus) => {
       if (st.isLoaded && st.didJustFinish) {
@@ -146,7 +146,7 @@ export interface ComparisonResult {
 async function measureDurationMs(uri: string): Promise<number> {
   let player: AudioPlayer | null = null;
   try {
-    player = createAudioPlayer({ uri }, 500);
+    player = createAudioPlayer({ uri }, { updateInterval: 500 });
     for (let i = 0; i < 12; i++) {
       if (player.isLoaded && (player.duration ?? 0) > 0) {
         return Math.round(player.duration * 1000);

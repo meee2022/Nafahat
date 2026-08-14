@@ -7,6 +7,7 @@
  */
 
 import { Platform } from 'react-native';
+import { log } from '@utils/logger';
 
 // نُحضِر الحزمة عبر require ديناميكي حتى لا يكسر البناء إن لم تكن مثبّتة
 let Notifications: any = null;
@@ -22,7 +23,7 @@ try {
 if (Notifications) {
   try {
     Notifications.setNotificationHandler({
-      handleNotification: async (notification) => {
+      handleNotification: async (notification: any) => {
         // 🔇 إشعار الصلاة في المقدّمة: المُجدول يشغّل الأذان الكامل، فنكتم صوت
         //    الإشعار لتفادي تشغيل صوتين معاً.
         const isPrayer = notification?.request?.content?.data?.type === 'prayer';
@@ -37,11 +38,30 @@ if (Notifications) {
         };
       },
     });
-  } catch {}
+  } catch (error) {
+    log.error('notification foreground handler setup failed', { error: String(error) });
+  }
 }
 
 export const isNotificationsSupported = (): boolean =>
   !!Notifications && Platform.OS !== 'web';
+
+const isPermissionGranted = (result: any): boolean =>
+  result?.granted === true ||
+  result?.status === 'granted' ||
+  result?.ios?.status === Notifications?.IosAuthorizationStatus?.PROVISIONAL ||
+  result?.ios?.status === Notifications?.IosAuthorizationStatus?.EPHEMERAL;
+
+/** يقرأ الإذن الحالي بدون إظهار نافذة النظام. */
+export async function hasNotificationPermission(): Promise<boolean> {
+  if (!isNotificationsSupported()) return false;
+  try {
+    return isPermissionGranted(await Notifications.getPermissionsAsync());
+  } catch (error) {
+    log.error('notification permission request failed', { error: String(error) });
+    return false;
+  }
+}
 
 /**
  * يطلب من المستخدم إذن إرسال الإشعارات.
@@ -50,11 +70,11 @@ export const isNotificationsSupported = (): boolean =>
 export async function requestPermission(): Promise<boolean> {
   if (!isNotificationsSupported()) return false;
   try {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    if (existing === 'granted') return true;
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
-  } catch {
+    const existing = await Notifications.getPermissionsAsync();
+    if (isPermissionGranted(existing)) return true;
+    return isPermissionGranted(await Notifications.requestPermissionsAsync());
+  } catch (error) {
+    log.error('notification permission request failed', { error: String(error) });
     return false;
   }
 }
@@ -71,10 +91,12 @@ export interface DailyReminderConfig {
  * يجدول إشعاراً يومياً متكرّراً في الوقت المحدّد.
  * يلغي أي إشعار سابق بنفس الـ identifier.
  */
-export async function scheduleDaily(cfg: DailyReminderConfig): Promise<void> {
-  if (!isNotificationsSupported()) return;
+export async function scheduleDaily(cfg: DailyReminderConfig): Promise<boolean> {
+  if (!isNotificationsSupported()) return false;
   try {
-    await Notifications.cancelScheduledNotificationAsync(cfg.identifier).catch(() => {});
+    await Notifications.cancelScheduledNotificationAsync(cfg.identifier).catch((error: unknown) => {
+      log.warn('previous daily reminder was not present', { identifier: cfg.identifier, error: String(error) });
+    });
     await Notifications.scheduleNotificationAsync({
       identifier: cfg.identifier,
       content: {
@@ -90,21 +112,33 @@ export async function scheduleDaily(cfg: DailyReminderConfig): Promise<void> {
         minute: cfg.minute,
       },
     });
-  } catch {}
+    return true;
+  } catch (error) {
+    log.error('schedule daily reminder failed', { identifier: cfg.identifier, error: String(error) });
+    return false;
+  }
 }
 
-export async function cancelReminder(identifier: string): Promise<void> {
-  if (!isNotificationsSupported()) return;
+export async function cancelReminder(identifier: string): Promise<boolean> {
+  if (!isNotificationsSupported()) return false;
   try {
     await Notifications.cancelScheduledNotificationAsync(identifier);
-  } catch {}
+    return true;
+  } catch (error) {
+    log.error('cancel reminder failed', { identifier, error: String(error) });
+    return false;
+  }
 }
 
-export async function cancelAllReminders(): Promise<void> {
-  if (!isNotificationsSupported()) return;
+export async function cancelAllReminders(): Promise<boolean> {
+  if (!isNotificationsSupported()) return false;
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
-  } catch {}
+    return true;
+  } catch (error) {
+    log.error('cancel all reminders failed', { error: String(error) });
+    return false;
+  }
 }
 
 /**

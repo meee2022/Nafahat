@@ -7,7 +7,7 @@
  *  - أيقونة تشغيل عند الـ hover (web) / دائماً عند active
  */
 import React from 'react';
-import { View, StyleSheet, Animated, Easing } from 'react-native';
+import { View, StyleSheet, Animated, Easing, Platform } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Stop, Path } from 'react-native-svg';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
@@ -40,8 +40,8 @@ export const ReciterAvatar: React.FC<Props> = ({
     if (!isPlaying) return;
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
       ]),
     ).start();
   }, [isPlaying, pulse]);

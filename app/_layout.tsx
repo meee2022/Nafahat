@@ -22,10 +22,9 @@ import { ThemeProvider, useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { useUserStore, useReadingStore, useMemoStore, useStatsStore, useTasbeehStore, useQuizStore, useSettingsStore, useKhatmaStore, useTajweedStore, useWirdStore, useUserPrefsStore, useAppConfigStore, useAudioStore, useArticlesStore } from '@store/index';
 import { useLanguageStore } from '@store/languageStore';
-import { calculatePrayerTimes } from '@services/prayerTimes';
+import { calculatePrayerTimes, recommendedCalculationMethod } from '@services/prayerTimes';
 import { startAdhanScheduler, stopAdhanScheduler } from '@services/adhanScheduler';
-import { schedulePrayerNotifications, cancelAllPrayerNotifications } from '@services/prayerNotifications';
-import { scheduleDhikrReminders, cancelDhikrReminders } from '@services/dhikrReminders';
+import { syncNotificationSchedules } from '@services/notificationCoordinator';
 import { useAuthStore } from '@store/authStore';
 import { convex, ConvexProviderImpl } from '@services/convex';
 import { useAppInfo } from '@store/appConfigStore';
@@ -33,7 +32,6 @@ import { ToastProvider, useToast } from '@components/common/Toast';
 import { AdhanBanner } from '@components/common/AdhanBanner';
 import { ErrorBoundary } from '@components/common/ErrorBoundary';
 import { initPremium, checkActiveSubscription } from '@services/premium';
-import { registerForPushNotifications } from '@services/pushNotifications';
 // 🛰️ يستورد logger أولاً عشان Sentry.init() يحصل قبل أي خطأ محتمل في الـ tree
 import { sentryWrap, log, setSentryUser } from '@utils/logger';
 import { useAchievementNotifier } from '@hooks/useAchievementNotifier';
@@ -48,12 +46,10 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 // 🔑 Android يتجاهل writingDirection، فاتجاه النص العربي يتبع I18nManager.isRTL.
 //    لذلك يجب فرض RTL=true ليُقرأ النص العربي بالاتجاه الصحيح (يمين←يسار).
 //    المحاذاة على مستوى الـ flex مضبوطة بشكل صحيح للـ RTL في معظم المكوّنات.
-if (!I18nManager.isRTL) {
-  try {
-    I18nManager.allowRTL(true);
-    I18nManager.forceRTL(true);
-  } catch {}
-}
+try {
+  I18nManager.allowRTL(true);
+  I18nManager.forceRTL(false);
+} catch {}
 // 🎯 إيقاف قلب left/right في RTL: لأن swap المفعّل افتراضياً يحوّل
 //    textAlign:'right' إلى يسار فيزيائياً (فيظهر النص محاذاته شمال رغم RTL).
 //    بإيقافه: 'right' = يمين فيزيائي = محاذاة صحيحة، وflexDirection يظل RTL.
@@ -158,8 +154,9 @@ function AppGate() {
         hydrateAuth(), hydrateQuiz(), hydrateSettings(), hydrateKhatma(), hydrateTajweed(), hydrateWird(), hydratePrefs(), hydrateAppConfig(), hydrateAudio(), hydrateArticles(),
       ]);
       // 💎 Premium + 🔔 Push (graceful - no-op لو الـ packages مش متركّبة)
-      initPremium().then(() => checkActiveSubscription()).catch(() => {});
-      registerForPushNotifications().catch(() => {});
+      initPremium().then(() => checkActiveSubscription()).catch((error) => {
+        log.error('premium initialization failed', { error: String(error) });
+      });
       // 🛰️ Sentry user context — يساعد في ربط الأخطاء بمستخدم
       const authState = useAuthStore.getState();
       if (authState.user) {
@@ -199,6 +196,11 @@ function AppGate() {
   const adhanVoice = useSettingsStore((s) => s.adhanVoice);
   const adhanLocation = useSettingsStore((s) => s.location);
   const prayerAdjustments = useSettingsStore((s) => s.prayerAdjustments);
+  const iqamaEnabled = useSettingsStore((s) => s.iqamaEnabled);
+  const iqamaOffsetMin = useSettingsStore((s) => s.iqamaOffsetMin);
+  const dhikrEnabled = useSettingsStore((s) => s.dhikrEnabled);
+  const dhikrIntervalHours = useSettingsStore((s) => s.dhikrIntervalHours);
+  const setNotificationHealth = useSettingsStore((s) => s.setNotificationHealth);
   const adjustmentsKey = JSON.stringify(prayerAdjustments);
   useEffect(() => {
     if (!hydrated) return;
@@ -208,31 +210,56 @@ function AppGate() {
         latitude: adhanLocation.latitude,
         longitude: adhanLocation.longitude,
         timezone: adhanLocation.timezone,
-        method: 'Makkah',
+        method: recommendedCalculationMethod(adhanLocation.latitude, adhanLocation.longitude, adhanLocation.countryCode),
         adjustments: prayerAdjustments,
       });
       startAdhanScheduler(times, adhanVoice as any);
       // 🔔 نجدول إشعارات الصلاة كمان (تظهر بشعار التطبيق + صوت وتعمل حتى لو
       //    التطبيق مقفول) — فلا يعتمد التنبيه على فتح شاشة المواقيت يدوياً.
-      schedulePrayerNotifications(times).catch(() => {});
+      const datedTimes = Array.from({ length: 4 }, (_, offset) => {
+        const date = new Date();
+        date.setDate(date.getDate() + offset);
+        return { date, times: calculatePrayerTimes({
+          date,
+          latitude: adhanLocation.latitude,
+          longitude: adhanLocation.longitude,
+          timezone: adhanLocation.timezone,
+          method: recommendedCalculationMethod(adhanLocation.latitude, adhanLocation.longitude, adhanLocation.countryCode),
+          adjustments: prayerAdjustments,
+        }) };
+      });
+      syncNotificationSchedules({
+        prayerEnabled: true,
+        prayerDays: datedTimes,
+        iqamaEnabled,
+        iqamaOffsetMin,
+        dhikrEnabled,
+        dhikrIntervalHours,
+      }).then((result) => {
+        setNotificationHealth({ ok: result.ok, message: result.message, checkedAt: Date.now() });
+      }).catch((error) => {
+        log.error('notification schedule sync failed', { error: String(error) });
+        setNotificationHealth({ ok: false, message: 'تعذّر تحديث جدول التنبيهات. افتح إعدادات الإشعارات للمراجعة.', checkedAt: Date.now() });
+      });
     } else {
       stopAdhanScheduler();
-      cancelAllPrayerNotifications().catch(() => {});
+      syncNotificationSchedules({
+        prayerEnabled: false,
+        prayerDays: [],
+        iqamaEnabled,
+        iqamaOffsetMin,
+        dhikrEnabled,
+        dhikrIntervalHours,
+      }).then((result) => {
+        setNotificationHealth({ ok: result.ok, message: result.message, checkedAt: Date.now() });
+      }).catch((error) => {
+        log.error('notification schedule cancellation failed', { error: String(error) });
+        setNotificationHealth({ ok: false, message: 'تعذّر إيقاف بعض التنبيهات المجدولة.', checkedAt: Date.now() });
+      });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, autoAdhanEnabled, adhanVoice, adhanLocation, adjustmentsKey]);
+  }, [hydrated, autoAdhanEnabled, adhanVoice, adhanLocation, adjustmentsKey, iqamaEnabled, iqamaOffsetMin, dhikrEnabled, dhikrIntervalHours]);
 
-  // 📿 الأذكار الدورية — تُجدول عند الإقلاع لو مفعّلة (تعمل حتى لو التطبيق مقفول).
-  const dhikrEnabled = useSettingsStore((s) => s.dhikrEnabled);
-  const dhikrIntervalHours = useSettingsStore((s) => s.dhikrIntervalHours);
-  useEffect(() => {
-    if (!hydrated) return;
-    if (dhikrEnabled) {
-      scheduleDhikrReminders(dhikrIntervalHours).catch(() => {});
-    } else {
-      cancelDhikrReminders().catch(() => {});
-    }
-  }, [hydrated, dhikrEnabled, dhikrIntervalHours]);
 
   if (!hydrated || !fontsLoaded) return <SplashView />;
 
@@ -331,35 +358,35 @@ function SplashView() {
   React.useEffect(() => {
     // Entrances
     Animated.stagger(180, [
-      Animated.timing(cartoucheAnim, { toValue: 1, duration: 900, easing: Easing.out(Easing.back(1.1)), useNativeDriver: true }),
-      Animated.timing(brandAnim,     { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(taglineAnim,   { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(cartoucheAnim, { toValue: 1, duration: 900, easing: Easing.out(Easing.back(1.1)), useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(brandAnim,     { toValue: 1, duration: 800, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }),
+      Animated.timing(taglineAnim,   { toValue: 1, duration: 700, easing: Easing.out(Easing.cubic), useNativeDriver: Platform.OS !== 'web' }),
     ]).start();
 
     // Subtle breathing pulse for the Shamsa Medallion
     Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.025, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1.0,  duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1.025, duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(pulse, { toValue: 1.0,  duration: 2400, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
       ]),
     ).start();
 
     // Background Mandala - ultra slow rotation (80 seconds)
     Animated.loop(
-      Animated.timing(mandalaSpin, { toValue: 1, duration: 80000, easing: Easing.linear, useNativeDriver: true }),
+      Animated.timing(mandalaSpin, { toValue: 1, duration: 80000, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
     ).start();
 
     // Background Glow - ambient breathing pulse
     Animated.loop(
       Animated.sequence([
-        Animated.timing(glowPulse, { toValue: 1.0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(glowPulse, { toValue: 0.6, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+        Animated.timing(glowPulse, { toValue: 1.0, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
+        Animated.timing(glowPulse, { toValue: 0.6, duration: 4000, easing: Easing.inOut(Easing.sin), useNativeDriver: Platform.OS !== 'web' }),
       ]),
     ).start();
 
     // Astrolabe spinner rotation
     Animated.loop(
-      Animated.timing(spin, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: true }),
+      Animated.timing(spin, { toValue: 1, duration: 6000, easing: Easing.linear, useNativeDriver: Platform.OS !== 'web' }),
     ).start();
   }, [cartoucheAnim, brandAnim, taglineAnim, pulse, spin, mandalaSpin, glowPulse]);
 
@@ -475,7 +502,7 @@ function SplashView() {
           <G transform="translate(100, 56) scale(0.85)">
             <G transform="rotate(22.5 0 0)">
               <Rect x="-6" y="-6" width="12" height="12" fill="url(#goldGradient)" stroke="#8C7430" strokeWidth="0.5" />
-              <Rect x="-6" y="-6" width="12" height="12" fill="url(#goldGradient)" stroke="#8C7430" strokeWidth="0.5" transform="rotate(45)" transformOrigin="0 0" />
+              <Rect x="-6" y="-6" width="12" height="12" fill="url(#goldGradient)" stroke="#8C7430" strokeWidth="0.5" transform="rotate(45 0 0)" />
             </G>
             <Circle cx="0" cy="0" r="2.5" fill="#071F17" />
             <Circle cx="0" cy="0" r="1.2" fill="#F5EAC4" />
@@ -607,7 +634,7 @@ const AstrolabeSpinner: React.FC<{
               <Path d="M 0 -14 L 3.5 -4 L 14 0 L 3.5 4 L 0 14 L -3.5 4 L -14 0 L -3.5 -4 Z" fill="none" stroke="url(#goldGradient)" strokeWidth="0.8" />
             </G>
             <G transform="rotate(45 0 0)">
-              <Path d="M 0 -14 L 3.5 -4 L 14 0 L 3.5 4 L 0 14 L -3.5 4 L -14 0 L -3.5 -4 Z" fill="none" stroke="url(#goldGradient)" strokeWidth="0.5" opacity="0.7" transform="rotate(45)" transformOrigin="0 0" />
+              <Path d="M 0 -14 L 3.5 -4 L 14 0 L 3.5 4 L 0 14 L -3.5 4 L -14 0 L -3.5 -4 Z" fill="none" stroke="url(#goldGradient)" strokeWidth="0.5" opacity="0.7" transform="rotate(45 0 0)" />
             </G>
             {/* Center pointer hub */}
             <Circle cx="0" cy="0" r="3.5" fill="url(#goldGradient)" stroke="#8C7430" strokeWidth="0.5" />
@@ -670,8 +697,8 @@ const CornerOrnament: React.FC<{ position: 'top-left' | 'top-right' | 'bottom-le
 
 const styles = StyleSheet.create({
   splash: { flex: 1, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  bgPattern: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
-  bgMandalaContainer: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', opacity: 0.8 },
+  bgPattern: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
+  bgMandalaContainer: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', opacity: 0.8 },
   shamsaContainer: { alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
   brandName: {
     fontSize: 42,

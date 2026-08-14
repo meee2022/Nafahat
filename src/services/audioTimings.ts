@@ -13,6 +13,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LruCache } from '@/utils/lruCache';
+import { fetchWithTimeout } from '@/utils/fetchWithTimeout';
 
 const API_BASE = 'https://api.qurancdn.com/api/qdc';
 const CACHE_PREFIX = '@nafahat/timings/v2/';
@@ -115,7 +116,7 @@ async function loadInternal(surahId: number, recitationId: number): Promise<Sura
   // 3) API
   try {
     const url = `${API_BASE}/audio/reciters/${recitationId}/audio_files?chapter=${surahId}&segments=true`;
-    const res = await fetch(url);
+    const res = await fetchWithTimeout(url, { timeoutMs: 10_000 });
     if (!res.ok) {
       // 🛟 fallback: لو القارئ مش موجود في Quran.com، جرّب توقيتات العفاسي
       //    أحسن من char-count على الأقل (مع scaling خطّي).

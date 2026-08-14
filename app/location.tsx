@@ -16,17 +16,18 @@ import React, { useMemo, useState } from 'react';
 import { View, StyleSheet, Pressable, TextInput, FlatList, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MapPin, Search, Check, ChevronLeft, Navigation } from 'lucide-react-native';
-import * as Location from 'expo-location';
 import { useTheme } from '@theme/index';
 import { Screen, AppHeader, Text } from '@components/ui';
 import { useSettingsStore } from '@store/index';
 import { CITIES, COUNTRIES, type City } from '@data/cities';
+import { detectCurrentLocation } from '@services/locationDetection';
 
 export default function LocationScreen() {
   const t = useTheme();
   const router = useRouter();
   const currentLocation = useSettingsStore((s) => s.location);
   const setLocation = useSettingsStore((s) => s.setLocation);
+  const setDetectedLocation = useSettingsStore((s) => s.setDetectedLocation);
 
   const [query, setQuery] = useState('');
   const [countryFilter, setCountryFilter] = useState<string | null>(null);
@@ -37,26 +38,15 @@ export default function LocationScreen() {
     if (detecting) return;
     try {
       setDetecting(true);
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('الإذن مرفوض', 'لاكتشاف مدينتك تلقائياً، فعّل إذن الموقع من الإعدادات.');
-        return;
-      }
-      const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      const { latitude, longitude } = pos.coords;
-      let cityAr = 'موقعي الحالي';
-      let cityEn = 'My Location';
-      try {
-        const geo = await Location.reverseGeocodeAsync({ latitude, longitude });
-        const name = geo[0]?.city || geo[0]?.region || geo[0]?.subregion;
-        if (name) { cityAr = name; cityEn = name; }
-      } catch {}
-      // توقيت الجهاز الحالي بالساعات (مثلاً قطر = +3)
-      const timezone = -new Date().getTimezoneOffset() / 60;
-      setLocation({ cityAr, cityEn, latitude, longitude, timezone });
+      const detected = await detectCurrentLocation();
+      setDetectedLocation(detected);
       router.back();
-    } catch {
-      Alert.alert('تعذّر تحديد الموقع', 'تأكّد من تفعيل خدمة الموقع (GPS)، أو اختر مدينتك يدوياً.');
+    } catch (error) {
+      const denied = error instanceof Error && error.message === 'LOCATION_PERMISSION_DENIED';
+      Alert.alert(
+        denied ? 'إذن الموقع غير مفعّل' : 'تعذّر تحديد الموقع',
+        denied ? 'يمكنك تفعيل الإذن من إعدادات الهاتف، أو اختيار مدينتك يدوياً من القائمة.' : 'تأكّد من تشغيل خدمة الموقع، أو اختر مدينتك يدوياً.',
+      );
     } finally {
       setDetecting(false);
     }
@@ -90,6 +80,7 @@ export default function LocationScreen() {
       latitude: city.latitude,
       longitude: city.longitude,
       timezone: city.timezone,
+      countryCode: city.countryCode,
     });
     router.back();
   };

@@ -9,7 +9,7 @@
  * يجب لفّ التطبيق بـ <ToastProvider /> مرة واحدة في الـ root.
  */
 import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
-import { View, StyleSheet, Pressable, Animated, Dimensions } from 'react-native';
+import { View, StyleSheet, Pressable, Animated, Dimensions, Platform } from 'react-native';
 import { Award, CheckCircle2, AlertTriangle, Info, X } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
@@ -76,9 +76,9 @@ const ToastCard: React.FC<{ item: ToastItem; onClose: () => void }> = ({ item, o
         damping: 14,
         stiffness: 180,
         mass: 0.7,
-        useNativeDriver: true,
+        useNativeDriver: Platform.OS !== 'web',
       }),
-      Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 1, duration: 250, useNativeDriver: Platform.OS !== 'web' }),
     ]).start();
   }, []);
 

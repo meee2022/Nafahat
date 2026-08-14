@@ -12,13 +12,12 @@ import { View, StyleSheet, ScrollView, Pressable, TextInput, Platform } from 're
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { Search, Play, Pause, Star, Globe, Headphones, MapPin, SkipForward } from 'lucide-react-native';
+import { Search, Play, Pause, Star, Globe, Headphones, MapPin, SkipForward , Clock } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card, AppHeader } from '@components/ui';
 import { RECITERS } from '@data/reciters';
 import { useT } from '@store/languageStore';
 import { useAudioStore, useSettingsStore } from '@store/index';
-import { Clock } from 'lucide-react-native';
 import { ReciterAvatar } from '@components/reciter/ReciterAvatar';
 
 type StyleFilter = 'all' | 'مرتل' | 'مجود' | 'معلم';

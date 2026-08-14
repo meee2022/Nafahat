@@ -42,13 +42,17 @@ type RemoteBookmark = {
 
 export type SyncStatus = 'idle' | 'syncing' | 'synced' | 'error' | 'offline';
 
+// Enable only after the token-protected Convex functions in this revision are deployed.
+const SECURE_SYNC_ENABLED = process.env.EXPO_PUBLIC_SECURE_SYNC_V2 === 'true';
+
 export function useCloudSync() {
-  const deviceId = useDeviceId();
+  useDeviceId();
   const userId = useAuthStore((s) => s.user?.id);
   const isAuthenticated = useAuthStore((s) => s.status === 'authenticated');
+  const token = useAuthStore((s) => s.token);
 
   // مفتاح المزامنة: userId لو مسجّل، deviceId لو زائر
-  const syncKey = isAuthenticated && userId ? `user:${userId}` : deviceId;
+  const syncKey = SECURE_SYNC_ENABLED && isAuthenticated && userId && token ? `user:${userId}` : null;
 
   const setLastRead = useReadingStore((s) => s.setLastRead);
 
@@ -58,7 +62,7 @@ export function useCloudSync() {
   // تحميل من السحابة عند بدء التطبيق
   useEffect(() => {
     if (!syncKey || !convex) {
-      setStatus(isCloudEnabled() ? 'idle' : 'offline');
+      setStatus(SECURE_SYNC_ENABLED && isCloudEnabled() ? 'idle' : 'offline');
       return;
     }
     let cancelled = false;
@@ -66,9 +70,10 @@ export function useCloudSync() {
     (async () => {
       setStatus('syncing');
       try {
+        const localBeforeSync = useReadingStore.getState().lastRead;
         // اجلب lastRead
-        const remoteLastRead = (await convex.query('lastRead:get' as any, { deviceId: syncKey })) as RemoteLastRead | null;
-        if (!cancelled && remoteLastRead) {
+        const remoteLastRead = (await convex.query('lastRead:get' as any, { token })) as RemoteLastRead | null;
+        if (!cancelled && remoteLastRead && (!localBeforeSync || remoteLastRead.updatedAt >= localBeforeSync.updatedAt)) {
           setLastRead({
             surahId: remoteLastRead.surahId,
             ayahNumber: remoteLastRead.ayahNumber,
@@ -80,15 +85,56 @@ export function useCloudSync() {
 
         // اجلب favorites (محاولة هادئة - مش لازم يفشل لو الـ function مش موجودة)
         try {
-          const remoteFavs = (await convex.query('favorites:list' as any, { deviceId: syncKey })) as RemoteFavorite[] | null;
-          if (!cancelled && Array.isArray(remoteFavs) && remoteFavs.length > 0) {
+          const remoteFavs = (await convex.query('favorites:list' as any, { token })) as RemoteFavorite[] | null;
+          if (!cancelled && Array.isArray(remoteFavs)) {
             const keys = remoteFavs.map((f) => `${f.surahId}:${f.ayahNumber}`);
             // دمج مع المحلي (union)
             const current = useReadingStore.getState().favorites;
             const merged = Array.from(new Set([...current, ...keys]));
             useReadingStore.setState({ favorites: merged });
+            await convex.mutation('favorites:replaceAll' as any, {
+              token,
+              favorites: merged.map((key) => {
+                const [surahId, ayahNumber] = key.split(':').map(Number);
+                return { surahId, ayahNumber };
+              }),
+            });
           }
         } catch {}
+
+        try {
+          const remoteBookmarks = (await convex.query('bookmarks:list' as any, { token })) as RemoteBookmark[];
+          if (!cancelled && Array.isArray(remoteBookmarks)) {
+            const local = useReadingStore.getState().bookmarks;
+            const byKey = new Map<string, { surahId: number; ayahNumber: number; page: number }>();
+            for (const item of [...remoteBookmarks, ...local]) {
+              byKey.set(`${item.surahId}:${item.ayahNumber}`, {
+                surahId: item.surahId,
+                ayahNumber: item.ayahNumber,
+                page: item.page,
+              });
+            }
+            const merged = [...byKey.values()];
+            useReadingStore.setState({
+              bookmarks: merged.map((item, index) => ({
+                ...item,
+                id: `cloud-${item.surahId}-${item.ayahNumber}`,
+                createdAt: remoteBookmarks[index]?.createdAt ?? Date.now(),
+              })),
+            });
+            await convex.mutation('bookmarks:replaceAll' as any, { token, bookmarks: merged });
+          }
+        } catch {}
+
+        if (localBeforeSync && (!remoteLastRead || localBeforeSync.updatedAt > remoteLastRead.updatedAt)) {
+          await convex.mutation('lastRead:set' as any, {
+            token,
+            surahId: localBeforeSync.surahId,
+            surahName: localBeforeSync.surahName,
+            ayahNumber: localBeforeSync.ayahNumber,
+            page: localBeforeSync.page,
+          });
+        }
 
         if (!cancelled) {
           setStatus('synced');
@@ -100,10 +146,10 @@ export function useCloudSync() {
     })();
 
     return () => { cancelled = true; };
-  }, [syncKey, setLastRead]);
+  }, [syncKey, token, setLastRead]);
 
   return {
-    enabled: isCloudEnabled() && !!syncKey,
+    enabled: SECURE_SYNC_ENABLED && isCloudEnabled() && !!syncKey,
     syncKey,
     isAuthenticated,
     status,

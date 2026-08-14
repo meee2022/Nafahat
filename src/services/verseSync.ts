@@ -79,7 +79,7 @@ export function getCurrentAyah(
 export function getAyahStartTimeMs(
   ayahNumber: number,
   durationMs: number,
-  ayahs: Array<{ number: number; text: string }>,
+  ayahs: { number: number; text: string }[],
   surahId?: number,
   /** توقيتات دقيقة لو متوفرة. */
   timings?: SurahTimings | null,

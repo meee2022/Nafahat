@@ -25,7 +25,7 @@ import { useTheme } from '@theme/index';
 import { Text } from '@components/ui';
 import { useSettingsStore, useWirdStore } from '@store/index';
 import { useT, useLanguage } from '@store/languageStore';
-import { calculatePrayerTimes, nextPrayer, PRAYER_NAMES_AR, PrayerName } from '@services/prayerTimes';
+import { calculatePrayerTimes, nextPrayer, getJumuahFirstAdhanTime, getPrayerNameAr, PrayerName, recommendedCalculationMethod } from '@services/prayerTimes';
 import { SectionHeading } from '@components/home';
 import { FEATURED_AYAHS } from '@data/featuredAyahs';
 
@@ -60,7 +60,7 @@ const PrayerHero: React.FC<{ nextP: any; cityName: string }> = ({ nextP, cityNam
   return (
     <View style={heroStyles.countdownContainer}>
       <Text style={heroStyles.nextPrayerText}>
-        {PRAYER_NAMES_AR[nextP.name as PrayerName]} {tr('home.heroNextSuffix')}
+        {getPrayerNameAr(nextP.name as PrayerName, currentTime)} {tr('home.heroNextSuffix')}
       </Text>
       <Text style={heroStyles.countdownTime}>{countdownText}</Text>
       <Pressable
@@ -94,7 +94,7 @@ export default function DailyScreen() {
     latitude: location.latitude,
     longitude: location.longitude,
     timezone: location.timezone,
-    method: 'Makkah',
+    method: recommendedCalculationMethod(location.latitude, location.longitude, location.countryCode),
     adjustments: prayerAdjustments,
   }), [selectedDate, location, prayerAdjustments]);
 
@@ -188,11 +188,16 @@ export default function DailyScreen() {
               return (
                 <View key={pKey} style={[styles.timeItem, isActive && { backgroundColor: t.colors.primary }]}>
                   <Text style={[styles.timeName, { color: isActive ? '#FFF' : t.colors.textSecondary }]}>
-                    {PRAYER_NAMES_AR[pKey]}
+                    {getPrayerNameAr(pKey, selectedDate)}
                   </Text>
                   <Text style={[styles.timeValue, { color: isActive ? '#FFF' : t.colors.textPrimary }]}>
-                    {todayPrayers[pKey]}
+                    {pKey === 'dhuhr' && selectedDate.getDay() === 5 ? `الثاني ${todayPrayers[pKey]}` : todayPrayers[pKey]}
                   </Text>
+                  {pKey === 'dhuhr' && selectedDate.getDay() === 5 ? (
+                    <Text style={[styles.jumuahFirstTime, { color: isActive ? 'rgba(255,255,255,0.82)' : t.colors.textTertiary }]}>
+                      الأول {getJumuahFirstAdhanTime(todayPrayers.dhuhr)}
+                    </Text>
+                  ) : null}
                 </View>
               );
             })}
@@ -410,6 +415,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 2,
     fontVariant: ['tabular-nums'],
+  },
+  jumuahFirstTime: {
+    fontSize: 8,
+    fontWeight: '700',
+    marginTop: 1,
   },
   adhkarRow: {
     flexDirection: 'row',

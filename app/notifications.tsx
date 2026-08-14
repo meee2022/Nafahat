@@ -1,21 +1,22 @@
 /**
  * شاشة الإشعارات والتذكيرات - مربوطة بـ expo-notifications.
  */
-import React, { useEffect } from 'react';
-import { View, StyleSheet, Pressable, Switch } from 'react-native';
-import { useRouter } from 'expo-router';
+import React from 'react';
+import { View, StyleSheet, Pressable, Switch, Alert, Linking } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { ArrowRight, BellRing, BookOpen, Brain, Sunrise, Moon, AlertCircle, Check, Volume2, ChevronLeft, Repeat } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card } from '@components/ui';
 import { OrnamentalRule } from '@components/ornaments';
 import { TOP_BAR_PAD } from '@utils/safeArea';
 import {
-  isNotificationsSupported, requestPermission,
+  isNotificationsSupported, requestPermission, hasNotificationPermission,
   scheduleDaily, cancelReminder, DEFAULT_REMINDERS,
 } from '@services/notifications';
 import { useT } from '@store/languageStore';
 import { useSettingsStore } from '@store/index';
 import { scheduleDhikrReminders, cancelDhikrReminders } from '@services/dhikrReminders';
+import { inspectScheduledNotifications } from '@services/prayerNotifications';
 
 interface NotificationItem {
   id: string;
@@ -55,6 +56,7 @@ export default function NotificationsScreen() {
   const tr = useT();
   const router = useRouter();
   const [permission, setPermission] = React.useState<boolean | null>(null);
+  const [checkingSchedule, setCheckingSchedule] = React.useState(false);
   // 🔒 الحالة محفوظة دائماً في الـstore (مش useState محلّي) فلا ترجع للوضع
   //    الافتراضي لما المستخدم يطلع من الشاشة ويرجع.
   const settings = useSettingsStore((s) => s.notifToggles);
@@ -65,27 +67,72 @@ export default function NotificationsScreen() {
   const dhikrIntervalHours = useSettingsStore((s) => s.dhikrIntervalHours);
   const setDhikrEnabled = useSettingsStore((s) => s.setDhikrEnabled);
   const setDhikrIntervalHours = useSettingsStore((s) => s.setDhikrIntervalHours);
+  const notificationHealth = useSettingsStore((s) => s.notificationHealth);
+  const setNotificationHealth = useSettingsStore((s) => s.setNotificationHealth);
+
+  const showPermissionHelp = () => Alert.alert(
+    'فعّل الإشعارات من إعدادات الهاتف',
+    'سبق رفض إذن الإشعارات لتطبيق نفحات. افتح إعدادات iPhone ثم فعّل «السماح بالإشعارات» وارجع للتطبيق.',
+    [
+      { text: 'إلغاء', style: 'cancel' },
+      { text: 'فتح الإعدادات', onPress: () => Linking.openSettings() },
+    ],
+  );
 
   const handleDhikrToggle = async (v: boolean) => {
-    setDhikrEnabled(v);
     if (v) {
       if (permission !== true) {
         const granted = await requestPermission();
         setPermission(granted);
-        if (!granted) { setDhikrEnabled(false); return; }
+        if (!granted) { setDhikrEnabled(false); showPermissionHelp(); return; }
       }
-      await scheduleDhikrReminders(dhikrIntervalHours);
+      const scheduled = await scheduleDhikrReminders(dhikrIntervalHours);
+      if (!scheduled) {
+        setDhikrEnabled(false);
+        setNotificationHealth({ ok: false, message: 'تعذّرت جدولة تذكيرات الأذكار الدورية.', checkedAt: Date.now() });
+        Alert.alert('تعذّرت جدولة الأذكار', 'أعد تشغيل التطبيق وحاول مرة أخرى، وتأكد أن الإشعارات مسموحة من إعدادات الهاتف.');
+        return;
+      }
+      setDhikrEnabled(true);
+      setNotificationHealth({ ok: true, message: 'تم تفعيل تذكيرات الأذكار الدورية.', checkedAt: Date.now() });
     } else {
-      await cancelDhikrReminders();
+      setDhikrEnabled(false);
+      const cancelled = await cancelDhikrReminders();
+      setNotificationHealth({
+        ok: cancelled,
+        message: cancelled ? 'تم إيقاف تذكيرات الأذكار الدورية.' : 'تعذّر إيقاف بعض تذكيرات الأذكار.',
+        checkedAt: Date.now(),
+      });
+      if (!cancelled) Alert.alert('تنبيه', 'تعذّر إيقاف بعض التذكيرات المجدولة. حاول مرة أخرى.');
     }
   };
 
   const handleDhikrInterval = async (h: number) => {
+    if (dhikrEnabled) {
+      const scheduled = await scheduleDhikrReminders(h);
+      if (!scheduled) {
+        setNotificationHealth({ ok: false, message: 'تعذّر تحديث فترة تذكيرات الأذكار.', checkedAt: Date.now() });
+        Alert.alert('لم يتم حفظ التغيير', 'تعذّر تحديث جدول الأذكار. الفترة السابقة ما زالت هي المختارة.');
+        return;
+      }
+    }
     setDhikrIntervalHours(h);
-    if (dhikrEnabled) await scheduleDhikrReminders(h);
+    setNotificationHealth({ ok: true, message: `تم تحديث تذكيرات الأذكار لتعمل كل ${h} ساعة.`, checkedAt: Date.now() });
   };
 
   const supported = isNotificationsSupported();
+
+  const handleInspectSchedule = async () => {
+    setCheckingSchedule(true);
+    const result = await inspectScheduledNotifications();
+    setCheckingSchedule(false);
+    setNotificationHealth({ ok: result.ok, message: result.message, checkedAt: Date.now() });
+    Alert.alert(result.ok ? 'فحص التنبيهات' : 'تنبيه مهم', result.message,
+      result.ok ? [{ text: 'حسنًا' }] : [
+        { text: 'إغلاق', style: 'cancel' },
+        { text: 'إعدادات الهاتف', onPress: () => Linking.openSettings() },
+      ]);
+  };
 
   // عناصر الإشعارات (تستخدم tr داخل المكون)
   const ITEMS: NotificationItem[] = [
@@ -95,18 +142,13 @@ export default function NotificationsScreen() {
     { id: '4', icon: <BookOpen size={18} />,color: '#0F4A41', title: tr('notif.sample.continueTitle'), desc: tr('notif.sample.continueDesc'), time: tr('notif.timeAgo.twoDaysAgo'), read: true,  route: '/(tabs)/mushaf' },
   ];
 
-  useEffect(() => {
-    // طلب الإذن عند فتح الشاشة
-    if (supported && permission === null) {
-      requestPermission().then(setPermission);
-    }
-  }, [supported, permission]);
+  useFocusEffect(React.useCallback(() => {
+    if (supported) hasNotificationPermission().then(setPermission);
+  }, [supported]));
 
   const handleToggle = async (key: string, value: boolean) => {
-    setNotifToggle(key, value);
-
     const reminder = REMINDER_MAP[key];
-    if (!reminder) return;
+    if (!reminder) { setNotifToggle(key, value); return; }
 
     if (value) {
       // طلب الإذن أولاً إن لم يكن مُمنحاً
@@ -115,12 +157,24 @@ export default function NotificationsScreen() {
         setPermission(granted);
         if (!granted) {
           setNotifToggle(key, false);
+          showPermissionHelp();
           return;
         }
       }
-      await scheduleDaily(reminder);
+      const scheduled = await scheduleDaily(reminder);
+      if (!scheduled) {
+        setNotifToggle(key, false);
+        Alert.alert('تعذّر تفعيل التذكير', 'لم يتمكن الهاتف من جدولة الإشعار. تأكد من الإذن ثم حاول مرة أخرى.');
+        return;
+      }
+      setNotifToggle(key, true);
     } else {
-      await cancelReminder(reminder.identifier);
+      setNotifToggle(key, false);
+      const cancelled = await cancelReminder(reminder.identifier);
+      if (!cancelled) {
+        Alert.alert('تنبيه', 'تعذّر إلغاء التذكير المجدول. حاول مرة أخرى.');
+        setNotificationHealth({ ok: false, message: 'تعذّر إلغاء أحد التذكيرات.', checkedAt: Date.now() });
+      }
     }
   };
 
@@ -138,6 +192,49 @@ export default function NotificationsScreen() {
       </View>
 
       <Screen contentStyle={{ paddingHorizontal: 16, paddingTop: 18 }}>
+        {notificationHealth ? (
+          <Card
+            padding={14}
+            elevation="none"
+            bordered
+            background={(notificationHealth.ok ? t.colors.success : t.colors.error) + '12'}
+            style={{ marginBottom: 12 }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {notificationHealth.ok ? <Check size={18} color={t.colors.success} /> : <AlertCircle size={18} color={t.colors.error} />}
+              <View style={{ flex: 1 }}>
+                <Text variant="bodySm" color={notificationHealth.ok ? t.colors.success : t.colors.error} style={{ fontWeight: '700' }}>
+                  {notificationHealth.message}
+                </Text>
+                <Text variant="caption" color={t.colors.textTertiary} style={{ marginTop: 3 }}>
+                  آخر فحص: {new Date(notificationHealth.checkedAt).toLocaleString('ar')}
+                </Text>
+              </View>
+            </View>
+          </Card>
+        ) : null}
+        {supported ? (
+          <Pressable
+            onPress={handleInspectSchedule}
+            disabled={checkingSchedule}
+            accessibilityRole="button"
+            accessibilityLabel="فحص التنبيهات المجدولة على الهاتف"
+            style={({ pressed }) => ({
+              borderWidth: 1,
+              borderColor: t.colors.accent,
+              borderRadius: 12,
+              paddingVertical: 11,
+              paddingHorizontal: 14,
+              alignItems: 'center',
+              marginBottom: 12,
+              opacity: checkingSchedule || pressed ? 0.6 : 1,
+            })}
+          >
+            <Text variant="bodySm" color={t.colors.accent} style={{ fontWeight: '800' }}>
+              {checkingSchedule ? 'جارٍ فحص التنبيهات…' : 'فحص التنبيهات المجدولة الآن'}
+            </Text>
+          </Pressable>
+        ) : null}
         {/* حالة الإذن */}
         {!supported ? (
           <Card padding={14} elevation="none" bordered background={t.colors.warning + '14'} style={{ marginBottom: 18 }}>
@@ -152,9 +249,12 @@ export default function NotificationsScreen() {
           <Card padding={14} elevation="none" bordered background={t.colors.error + '14'} style={{ marginBottom: 18 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <AlertCircle size={18} color={t.colors.error} />
-              <Text variant="bodySm" color={t.colors.error} style={{ flex: 1 }}>
-                {tr('notif.denied')}
-              </Text>
+              <View style={{ flex: 1 }}>
+                <Text variant="bodySm" color={t.colors.error}>{tr('notif.denied')}</Text>
+                <Pressable onPress={() => Linking.openSettings()} accessibilityRole="button" style={{ marginTop: 7, alignSelf: 'flex-start' }}>
+                  <Text style={{ color: t.colors.accent, fontSize: 12, fontWeight: '800' }}>فتح إعدادات الهاتف</Text>
+                </Pressable>
+              </View>
             </View>
           </Card>
         ) : permission === true ? (

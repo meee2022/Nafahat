@@ -1,0 +1,64 @@
+name: Build iOS IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'store-listing.md'
+      - 'privacy-policy.html'
+
+concurrency:
+  group: ios-preview-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
+      EAS_LOCAL_BUILD_SKIP_CLEANUP: '1'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Expo token
+        shell: bash
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "EXPO_TOKEN is missing. Add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Validate project
+        run: |
+          npm run typecheck
+          npm run test:unit
+
+      - name: Install EAS CLI
+        run: npm install --global eas-cli@latest
+
+      - name: Build signed iOS IPA locally
+        run: eas build --local --platform ios --profile preview --non-interactive --output "$EAS_LOCAL_BUILD_ARTIFACTS_DIR/nafahat-preview.ipa"
+
+      - name: Upload IPA
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nafahat-ios-preview
+          path: artifacts/*.ipa
+          if-no-files-found: warn
+          retention-days: 14

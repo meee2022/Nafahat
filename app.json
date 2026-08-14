@@ -72,13 +72,13 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/splash.png",
-          "imageWidth": 700,
+          "image": "./assets/splash-v2.png",
+          "imageWidth": 240,
           "resizeMode": "contain",
           "backgroundColor": "#075136",
           "dark": {
-            "image": "./assets/splash.png",
-            "imageWidth": 700,
+            "image": "./assets/splash-v2.png",
+            "imageWidth": 240,
             "resizeMode": "contain",
             "backgroundColor": "#075136"
           }
@@ -103,7 +103,8 @@
       ],
       "./plugins/withForceRtl.js",
       "./plugins/withForceRtlIos.js",
-      "./plugins/withRemoveActivityRecognition.js"
+      "./plugins/withRemoveActivityRecognition.js",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": false

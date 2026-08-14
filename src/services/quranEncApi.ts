@@ -10,6 +10,10 @@
  * API Docs: https://quranenc.com/en/home/api/
  */
 
+// ─────────────── Cache محدود (LRU) لمنع تسرّب الذاكرة ───────────────
+
+import { LruCache } from '@/utils/lruCache';
+
 const API_BASE = 'https://quranenc.com/api/v1';
 const AUDIO_BASE = 'https://d.quranenc.com/data/audio';
 
@@ -65,11 +69,6 @@ export const POPULAR_TRANSLATIONS = {
   ha: { key: 'hausa_gummi',     title: 'Hausa' },
 } as const;
 
-// ─────────────── Cache محدود (LRU) لمنع تسرّب الذاكرة ───────────────
-
-import { Platform } from 'react-native';
-import { LruCache } from '@/utils/lruCache';
-
 const cache = new LruCache<string, Promise<any>>(300);
 
 function cached<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
@@ -94,25 +93,8 @@ async function fetchJsonWithTimeout(url: string, timeoutMs = 10000): Promise<any
 }
 
 async function fetchWithCorsProxy(directUrl: string): Promise<any> {
-  if (Platform.OS !== 'web') {
-    try {
-      return await fetchJsonWithTimeout(directUrl, 8000);
-    } catch {}
-  }
-
-  // Web / Fallback proxy
-  try {
-    const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(directUrl)}`;
-    const res = await fetchJsonWithTimeout(proxyUrl, 8000);
-    if (res?.contents) return JSON.parse(res.contents);
-  } catch {}
-
-  try {
-    const proxyUrl2 = `https://corsproxy.io/?url=${encodeURIComponent(directUrl)}`;
-    return await fetchJsonWithTimeout(proxyUrl2, 8000);
-  } catch {
-    return await fetchJsonWithTimeout(directUrl, 8000);
-  }
+  // Never send Quran/translation requests through public third-party CORS proxies.
+  return fetchJsonWithTimeout(directUrl, 8000);
 }
 
 // ─────────────── الـ API methods ───────────────

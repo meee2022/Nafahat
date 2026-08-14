@@ -3,7 +3,7 @@
  * تبدأ بحالة فارغة، ويختار المستخدم خطته الأولى.
  */
 import React, { useState } from 'react';
-import { View, StyleSheet, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable , Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Award, Calendar, Moon, BookOpen } from 'lucide-react-native';
@@ -11,7 +11,6 @@ import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '@theme/index';
 import { Screen, Text, Card, AppHeader, ProgressBar, Button, EmptyState } from '@components/ui';
 import { useStatsStore, useKhatmaStore } from '@store/index';
-import { Alert } from 'react-native';
 import { arabicNumber } from '@data/surahs';
 import { useT } from '@store/languageStore';
 

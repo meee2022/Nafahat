@@ -34,14 +34,14 @@ function applyDirection(lang: LanguageCode): boolean {
   }
 
   // فرض RTL لازم لقراءة النص العربي صحيحاً على Android (Android يتجاهل writingDirection).
+  try {
+    I18nManager.allowRTL(true);
+    if (I18nManager.isRTL) {
+      I18nManager.forceRTL(false);
+      return true;
+    }
+  } catch {}
   void rtl;
-  if (!I18nManager.isRTL) {
-    try {
-      I18nManager.allowRTL(true);
-      I18nManager.forceRTL(true);
-    } catch {}
-    return true;
-  }
   return false;
 }
 

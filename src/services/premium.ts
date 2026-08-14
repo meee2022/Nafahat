@@ -25,7 +25,7 @@ let Purchases: any = null;
 let rcReady = false;
 
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+
   Purchases = require('react-native-purchases');
 } catch {
   // مش متركّب - الـ stubs بتشتغل بدل
@@ -69,7 +69,7 @@ export interface PremiumPackage {
 }
 
 /**
- * يجلب الباقات المتاحة. لو RC غير فعّال، يرجّع stub بـ السعر الافتراضي.
+ * يجلب الباقات الفعلية فقط. لا نعرض أسعاراً أو مشتريات وهمية.
  */
 export async function getOfferings(): Promise<PremiumPackage[]> {
   if (rcReady && Purchases?.getOfferings) {
@@ -91,16 +91,11 @@ export async function getOfferings(): Promise<PremiumPackage[]> {
       log.warn('getOfferings failed', { error: String(e) });
     }
   }
-  // 📦 stub fallback (للـ dev و الـ UI preview)
-  return [
-    { identifier: 'monthly', product: { title: 'الباقة الشهرية', priceString: '$4.99/شهر', description: 'نَفَحات Premium' }, packageType: 'MONTHLY' },
-    { identifier: 'yearly',  product: { title: 'الباقة السنوية', priceString: '$39.99/سنة', description: 'وفّر 33%' },         packageType: 'ANNUAL' },
-    { identifier: 'lifetime',product: { title: 'مدى الحياة',    priceString: '$149 لمرة واحدة', description: 'دفعة واحدة' },  packageType: 'LIFETIME' },
-  ];
+  return [];
 }
 
 /**
- * يبدأ عملية شراء. لو RC غير فعّال، يفعّل isPremium محلياً (للـ dev).
+ * يبدأ عملية شراء حقيقية فقط عندما تكون RevenueCat مهيأة.
  */
 export async function purchasePackage(pkg: PremiumPackage | string): Promise<boolean> {
   const identifier = typeof pkg === 'string' ? pkg : pkg.identifier;
@@ -119,10 +114,8 @@ export async function purchasePackage(pkg: PremiumPackage | string): Promise<boo
       return false;
     }
   }
-  // ✋ stub: فعّل premium محلياً (للـ dev/testing)
-  useSettingsStore.getState().setPremium(true);
-  log.info('Premium activated (stub mode)', { identifier });
-  return true;
+  log.warn('Purchase skipped because RevenueCat is not configured', { identifier });
+  return false;
 }
 
 /**

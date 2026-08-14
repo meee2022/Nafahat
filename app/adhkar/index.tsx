@@ -12,13 +12,14 @@ import { useRouter } from 'expo-router';
 import {
   Sunrise, Moon, Bed, Heart, Home, Coffee, Landmark, Droplets, Wind,
   Shield, Plane, Utensils, Activity, Users, CloudRain, Sunset, MapPin,
-  Wallet, Sparkles, BookOpen, Shirt, Star, Search,
+  Wallet, Sparkles, BookOpen, Shirt, Star, Search, Headphones,
 } from 'lucide-react-native';
 import { useTheme } from '@theme/index';
 import { Text, AppHeader } from '@components/ui';
 import { DHIKR_CATEGORIES, getAdhkarCountForCategory } from '@data/adhkar';
 import { arabicNumber } from '@data/surahs';
 import { useSafeBack } from '@/utils/navigation';
+import { ADHKAR_AUDIO } from '@data/adhkarAudio';
 
 const ICON_MAP: Record<string, React.ComponentType<any>> = {
   Sunrise, Moon, Bed, Heart, Home, Coffee, Landmark, Droplets, Wind,
@@ -116,6 +117,12 @@ export default function AdhkarListScreen() {
                       {arabicNumber(count)} ذكر
                     </Text>
                   </View>
+                  {ADHKAR_AUDIO[cat.id] ? (
+                    <View style={[styles.audioAvailable, { backgroundColor: t.colors.primary + '12' }]}>
+                      <Headphones size={11} color={t.colors.primary} />
+                      <Text style={[styles.audioAvailableText, { color: t.colors.primary }]}>استماع</Text>
+                    </View>
+                  ) : null}
                 </Pressable>
               </View>
             );
@@ -213,6 +220,19 @@ const styles = StyleSheet.create({
   cardCount: {
     fontSize: 10,
     fontWeight: '700',
+  },
+  audioAvailable: {
+    marginTop: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  audioAvailableText: {
+    fontSize: 9,
+    fontWeight: '800',
   },
   footer: {
     flexDirection: 'row',

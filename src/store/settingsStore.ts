@@ -11,6 +11,8 @@ export interface UserLocation {
   latitude: number;
   longitude: number;
   timezone: number;
+  countryCode?: string;
+  timeZone?: string;
 }
 
 interface SettingsState {
@@ -32,6 +34,7 @@ interface SettingsState {
 
   /** الموقع الجغرافي المختار (لمواقيت الصلاة + القبلة + المساجد). */
   location: UserLocation;
+  locationSource: 'unresolved' | 'auto' | 'manual';
   /** هل المستخدم مشترك في العضوية المدفوعة. */
   isPremium: boolean;
 
@@ -53,6 +56,7 @@ interface SettingsState {
   /** 📿 الأذكار الدورية: تفعيلها + الفاصل الزمني بالساعات. */
   dhikrEnabled: boolean;
   dhikrIntervalHours: number;
+  notificationHealth: { ok: boolean; message: string; checkedAt: number } | null;
 
   /** ⏱️ تعديلات يدوية بالدقائق لكل صلاة (لمطابقة أذان المنطقة بدقّة). */
   prayerAdjustments: Record<'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha', number>;
@@ -61,6 +65,7 @@ interface SettingsState {
   setNotifToggle: (key: string, v: boolean) => void;
   setDhikrEnabled: (v: boolean) => void;
   setDhikrIntervalHours: (h: number) => void;
+  setNotificationHealth: (health: { ok: boolean; message: string; checkedAt: number } | null) => void;
   setPrayerAdjustment: (prayer: 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha', minutes: number) => void;
   setAutoAdhan: (v: boolean) => void;
   setAdhanVoice: (v: 'makkah' | 'madinah' | 'abdulbaset' | 'default') => void;
@@ -72,6 +77,7 @@ interface SettingsState {
   /** 🆕 يدفع reciterId إلى recentReciterIds (max 5، أحدث في الأول، مفيش duplicates) */
   pushRecentReciter: (id: string) => void;
   setLocation: (loc: UserLocation) => void;
+  setDetectedLocation: (loc: UserLocation) => void;
   setPremium: (v: boolean) => void;
   setMushafMode: (m: 'image' | 'text' | 'qpc') => void;
   markCloudSynced: () => void;
@@ -80,7 +86,7 @@ interface SettingsState {
 
 const KEY = '@nafahat/settings';
 /** نسخة الإعدادات - زدّها لو احتجت ميجريشن لتفضيلات قديمة. */
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 3;
 
 const DEFAULT_LOCATION: UserLocation = {
   cityAr: 'الدوحة',
@@ -88,17 +94,22 @@ const DEFAULT_LOCATION: UserLocation = {
   latitude: 25.2854,
   longitude: 51.5310,
   timezone: 3,
+  countryCode: 'QA',
+  timeZone: 'Asia/Qatar',
 };
 
 const DEFAULT = {
   notificationsEnabled: true,
   autoSaveTasmee: false,
   cloudSyncEnabled: false,
-  preferredReciterId: 'ajamy',
+  // العفاسي هو الافتراضي لأن توقيتات آياته موثقة في Quran Foundation؛
+  // يبقى العجمي متاحًا من قائمة القراء، لكن لا نستخدم توقيتات تخمينية افتراضيًا.
+  preferredReciterId: 'mishary',
   recentReciterIds: [] as string[],
   lastCloudSyncAt: null as number | null,
   estimatedDownloadsMB: 0,
   location: DEFAULT_LOCATION,
+  locationSource: 'unresolved' as 'unresolved' | 'auto' | 'manual',
   isPremium: true,   // 🆓 التطبيق مجاني بالكامل — كل المميزات مفتوحة دائماً
   mushafMode: 'qpc' as 'image' | 'text' | 'qpc',  // 🎯 QPC الافتراضي: مطابق لمصحف المدينة + تفاعلية كلمة-بكلمة
   autoAdhanEnabled: true,           // 🕌 الأذان التلقائي مفعّل افتراضياً
@@ -108,6 +119,7 @@ const DEFAULT = {
   notifToggles: { wird: true, memo: true, review: true, adhkar: false } as Record<string, boolean>,
   dhikrEnabled: false,          // 📿 الأذكار الدورية (معطّلة افتراضياً — اختيارية)
   dhikrIntervalHours: 2,        // ⏱️ كل ساعتين افتراضياً
+  notificationHealth: null as { ok: boolean; message: string; checkedAt: number } | null,
   prayerAdjustments: { fajr: 0, dhuhr: 0, asr: 0, maghrib: 0, isha: 0 } as Record<'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha', number>,
 };
 
@@ -121,6 +133,7 @@ const persist = (s: Partial<SettingsState>) => {
     recentReciterIds: s.recentReciterIds,
     lastCloudSyncAt: s.lastCloudSyncAt,
     location: s.location,
+    locationSource: s.locationSource,
     isPremium: s.isPremium,
     mushafMode: s.mushafMode,
     autoAdhanEnabled: s.autoAdhanEnabled,
@@ -130,6 +143,7 @@ const persist = (s: Partial<SettingsState>) => {
     notifToggles: s.notifToggles,
     dhikrEnabled: s.dhikrEnabled,
     dhikrIntervalHours: s.dhikrIntervalHours,
+    notificationHealth: s.notificationHealth,
     prayerAdjustments: s.prayerAdjustments,
   };
   AsyncStorage.setItem(KEY, JSON.stringify(data)).catch(() => {});
@@ -152,6 +166,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
   setDhikrIntervalHours(h) {
     set({ dhikrIntervalHours: h });
+    persist(get());
+  },
+  setNotificationHealth(health) {
+    set({ notificationHealth: health });
     persist(get());
   },
   setPrayerAdjustment(prayer, minutes) {
@@ -179,7 +197,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     persist(get());
   },
   setLocation(loc) {
-    set({ location: loc });
+    set({ location: loc, locationSource: 'manual' });
+    persist(get());
+  },
+  setDetectedLocation(loc) {
+    set({ location: loc, locationSource: 'auto' });
     persist(get());
   },
   setMushafMode(m) {
@@ -224,6 +246,12 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         }
         if (!parsed.mushafMode) {
           parsed.mushafMode = 'qpc';
+        }
+        if (storedVersion < 3 || !['unresolved', 'auto', 'manual'].includes(parsed.locationSource)) {
+          const loc = parsed.location;
+          const isDohaDefault = loc && Math.abs(loc.latitude - DEFAULT_LOCATION.latitude) < 0.0001 &&
+            Math.abs(loc.longitude - DEFAULT_LOCATION.longitude) < 0.0001;
+          parsed.locationSource = isDohaDefault ? 'unresolved' : 'manual';
         }
         // مستخدم قديم قبل إضافة notifToggles: استخدم الافتراضي حتى لا يصبح undefined.
         if (!parsed.notifToggles || typeof parsed.notifToggles !== 'object') {

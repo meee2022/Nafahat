@@ -3,6 +3,7 @@ node_modules/
 .expo-shared/
 dist/
 dist-android-check/
+dist-android-*-check/
 dist-ios-offline/
 web-build/
 android/

@@ -310,7 +310,65 @@ const MushafLine: React.FC<LineProps> = ({
   // A nested Text therefore lets the bidi engine place the first word on the
   // left. Use a physical row-reverse layout instead: source word #1 is always
   // the rightmost item and playback proceeds right-to-left deterministically.
-  if (Platform.OS === 'android' || Platform.OS === 'ios' || Platform.OS === 'web') {
+  // Android must not render each QCF word in a separate native Text box.
+  // QCF glyphs deliberately paint outside their advance width (notably dots
+  // below ي/ن and some Quranic marks), and Android clips that paint at the
+  // boundary of every standalone Text.  Keep the whole line in one native
+  // text layout instead.  PUA glyphs are bidi-neutral, so reverse the source
+  // array and lay it out LTR: word #1 then becomes the rightmost visual word
+  // while the shared parent gives every glyph room to overhang its neighbour.
+  if (Platform.OS === 'android') {
+    return (
+      <View style={styles.line}>
+        <RNText
+          allowFontScaling={false}
+          numberOfLines={1}
+          style={{
+            width: '100%',
+            fontFamily: lineFontFamily,
+            fontSize,
+            lineHeight: fontSize * 2.15,
+            includeFontPadding: true,
+            textAlignVertical: 'center',
+            textAlign: 'center',
+            writingDirection: 'ltr',
+            color: inkColor,
+            overflow: 'visible',
+          }}
+        >
+          {[...line.words].reverse().map((w, reverseIndex) => {
+            const originalIndex = line.words.length - 1 - reverseIndex;
+            const isSel = !!selectedVerseKey && w.verse_key === selectedVerseKey;
+            const isPlay = !!playingVerseKey && w.verse_key === playingVerseKey;
+            const isCur = !!currentWordLocation && w.verse_key && w.position
+              ? `${w.verse_key}:${w.position}` === currentWordLocation
+              : false;
+            const isEnd = w.type === 'end';
+            const bg = isCur ? currentBg : isPlay ? playingBg : isSel ? selectedBg : 'transparent';
+            return (
+              <RNText
+                key={`${line.line}-${w.position ?? originalIndex}-${w.code}`}
+                allowFontScaling={false}
+                onPress={onWordPress ? () => onWordPress(w) : undefined}
+                onLongPress={onWordLongPress ? () => onWordLongPress(w) : undefined}
+                style={{
+                  fontFamily: getQpcFontFamily(w.font),
+                  fontSize,
+                  includeFontPadding: true,
+                  color: isEnd ? goldColor : inkColor,
+                  backgroundColor: bg,
+                }}
+              >
+                {w.char}
+              </RNText>
+            );
+          })}
+        </RNText>
+      </View>
+    );
+  }
+
+  if (Platform.OS === 'ios' || Platform.OS === 'web') {
     return (
       <View style={[styles.line, styles.androidGlyphRow, { direction: 'ltr' } as any]}>
         {line.words.map((w, i) => {

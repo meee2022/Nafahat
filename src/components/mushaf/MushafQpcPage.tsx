@@ -79,7 +79,10 @@ const MushafQpcPageImpl: React.FC<Props> = ({
     // a glyph-overhang guard: QCF marks can paint below their nominal Text box
     // on iOS. This keeps line 15 clear of the lower Ottoman ornament while
     // preserving almost the same reading size.
-    const heightBased = (pageHeight - 48) / 27.75;
+    // Android clips glyph marks at the font descent, so each line needs extra
+    // vertical room; reserve a taller line box there (iOS is untouched).
+    const lineBoxFactor = Platform.OS === 'android' ? 30 : 27.75;
+    const heightBased = (pageHeight - 48) / lineBoxFactor;
     return Math.max(13, Math.min(widthBased, heightBased));
   })();
 
@@ -327,7 +330,7 @@ const MushafLine: React.FC<LineProps> = ({
               style={{
                 fontFamily: getQpcFontFamily(w.font),
                 fontSize,
-                lineHeight: fontSize * 1.85,
+                lineHeight: fontSize * (Platform.OS === 'android' ? 2.05 : 1.85),
                 includeFontPadding: true,
                 // QCF glyphs intentionally overhang their advance box. A
                 // standalone Text per word lets iOS crop that overhang (for
@@ -335,8 +338,11 @@ const MushafLine: React.FC<LineProps> = ({
                 // box while cancelling the added layout width.
                 paddingHorizontal: 3,
                 marginHorizontal: -3,
-                paddingVertical: 2,
-                marginVertical: -2,
+                // iOS can paint into a negative-margin overhang, but Android
+                // clips to the box — so give Android real vertical room (larger
+                // padding, no negative margin) while iOS keeps its tight box.
+                paddingVertical: Platform.OS === 'android' ? 7 : 2,
+                marginVertical: Platform.OS === 'android' ? 0 : -2,
                 overflow: 'visible',
                 color: isEnd ? goldColor : inkColor,
                 backgroundColor: bg,

@@ -48,7 +48,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {});
 //    المحاذاة على مستوى الـ flex مضبوطة بشكل صحيح للـ RTL في معظم المكوّنات.
 try {
   I18nManager.allowRTL(true);
-  I18nManager.forceRTL(false);
+  I18nManager.forceRTL(true);
 } catch {}
 // 🎯 إيقاف قلب left/right في RTL: لأن swap المفعّل افتراضياً يحوّل
 //    textAlign:'right' إلى يسار فيزيائياً (فيظهر النص محاذاته شمال رغم RTL).

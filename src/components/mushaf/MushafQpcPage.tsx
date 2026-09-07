@@ -314,9 +314,9 @@ const MushafLine: React.FC<LineProps> = ({
   // QCF glyphs deliberately paint outside their advance width (notably dots
   // below ي/ن and some Quranic marks), and Android clips that paint at the
   // boundary of every standalone Text.  Keep the whole line in one native
-  // text layout instead.  PUA glyphs are bidi-neutral, so reverse the source
-  // array and lay it out LTR: word #1 then becomes the rightmost visual word
-  // while the shared parent gives every glyph room to overhang its neighbour.
+  // text layout instead. The production Android build forces RTL natively via
+  // I18nManager, so the source order must stay canonical. Reversing this array
+  // here would apply RTL twice and make the ayah start at the left edge.
   if (Platform.OS === 'android') {
     return (
       <View style={styles.line}>
@@ -331,13 +331,12 @@ const MushafLine: React.FC<LineProps> = ({
             includeFontPadding: true,
             textAlignVertical: 'center',
             textAlign: 'center',
-            writingDirection: 'ltr',
+            writingDirection: 'rtl',
             color: inkColor,
             overflow: 'visible',
           }}
         >
-          {[...line.words].reverse().map((w, reverseIndex) => {
-            const originalIndex = line.words.length - 1 - reverseIndex;
+          {line.words.map((w, wordIndex) => {
             const isSel = !!selectedVerseKey && w.verse_key === selectedVerseKey;
             const isPlay = !!playingVerseKey && w.verse_key === playingVerseKey;
             const isCur = !!currentWordLocation && w.verse_key && w.position
@@ -347,7 +346,7 @@ const MushafLine: React.FC<LineProps> = ({
             const bg = isCur ? currentBg : isPlay ? playingBg : isSel ? selectedBg : 'transparent';
             return (
               <RNText
-                key={`${line.line}-${w.position ?? originalIndex}-${w.code}`}
+                key={`${line.line}-${w.position ?? wordIndex}-${w.code}`}
                 allowFontScaling={false}
                 onPress={onWordPress ? () => onWordPress(w) : undefined}
                 onLongPress={onWordLongPress ? () => onWordLongPress(w) : undefined}
